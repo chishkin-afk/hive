@@ -1,0 +1,27 @@
+version: '3'
+
+# global env variables
+env:
+  BACKEND_CMD_PATH: ./cmd/server/main.go
+
+# set the validation params
+vars:
+  ALLOWED_ENVS: [dev, staging, prod]
+
+# load all the .env's files
+dotenv: [ backend/.env ]
+
+# main tasks
+tasks:
+  brun:
+    requires:
+      vars:
+        - name: APP_CONFIG_PATH
+        - name: APP_ENV
+          enum:
+            ref: .ALLOWED_ENVS
+    dir: ./backend
+    preconditions:
+      - go test ./...
+    cmds:
+      - go run $BACKEND_CMD_PATH
