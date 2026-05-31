@@ -13,6 +13,7 @@ dotenv: [ backend/.env ]
 
 # main tasks
 tasks:
+  # run the backend service
   brun:
     requires:
       vars:
@@ -25,3 +26,15 @@ tasks:
       - go test ./...
     cmds:
       - go run $BACKEND_CMD_PATH
+  # generate jwt keys on backend
+  jwt-keys:
+    requires:
+      vars:
+        - name: JWT_PUBLIC_PATH
+        - name: JWT_PRIVATE_PATH
+    dir: ./backend
+    cmds:
+      - openssl genrsa -out $JWT_PRIVATE_PATH 2048
+      - openssl rsa -in $JWT_PRIVATE_PATH -pubout -out $JWT_PUBLIC_PATH
+
+  

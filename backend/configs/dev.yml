@@ -44,5 +44,5 @@ cache:
 authorization:
   jwt:
     token_ttl: 168h
-    private_key_path: ./jwtRS256.key
-    public_key_path: ./jwtRS256.key.pub
+    private_key_path: ${JWT_PRIVATE_PATH}
+    public_key_path: ${JWT_PUBLIC_PATH}
