@@ -1,14 +1,18 @@
 package app
 
 import (
+	"context"
 	"database/sql"
 	"log/slog"
 	"os"
 
 	redisconnect "github.com/devathh/hive/backend/internal/common/infrastructure/cache/redis"
 	"github.com/devathh/hive/backend/internal/common/infrastructure/config"
+	"github.com/devathh/hive/backend/internal/common/infrastructure/http/server"
+	"github.com/devathh/hive/backend/internal/common/infrastructure/http/server/handlers"
 	postgresconnect "github.com/devathh/hive/backend/internal/common/infrastructure/persistence/postgres"
 	"github.com/devathh/hive/backend/pkg/log"
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 )
@@ -19,6 +23,9 @@ type DIContainer struct {
 
 	pg    *sql.DB
 	redis *redis.Client
+
+	server  *server.Server
+	handler *gin.Engine
 }
 
 func (di *DIContainer) Cfg() *config.Config {
@@ -60,6 +67,13 @@ func (di *DIContainer) PG() *sql.DB {
 			os.Exit(1)
 		}
 
+		Add(dep{
+			name: "postgres",
+			fc: func(_ context.Context) error {
+				return pg.Close()
+			},
+		})
+
 		di.pg = pg
 	}
 
@@ -74,8 +88,31 @@ func (di *DIContainer) Redis() *redis.Client {
 			os.Exit(1)
 		}
 
+		Add(dep{
+			name: "redis",
+			fc: func(_ context.Context) error {
+				return client.Close()
+			},
+		})
+
 		di.redis = client
 	}
 
 	return di.redis
+}
+
+func (di *DIContainer) Server() *server.Server {
+	if di.server == nil {
+		di.server = server.New(di.Cfg(), di.Handler())
+	}
+
+	return di.server
+}
+
+func (di *DIContainer) Handler() *gin.Engine {
+	if di.handler == nil {
+		di.handler = handlers.New(di.Cfg())
+	}
+
+	return di.handler
 }
