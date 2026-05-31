@@ -5,7 +5,7 @@ create table
         firstname VARCHAR(128) NOT NULL,
         lastname VARCHAR(128),
         confirmed_email VARCHAR(256) NOT NULL,
-        password_hash VARCHAR(128) NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
         paid_until TIMESTAMPTZ NOT NULL DEFAULT NOW (),
         on_vacation BOOLEAN DEFAULT FALSE NOT NULL,
         tg_chat_id BIGINT,
@@ -17,7 +17,7 @@ create table
 
 create index if not exists idx_user_email on users (confirmed_email)
 where
-    email is not null;
+    confirmed_email is not null;
 
 create index if not exists idx_users_tg_chat_id on users (tg_chat_id)
 where
@@ -41,20 +41,20 @@ create table
 -- SCHEDULE'S TABLE
 create table
     if not exists schedules (
-        id UUID PRIMARY KEY,
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
         user_id UUID NOT NULL,
         day_of_week BIGINT NOT NULL DEFAULT 1,
         is_working_day BOOLEAN DEFAULT TRUE,
         working_time JSONB NOT NULL,
         breaks JSONB,
-        FOREIGN KEY user_id REFERENCES users (id),
+        FOREIGN KEY (user_id) REFERENCES users (id),
         CONSTRAINT unique_user_day UNIQUE (user_id, day_of_week)
     );
 
 -- BOOKING'S TABLE
 create table
     if not exists bookings (
-        id UUID PRIMARY KEY,
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
         offer_id UUID NOT NULL,
         user_id UUID NOT NULL,
         comment VARCHAR(128),
@@ -62,33 +62,32 @@ create table
         is_cancelled BOOLEAN NOT NULL DEFAULT FALSE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
-        FOREIGN KEY offer_id REFERENCES offers (id),
-        FOREIGN KEY users_id REFERENCES users (id),
+        FOREIGN KEY (offer_id) REFERENCES offers (id),
+        FOREIGN KEY (user_id) REFERENCES users (id),
         CONSTRAINT unique_booking UNIQUE (user_id, offer_id, start_time)
     );
 
 -- CLIENT'S TABLE
 create table
     if not exists clients (
-        id UUID PRIMARY KEY,
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
         user_id UUID NOT NULL,
         offer_id UUID NOT NULL,
         visits BIGINT NOT NULL DEFAULT 0,
         last_visit TIMESTAMPTZ NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
-        FOREIGN KEY user_id REFERENCES users (id),
-        FOREIGN KEY offer_id REFERENCES offers (id),
+        FOREIGN KEY (user_id) REFERENCES users (id),
+        FOREIGN KEY (offer_id) REFERENCES offers (id),
         CONSTRAINT unique_client UNIQUE (user_id, offer_id)
     );
 
 -- PAYMENT'S HISTORY
 create table
     if not exists payments_history (
-        id UUID PRIMARY KEY,
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
         payment_id UUID NOT NULL,
         user_id UUID NOT NULL,
         amount BIGINT NOT NULL,
-        yookassa_link VARCHAR(512) NOT NULL,
         is_confirmed BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
         confirmed_at TIMESTAMPTZ,
