@@ -1,4 +1,4 @@
-package postgres
+package postgresconnect
 
 import (
 	"database/sql"
@@ -16,14 +16,6 @@ func Connect(cfg *config.Config) (*sql.DB, error) {
 
 	applySettings(db, cfg)
 	return db, nil
-}
-
-func Close(db *sql.DB) error {
-	if err := db.Close(); err != nil {
-		return fmt.Errorf("failed to close db: %w", err)
-	}
-
-	return nil
 }
 
 func applySettings(db *sql.DB, cfg *config.Config) {

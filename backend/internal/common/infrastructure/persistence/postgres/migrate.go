@@ -1,4 +1,4 @@
-package postgres
+package postgresconnect
 
 import (
 	"database/sql"
@@ -16,20 +16,20 @@ func Migrate(cfg *config.Config, db *sql.DB) error {
 		return fmt.Errorf("failed to read migration's dir: %w", err)
 	}
 
-	if err := applyMigrations(cfg, dirs, db); err != nil {
+	if err := applyMigrations(&cfg.Persistence, dirs, db); err != nil {
 		return fmt.Errorf("failed to apply migrations: %w", err)
 	}
 
 	return nil
 }
 
-func applyMigrations(cfg *config.Config, dirs []os.DirEntry, db *sql.DB) error {
+func applyMigrations(cfg *config.Persistence, dirs []os.DirEntry, db *sql.DB) error {
 	for _, dir := range dirs {
 		if dir.IsDir() || !strings.HasSuffix(dir.Name(), ".sql") {
 			continue
 		}
 
-		bytes, err := os.ReadFile(filepath.Join(cfg.Persistence.Postgres.MigrationsPath, dir.Name()))
+		bytes, err := os.ReadFile(filepath.Join(cfg.Postgres.MigrationsPath, dir.Name()))
 		if err != nil {
 			return err
 		}
