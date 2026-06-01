@@ -1,0 +1,25 @@
+package userpg
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type userRecord struct {
+	ID             uuid.UUID
+	Firstname      string
+	Lastname       string
+	ConfirmedEmail string
+	PasswordHash   string
+	PaidUntil      time.Time
+	OnVacation     bool
+	TgChatID       int64
+	Notification   []byte
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type notification struct {
+	TelegramEnable bool `json:"telegram_enable"`
+}

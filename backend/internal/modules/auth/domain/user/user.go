@@ -71,6 +71,32 @@ func New(
 	}, nil
 }
 
+func From(
+	id uuid.UUID,
+	firstname, lastname string,
+	confirmedEmail Email,
+	passwordHash PasswordHash,
+	paidUntil time.Time,
+	onVacation bool,
+	tgChatID int64,
+	notification Notification,
+	createdAt, updatedAt time.Time,
+) *User {
+	return &User{
+		id:             id,
+		firstname:      firstname,
+		lastname:       lastname,
+		confirmedEmail: confirmedEmail,
+		passwordHash:   passwordHash,
+		paidUntil:      paidUntil,
+		onVacation:     onVacation,
+		tgChatID:       tgChatID,
+		notification:   notification,
+		createdAt:      createdAt,
+		updatedAt:      updatedAt,
+	}
+}
+
 // ChangeFirstname is a business-logic method
 // to change the firstname of user
 func (u *User) ChangeFirstname(newFirstname string) error {
