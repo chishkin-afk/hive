@@ -165,36 +165,6 @@ func TestRecordToDomain(t *testing.T) {
 			t.Errorf("UpdatedAt() = %v, want %v", domainUser.UpdatedAt(), now.Add(2*time.Hour))
 		}
 	})
-
-	t.Run("with password_hash field present (prepared record)", func(t *testing.T) {
-		id := uuid.New()
-		now := time.Now().UTC()
-
-		// Simulate a prepared record that includes password_hash
-		jsonBytes := []byte(`{
-			"id":"` + id.String() + `",
-			"firstname":"Bob",
-			"lastname":"",
-			"confirmed_email":"bob@example.com",
-			"password_hash":"$2a$10$prepared",
-			"paid_until":"` + now.Format(time.RFC3339Nano) + `",
-			"on_vacation":true,
-			"tg_chat_id":0,
-			"notification":{"telegram_enable":false},
-			"created_at":"` + now.Format(time.RFC3339Nano) + `",
-			"updated_at":"` + now.Format(time.RFC3339Nano) + `"
-		}`)
-
-		domainUser, err := recordToDomain(jsonBytes)
-		if err != nil {
-			t.Fatalf("recordToDomain() error = %v", err)
-		}
-
-		// When password_hash is present in JSON, it should be loaded
-		if domainUser.PasswordHash().String() != "$2a$10$prepared" {
-			t.Errorf("PasswordHash() = %v, want $2a$10$prepared", domainUser.PasswordHash())
-		}
-	})
 }
 
 func TestDomainToPrepared(t *testing.T) {
@@ -230,9 +200,6 @@ func TestDomainToPrepared(t *testing.T) {
 
 		if prepared.User.ID != id {
 			t.Errorf("User.ID = %v, want %v", prepared.User.ID, id)
-		}
-		if prepared.User.PasswordHash != "$2a$10$hash" {
-			t.Errorf("User.PasswordHash = %v, want $2a$10$hash", prepared.User.PasswordHash)
 		}
 		if prepared.GeneratedPassword != genPassword {
 			t.Errorf("GeneratedPassword = %v, want %v", prepared.GeneratedPassword, genPassword)

@@ -51,6 +51,7 @@ func domainToPrepared(domain *user.User, generatedPassword string) ([]byte, erro
 			Firstname:      domain.Firstname(),
 			Lastname:       domain.Lastname(),
 			ConfirmedEmail: domain.ConfirmedEmail().String(),
+			PasswordHash:   domain.PasswordHash().String(),
 			PaidUntil:      domain.PaidUntil(),
 			OnVacation:     domain.OnVacation(),
 			TgChatID:       domain.TgChatID(),
