@@ -11,6 +11,7 @@ type userRecord struct {
 	Firstname      string       `json:"firstname"`
 	Lastname       string       `json:"lastname"`
 	ConfirmedEmail string       `json:"confirmed_email"`
+	PasswordHash   string       `json:"password_hash,omitempty"`
 	PaidUntil      time.Time    `json:"paid_until"`
 	OnVacation     bool         `json:"on_vacation"`
 	TgChatID       int64        `json:"tg_chat_id"`
@@ -21,4 +22,9 @@ type userRecord struct {
 
 type notification struct {
 	TelegramEnable bool `json:"telegram_enable"`
+}
+
+type preparedUserRecord struct {
+	User              userRecord `json:"user_record"`
+	GeneratedPassword string     `json:"generated_password,omitempty"`
 }

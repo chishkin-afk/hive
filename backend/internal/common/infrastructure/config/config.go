@@ -16,6 +16,7 @@ type Config struct {
 	Persistence   Persistence   `yaml:"persistence"`
 	Cache         Cache         `yaml:"cache"`
 	Authorization Authorization `yaml:"authorization"`
+	SMTP          SMTP          `yaml:"smtp"`
 }
 
 type App struct {
@@ -63,8 +64,9 @@ type Persistence struct {
 }
 
 type Cache struct {
-	UserTTL time.Duration `yaml:"user_ttl" validate:"required,min=1m"`
-	Redis   struct {
+	UserTTL      time.Duration `yaml:"user_ttl" validate:"required,min=1m"`
+	PreparingTTL time.Duration `yaml:"preparing_ttl" validate:"required,min=1m"`
+	Redis        struct {
 		Host string `yaml:"host" validate:"required,hostname"`
 		Port int    `yaml:"port" validate:"required,gte=1,lte=65535"`
 		Auth struct {
@@ -81,6 +83,16 @@ type Authorization struct {
 		PublicKeyPath  string        `yaml:"public_key_path" validate:"required,file"`
 		PrivateKeyPath string        `yaml:"private_key_path" validate:"required,file"`
 	} `yaml:"jwt"`
+}
+
+type SMTP struct {
+	Host     string `yaml:"host" validate:"required,hostname"`
+	Port     int    `yaml:"port" validate:"required,min=1,max=65535"`
+	From     string `yaml:"from" validate:"required"`
+	Password string `yaml:"password" validate:"required"`
+	Msg      struct {
+		Subject string `yaml:"subject" validate:"required"`
+	} `yaml:"msg" validate:"required"`
 }
 
 // .env must be loaded

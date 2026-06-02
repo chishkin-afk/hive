@@ -1,6 +1,7 @@
 package userredis
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestToBytes(t *testing.T) {
+func TestDomainToRecord(t *testing.T) {
 	t.Run("full domain to json bytes conversion", func(t *testing.T) {
 		id := uuid.New()
 		now := time.Now().UTC()
@@ -28,24 +29,54 @@ func TestToBytes(t *testing.T) {
 			now.Add(time.Hour),
 		)
 
-		bytes, err := toBytes(domainUser)
+		bytes, err := domainToRecord(domainUser)
 		if err != nil {
-			t.Fatalf("toBytes() error = %v", err)
+			t.Fatalf("domainToRecord() error = %v", err)
 		}
 
-		expectedJSON := `{"id":"` + id.String() + `","firstname":"John","lastname":"Doe","confirmed_email":"john@example.com","paid_until":"` + paidUntil.Format(time.RFC3339Nano) + `","on_vacation":true,"tg_chat_id":123456789,"notification":{"telegram_enable":true},"created_at":"` + now.Format(time.RFC3339Nano) + `","updated_at":"` + now.Add(time.Hour).Format(time.RFC3339Nano) + `"}`
-
-		if string(bytes) != expectedJSON {
-			t.Errorf("toBytes() JSON mismatch\ngot:  %s\nwant: %s", string(bytes), expectedJSON)
+		// Parse JSON to verify structure
+		var record userRecord
+		if err := json.Unmarshal(bytes, &record); err != nil {
+			t.Fatalf("failed to unmarshal result: %v", err)
 		}
 
-		// Critical: password hash MUST NOT be in cached bytes
-		if bytesContain(bytes, "password") || bytesContain(bytes, "hash") {
-			t.Error("toBytes() should NOT include password_hash in cached data")
+		if record.ID != id {
+			t.Errorf("ID = %v, want %v", record.ID, id)
+		}
+		if record.Firstname != "John" {
+			t.Errorf("Firstname = %v, want %v", record.Firstname, "John")
+		}
+		if record.Lastname != "Doe" {
+			t.Errorf("Lastname = %v, want %v", record.Lastname, "Doe")
+		}
+		if record.ConfirmedEmail != "john@example.com" {
+			t.Errorf("ConfirmedEmail = %v, want %v", record.ConfirmedEmail, "john@example.com")
+		}
+		// PasswordHash should be omitted when empty due to omitempty tag
+		if record.PasswordHash != "" {
+			t.Errorf("PasswordHash = %v, want empty (omitted from cache)", record.PasswordHash)
+		}
+		if !record.PaidUntil.Equal(paidUntil) {
+			t.Errorf("PaidUntil = %v, want %v", record.PaidUntil, paidUntil)
+		}
+		if record.OnVacation != true {
+			t.Errorf("OnVacation = %v, want %v", record.OnVacation, true)
+		}
+		if record.TgChatID != 123456789 {
+			t.Errorf("TgChatID = %v, want %v", record.TgChatID, 123456789)
+		}
+		if !record.Notification.TelegramEnable {
+			t.Error("Notification.TelegramEnable = false, want true")
+		}
+		if !record.CreatedAt.Equal(now) {
+			t.Errorf("CreatedAt = %v, want %v", record.CreatedAt, now)
+		}
+		if !record.UpdatedAt.Equal(now.Add(time.Hour)) {
+			t.Errorf("UpdatedAt = %v, want %v", record.UpdatedAt, now.Add(time.Hour))
 		}
 	})
 
-	t.Run("empty lastname and disabled notification", func(t *testing.T) {
+	t.Run("password_hash omitted due to omitempty", func(t *testing.T) {
 		id := uuid.New()
 		now := time.Now().UTC()
 
@@ -54,7 +85,7 @@ func TestToBytes(t *testing.T) {
 			"Jane",
 			"",
 			user.Email("jane@example.com"),
-			user.PasswordHash("$2a$10$secret"),
+			user.PasswordHash(""),
 			now,
 			false,
 			0,
@@ -63,24 +94,19 @@ func TestToBytes(t *testing.T) {
 			now,
 		)
 
-		bytes, err := toBytes(domainUser)
+		bytes, err := domainToRecord(domainUser)
 		if err != nil {
-			t.Fatalf("toBytes() error = %v", err)
+			t.Fatalf("domainToRecord() error = %v", err)
 		}
 
-		if !bytesContain(bytes, `"lastname":""`) {
-			t.Error("toBytes() should include empty lastname")
-		}
-		if !bytesContain(bytes, `"telegram_enable":false`) {
-			t.Error("toBytes() should include telegram_enable:false")
-		}
-		if bytesContain(bytes, "password") {
-			t.Error("toBytes() should NOT cache password hash")
+		// Verify password_hash field is NOT present in JSON when empty
+		if bytesContain(bytes, `"password_hash"`) {
+			t.Error("domainToRecord() should omit password_hash field when empty (omitempty)")
 		}
 	})
 }
 
-func TestToDomain(t *testing.T) {
+func TestRecordToDomain(t *testing.T) {
 	t.Run("full json bytes to domain conversion", func(t *testing.T) {
 		id := uuid.New()
 		now := time.Now().UTC()
@@ -99,9 +125,9 @@ func TestToDomain(t *testing.T) {
 			"updated_at":"` + now.Add(2*time.Hour).Format(time.RFC3339Nano) + `"
 		}`)
 
-		domainUser, err := toDomain(jsonBytes)
+		domainUser, err := recordToDomain(jsonBytes)
 		if err != nil {
-			t.Fatalf("toDomain() error = %v", err)
+			t.Fatalf("recordToDomain() error = %v", err)
 		}
 
 		if domainUser.ID() != id {
@@ -116,9 +142,9 @@ func TestToDomain(t *testing.T) {
 		if domainUser.ConfirmedEmail().String() != "alice@example.com" {
 			t.Errorf("ConfirmedEmail() = %v, want %v", domainUser.ConfirmedEmail(), "alice@example.com")
 		}
-		// Critical: password hash from cache should be empty (not stored)
+		// PasswordHash should be empty when loading from standard cache
 		if domainUser.PasswordHash().String() != "" {
-			t.Errorf("PasswordHash() = %v, want empty (not cached)", domainUser.PasswordHash())
+			t.Errorf("PasswordHash() = %v, want empty (not in standard cache)", domainUser.PasswordHash())
 		}
 		if !domainUser.PaidUntil().Equal(paidUntil) {
 			t.Errorf("PaidUntil() = %v, want %v", domainUser.PaidUntil(), paidUntil)
@@ -140,15 +166,17 @@ func TestToDomain(t *testing.T) {
 		}
 	})
 
-	t.Run("empty fields and disabled notification", func(t *testing.T) {
+	t.Run("with password_hash field present (prepared record)", func(t *testing.T) {
 		id := uuid.New()
 		now := time.Now().UTC()
 
+		// Simulate a prepared record that includes password_hash
 		jsonBytes := []byte(`{
 			"id":"` + id.String() + `",
 			"firstname":"Bob",
 			"lastname":"",
 			"confirmed_email":"bob@example.com",
+			"password_hash":"$2a$10$prepared",
 			"paid_until":"` + now.Format(time.RFC3339Nano) + `",
 			"on_vacation":true,
 			"tg_chat_id":0,
@@ -157,38 +185,184 @@ func TestToDomain(t *testing.T) {
 			"updated_at":"` + now.Format(time.RFC3339Nano) + `"
 		}`)
 
-		domainUser, err := toDomain(jsonBytes)
+		domainUser, err := recordToDomain(jsonBytes)
 		if err != nil {
-			t.Fatalf("toDomain() error = %v", err)
+			t.Fatalf("recordToDomain() error = %v", err)
 		}
 
-		if domainUser.Lastname() != "" {
-			t.Errorf("Lastname() = %v, want empty", domainUser.Lastname())
-		}
-		if domainUser.TgChatID() != 0 {
-			t.Errorf("TgChatID() = %v, want 0", domainUser.TgChatID())
-		}
-		if domainUser.Notification().IsTelegramEnable() {
-			t.Error("Notification().IsTelegramEnable() = true, want false")
-		}
-		if domainUser.PasswordHash().String() != "" {
-			t.Error("PasswordHash should be empty when loading from cache")
+		// When password_hash is present in JSON, it should be loaded
+		if domainUser.PasswordHash().String() != "$2a$10$prepared" {
+			t.Errorf("PasswordHash() = %v, want $2a$10$prepared", domainUser.PasswordHash())
 		}
 	})
 }
 
-func TestRoundTripConversion_Cache(t *testing.T) {
-	t.Run("domain → bytes → domain preserves non-sensitive fields", func(t *testing.T) {
+func TestDomainToPrepared(t *testing.T) {
+	t.Run("domain + generated password to prepared bytes", func(t *testing.T) {
+		id := uuid.New()
+		now := time.Now().UTC()
+		genPassword := "TempPass123!"
+
+		domainUser := user.From(
+			id,
+			"NewUser",
+			"Test",
+			user.Email("new@test.com"),
+			user.PasswordHash("$2a$10$hash"),
+			now,
+			false,
+			0,
+			user.NewNotification(false),
+			now,
+			now,
+		)
+
+		bytes, err := domainToPrepared(domainUser, genPassword)
+		if err != nil {
+			t.Fatalf("domainToPrepared() error = %v", err)
+		}
+
+		// Parse to verify structure
+		var prepared preparedUserRecord
+		if err := json.Unmarshal(bytes, &prepared); err != nil {
+			t.Fatalf("failed to unmarshal prepared: %v", err)
+		}
+
+		if prepared.User.ID != id {
+			t.Errorf("User.ID = %v, want %v", prepared.User.ID, id)
+		}
+		if prepared.User.PasswordHash != "$2a$10$hash" {
+			t.Errorf("User.PasswordHash = %v, want $2a$10$hash", prepared.User.PasswordHash)
+		}
+		if prepared.GeneratedPassword != genPassword {
+			t.Errorf("GeneratedPassword = %v, want %v", prepared.GeneratedPassword, genPassword)
+		}
+	})
+
+	t.Run("empty generated password is omitted", func(t *testing.T) {
+		id := uuid.New()
+		now := time.Now().UTC()
+
+		domainUser := user.From(
+			id,
+			"User",
+			"NoPass",
+			user.Email("user@test.com"),
+			user.PasswordHash("$2a$10$hash"),
+			now,
+			false,
+			0,
+			user.NewNotification(false),
+			now,
+			now,
+		)
+
+		bytes, err := domainToPrepared(domainUser, "")
+		if err != nil {
+			t.Fatalf("domainToPrepared() error = %v", err)
+		}
+
+		// Verify generated_password field is omitted when empty
+		if bytesContain(bytes, `"generated_password"`) {
+			t.Error("domainToPrepared() should omit generated_password when empty (omitempty)")
+		}
+	})
+}
+
+func TestPreparedToDomain(t *testing.T) {
+	t.Run("prepared bytes to domain + generated password", func(t *testing.T) {
+		id := uuid.New()
+		now := time.Now().UTC()
+		expectedGenPass := "GeneratedPass456!"
+
+		preparedJSON := []byte(`{
+			"user_record":{
+				"id":"` + id.String() + `",
+				"firstname":"Prepared",
+				"lastname":"User",
+				"confirmed_email":"prepared@test.com",
+				"password_hash":"$2a$10$fromprepared",
+				"paid_until":"` + now.Format(time.RFC3339Nano) + `",
+				"on_vacation":true,
+				"tg_chat_id":111222333,
+				"notification":{"telegram_enable":true},
+				"created_at":"` + now.Format(time.RFC3339Nano) + `",
+				"updated_at":"` + now.Add(15*time.Minute).Format(time.RFC3339Nano) + `"
+			},
+			"generated_password":"` + expectedGenPass + `"
+		}`)
+
+		domainUser, genPass, err := preparedToDomain(preparedJSON)
+		if err != nil {
+			t.Fatalf("preparedToDomain() error = %v", err)
+		}
+
+		if domainUser.ID() != id {
+			t.Errorf("ID() = %v, want %v", domainUser.ID(), id)
+		}
+		if domainUser.Firstname() != "Prepared" {
+			t.Errorf("Firstname() = %v, want Prepared", domainUser.Firstname())
+		}
+		if domainUser.PasswordHash().String() != "$2a$10$fromprepared" {
+			t.Errorf("PasswordHash() = %v, want $2a$10$fromprepared", domainUser.PasswordHash())
+		}
+		if domainUser.TgChatID() != 111222333 {
+			t.Errorf("TgChatID() = %v, want 111222333", domainUser.TgChatID())
+		}
+		if !domainUser.Notification().IsTelegramEnable() {
+			t.Error("Notification().IsTelegramEnable() = false, want true")
+		}
+		if genPass != expectedGenPass {
+			t.Errorf("returned generated_password = %v, want %v", genPass, expectedGenPass)
+		}
+	})
+
+	t.Run("without generated_password field", func(t *testing.T) {
+		id := uuid.New()
+		now := time.Now().UTC()
+
+		preparedJSON := []byte(`{
+			"user_record":{
+				"id":"` + id.String() + `",
+				"firstname":"NoGen",
+				"lastname":"Pass",
+				"confirmed_email":"nogen@test.com",
+				"password_hash":"$2a$10$hash",
+				"paid_until":"` + now.Format(time.RFC3339Nano) + `",
+				"on_vacation":false,
+				"tg_chat_id":0,
+				"notification":{"telegram_enable":false},
+				"created_at":"` + now.Format(time.RFC3339Nano) + `",
+				"updated_at":"` + now.Format(time.RFC3339Nano) + `"
+			}
+		}`)
+
+		domainUser, genPass, err := preparedToDomain(preparedJSON)
+		if err != nil {
+			t.Fatalf("preparedToDomain() error = %v", err)
+		}
+
+		if domainUser.Firstname() != "NoGen" {
+			t.Errorf("Firstname() = %v, want NoGen", domainUser.Firstname())
+		}
+		if genPass != "" {
+			t.Errorf("returned generated_password = %v, want empty", genPass)
+		}
+	})
+}
+
+func TestRoundTrip_StandardCache(t *testing.T) {
+	t.Run("domain → record → domain preserves non-sensitive fields", func(t *testing.T) {
 		originalID := uuid.New()
 		now := time.Now().UTC().Truncate(time.Microsecond)
 		paidUntil := now.AddDate(0, 6, 0)
 
 		originalUser := user.From(
 			originalID,
-			"CacheTest",
-			"User",
-			user.Email("cache.test@example.com"),
-			user.PasswordHash("$2a$10$secret_password_hash"),
+			"RoundTrip",
+			"Test",
+			user.Email("roundtrip@test.com"),
+			user.PasswordHash("$2a$10$original_hash"),
 			paidUntil,
 			true,
 			555123456,
@@ -197,14 +371,14 @@ func TestRoundTripConversion_Cache(t *testing.T) {
 			now.Add(30*time.Minute),
 		)
 
-		bytes, err := toBytes(originalUser)
+		bytes, err := domainToRecord(originalUser)
 		if err != nil {
-			t.Fatalf("toBytes() error = %v", err)
+			t.Fatalf("domainToRecord() error = %v", err)
 		}
 
-		restoredUser, err := toDomain(bytes)
+		restoredUser, err := recordToDomain(bytes)
 		if err != nil {
-			t.Fatalf("toDomain() error = %v", err)
+			t.Fatalf("recordToDomain() error = %v", err)
 		}
 
 		// All fields except password should match
@@ -220,9 +394,9 @@ func TestRoundTripConversion_Cache(t *testing.T) {
 		if restoredUser.ConfirmedEmail() != originalUser.ConfirmedEmail() {
 			t.Errorf("Email mismatch")
 		}
-		// EXPECTED: password hash is NOT preserved in cache round-trip
+		// Standard cache does NOT preserve password_hash
 		if restoredUser.PasswordHash().String() != "" {
-			t.Errorf("PasswordHash should be empty after cache round-trip, got %v", restoredUser.PasswordHash())
+			t.Errorf("PasswordHash should be empty after standard cache round-trip")
 		}
 		if !restoredUser.PaidUntil().Equal(originalUser.PaidUntil()) {
 			t.Errorf("PaidUntil mismatch")
@@ -245,30 +419,77 @@ func TestRoundTripConversion_Cache(t *testing.T) {
 	})
 }
 
-func TestToDomain_InvalidJSON(t *testing.T) {
-	t.Run("malformed json returns error", func(t *testing.T) {
-		invalidJSON := []byte(`{invalid json}`)
-		_, err := toDomain(invalidJSON)
-		if err == nil {
-			t.Error("toDomain() should return error for invalid JSON")
-		}
-	})
+func TestRoundTrip_PreparedCache(t *testing.T) {
+	t.Run("domain → prepared → domain preserves ALL fields including password", func(t *testing.T) {
+		originalID := uuid.New()
+		now := time.Now().UTC().Truncate(time.Microsecond)
+		originalHash := user.PasswordHash("$2a$10$prepared_hash")
+		genPass := "TempGen123!"
 
-	t.Run("missing required fields handled by domain constructor", func(t *testing.T) {
-		// Empty JSON object - domain.From should handle defaults
-		emptyJSON := []byte(`{}`)
-		domainUser, err := toDomain(emptyJSON)
+		originalUser := user.From(
+			originalID,
+			"PreparedRound",
+			"Trip",
+			user.Email("prepared@test.com"),
+			originalHash,
+			now,
+			false,
+			999888777,
+			user.NewNotification(false),
+			now,
+			now.Add(10*time.Minute),
+		)
+
+		bytes, err := domainToPrepared(originalUser, genPass)
 		if err != nil {
-			t.Fatalf("toDomain() error = %v", err)
+			t.Fatalf("domainToPrepared() error = %v", err)
 		}
-		// Should return a user with zero values, not panic
-		if domainUser == nil {
-			t.Error("toDomain() should return non-nil user for empty JSON")
+
+		restoredUser, restoredGenPass, err := preparedToDomain(bytes)
+		if err != nil {
+			t.Fatalf("preparedToDomain() error = %v", err)
+		}
+
+		// ALL fields should match including password_hash
+		if restoredUser.ID() != originalUser.ID() {
+			t.Errorf("ID mismatch")
+		}
+		if restoredUser.PasswordHash() != originalHash {
+			t.Errorf("PasswordHash mismatch: got %v, want %v", restoredUser.PasswordHash(), originalHash)
+		}
+		if restoredUser.TgChatID() != 999888777 {
+			t.Errorf("TgChatID mismatch")
+		}
+		if restoredGenPass != genPass {
+			t.Errorf("GeneratedPassword mismatch: got %v, want %v", restoredGenPass, genPass)
 		}
 	})
 }
 
-// Helper: check if byte slice contains substring (for JSON field checks)
+func TestInvalidJSON(t *testing.T) {
+	t.Run("recordToDomain with invalid json", func(t *testing.T) {
+		_, err := recordToDomain([]byte(`{invalid}`))
+		if err == nil {
+			t.Error("recordToDomain() should return error for invalid JSON")
+		}
+	})
+
+	t.Run("preparedToDomain with invalid json", func(t *testing.T) {
+		_, _, err := preparedToDomain([]byte(`{invalid}`))
+		if err == nil {
+			t.Error("preparedToDomain() should return error for invalid JSON")
+		}
+	})
+
+	t.Run("preparedToDomain with malformed user_record", func(t *testing.T) {
+		_, _, err := preparedToDomain([]byte(`{"user_record":{invalid}}`))
+		if err == nil {
+			t.Error("preparedToDomain() should return error for malformed user_record")
+		}
+	})
+}
+
+// Helper: check if byte slice contains substring
 func bytesContain(b []byte, substr string) bool {
 	return len(b) >= len(substr) && string(b) != "" && indexOfString(string(b), substr) != -1
 }

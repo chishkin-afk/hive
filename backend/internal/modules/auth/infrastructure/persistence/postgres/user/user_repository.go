@@ -13,11 +13,6 @@ import (
 	"github.com/lib/pq"
 )
 
-var (
-	ErrUserAlreadyExists = errors.New("user already exists")
-	ErrUserNotFound      = errors.New("user not found")
-)
-
 type DB interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
@@ -141,7 +136,7 @@ func (upr *userPersistenceRepository) Update(ctx context.Context, updUser *user.
 	}
 
 	if count, _ := result.RowsAffected(); count == 0 {
-		return nil, ErrUserNotFound
+		return nil, user.ErrUserNotFound
 	}
 
 	return toDomain(record)
@@ -174,14 +169,14 @@ func (upr *userPersistenceRepository) normalizeError(err error) (error, bool) {
 		errors.Is(err, context.Canceled):
 		return err, true
 	case errors.Is(err, sql.ErrNoRows):
-		return ErrUserNotFound, true
+		return user.ErrUserNotFound, true
 	}
 
 	var pqError *pq.Error
 	if errors.As(err, &pqError) {
 		switch pqError.Code {
 		case "23505":
-			return ErrUserAlreadyExists, true
+			return user.ErrUserAlreadyExists, true
 		}
 	}
 

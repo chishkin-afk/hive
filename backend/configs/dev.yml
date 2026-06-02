@@ -33,6 +33,7 @@ persistence:
 
 cache:
   user_ttl: 5m
+  preparing_ttl: 10m
   redis:
     host: ${REDIS_HOST}
     port: ${REDIS_PORT}
@@ -46,3 +47,11 @@ authorization:
     token_ttl: 168h
     private_key_path: ${JWT_PRIVATE_PATH}
     public_key_path: ${JWT_PUBLIC_PATH}
+
+smtp:
+  host: smtp.yandex.ru
+  port: 587
+  from: hive.crm@yandex.ru
+  password: ${SMTP_PASSWORD}
+  msg:
+    subject: "Регистрация нового аккаунта"
