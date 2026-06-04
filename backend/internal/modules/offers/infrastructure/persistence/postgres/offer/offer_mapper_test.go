@@ -23,6 +23,7 @@ func TestDomainToRecord(t *testing.T) {
 					authorID,
 					"Test Offer",
 					"Test description",
+					uint64(1500),
 					offer.SlotDuration(45*time.Minute),
 					offer.SlotInterval(15*time.Minute),
 				)
@@ -32,18 +33,20 @@ func TestDomainToRecord(t *testing.T) {
 				AuthorID:            authorID,
 				Title:               "Test Offer",
 				Description:         "Test description",
+				Price:               1500,
 				SlotDurationMinutes: 45,
 				SlotIntervalMinutes: 15,
 				IsActive:            true,
 			},
 		},
 		{
-			name: "offer with empty description",
+			name: "offer with zero price",
 			domainFactory: func() *offer.Offer {
 				o, _ := offer.New(
 					authorID,
-					"Minimal Offer",
+					"Free Offer",
 					"",
+					uint64(0),
 					offer.SlotDuration(10*time.Minute),
 					offer.SlotInterval(5*time.Minute),
 				)
@@ -51,20 +54,22 @@ func TestDomainToRecord(t *testing.T) {
 			},
 			expectedRecord: &offerRecord{
 				AuthorID:            authorID,
-				Title:               "Minimal Offer",
+				Title:               "Free Offer",
 				Description:         "",
+				Price:               0,
 				SlotDurationMinutes: 10,
 				SlotIntervalMinutes: 5,
 				IsActive:            true,
 			},
 		},
 		{
-			name: "disabled offer",
+			name: "disabled offer with high price",
 			domainFactory: func() *offer.Offer {
 				o, _ := offer.New(
 					authorID,
-					"Disabled Offer",
+					"Premium Offer",
 					"description",
+					uint64(999999),
 					offer.SlotDuration(60*time.Minute),
 					offer.SlotInterval(30*time.Minute),
 				)
@@ -73,8 +78,9 @@ func TestDomainToRecord(t *testing.T) {
 			},
 			expectedRecord: &offerRecord{
 				AuthorID:            authorID,
-				Title:               "Disabled Offer",
+				Title:               "Premium Offer",
 				Description:         "description",
+				Price:               999999,
 				SlotDurationMinutes: 60,
 				SlotIntervalMinutes: 30,
 				IsActive:            false,
@@ -95,6 +101,9 @@ func TestDomainToRecord(t *testing.T) {
 			}
 			if record.Description != tt.expectedRecord.Description {
 				t.Errorf("Description = %v, want %v", record.Description, tt.expectedRecord.Description)
+			}
+			if record.Price != tt.expectedRecord.Price {
+				t.Errorf("Price = %v, want %v", record.Price, tt.expectedRecord.Price)
 			}
 			if record.SlotDurationMinutes != tt.expectedRecord.SlotDurationMinutes {
 				t.Errorf("SlotDurationMinutes = %v, want %v", record.SlotDurationMinutes, tt.expectedRecord.SlotDurationMinutes)
@@ -120,12 +129,13 @@ func TestRecordToDomain(t *testing.T) {
 		validateFunc func(*testing.T, *offer.Offer)
 	}{
 		{
-			name: "active offer with description",
+			name: "active offer with price",
 			record: &offerRecord{
 				ID:                  offerID,
 				AuthorID:            authorID,
 				Title:               "Record Title",
 				Description:         "Record description",
+				Price:               2500,
 				SlotDurationMinutes: 30,
 				SlotIntervalMinutes: 10,
 				IsActive:            true,
@@ -145,6 +155,9 @@ func TestRecordToDomain(t *testing.T) {
 				if o.Description() != "Record description" {
 					t.Errorf("Description() = %v, want 'Record description'", o.Description())
 				}
+				if o.Price() != 2500 {
+					t.Errorf("Price() = %v, want 2500", o.Price())
+				}
 				if o.SlotDuration().Minutes() != 30 {
 					t.Errorf("SlotDuration().Minutes() = %v, want 30", o.SlotDuration().Minutes())
 				}
@@ -163,12 +176,13 @@ func TestRecordToDomain(t *testing.T) {
 			},
 		},
 		{
-			name: "disabled offer with empty description",
+			name: "disabled offer with zero price",
 			record: &offerRecord{
 				ID:                  uuid.New(),
 				AuthorID:            uuid.New(),
 				Title:               "Minimal",
 				Description:         "",
+				Price:               0,
 				SlotDurationMinutes: 5,
 				SlotIntervalMinutes: 1,
 				IsActive:            false,
@@ -178,6 +192,9 @@ func TestRecordToDomain(t *testing.T) {
 			validateFunc: func(t *testing.T, o *offer.Offer) {
 				if o.Description() != "" {
 					t.Errorf("Description() = %v, want empty", o.Description())
+				}
+				if o.Price() != 0 {
+					t.Errorf("Price() = %v, want 0", o.Price())
 				}
 				if o.IsActive().Bool() {
 					t.Error("IsActive().Bool() = true, want false")
@@ -205,6 +222,7 @@ func TestMapperRoundTrip(t *testing.T) {
 			authorID,
 			"RoundTrip Offer",
 			"Testing mapper consistency",
+			uint64(3500),
 			offer.SlotDuration(25*time.Minute),
 			offer.SlotInterval(5*time.Minute),
 		)
@@ -213,7 +231,6 @@ func TestMapperRoundTrip(t *testing.T) {
 		}
 
 		record := domainToRecord(originalDomain)
-
 		restoredDomain := recordToDomain(record)
 
 		if restoredDomain.AuthorID() != originalDomain.AuthorID() {
@@ -225,6 +242,9 @@ func TestMapperRoundTrip(t *testing.T) {
 		if restoredDomain.Description() != originalDomain.Description() {
 			t.Errorf("Description mismatch: got %v, want %v", restoredDomain.Description(), originalDomain.Description())
 		}
+		if restoredDomain.Price() != originalDomain.Price() {
+			t.Errorf("Price mismatch: got %v, want %v", restoredDomain.Price(), originalDomain.Price())
+		}
 		if restoredDomain.SlotDuration().Minutes() != originalDomain.SlotDuration().Minutes() {
 			t.Errorf("SlotDuration mismatch: got %v, want %v", restoredDomain.SlotDuration().Minutes(), originalDomain.SlotDuration().Minutes())
 		}
@@ -234,7 +254,6 @@ func TestMapperRoundTrip(t *testing.T) {
 		if restoredDomain.IsActive().Bool() != originalDomain.IsActive().Bool() {
 			t.Errorf("IsActive mismatch: got %v, want %v", restoredDomain.IsActive().Bool(), originalDomain.IsActive().Bool())
 		}
-		// Временные метки и ID должны совпадать, так как передаются через record
 		if restoredDomain.ID() != originalDomain.ID() {
 			t.Errorf("ID mismatch after round-trip: got %v, want %v", restoredDomain.ID(), originalDomain.ID())
 		}
@@ -246,11 +265,12 @@ func TestMapperRoundTrip(t *testing.T) {
 		}
 	})
 
-	t.Run("disabled state preserved in round-trip", func(t *testing.T) {
+	t.Run("disabled state and price preserved in round-trip", func(t *testing.T) {
 		domain, _ := offer.New(
 			authorID,
 			"Disabled Test",
 			"desc",
+			uint64(7500),
 			offer.SlotDuration(15*time.Minute),
 			offer.SlotInterval(15*time.Minute),
 		)
@@ -262,22 +282,26 @@ func TestMapperRoundTrip(t *testing.T) {
 		if restored.IsActive().Bool() {
 			t.Error("IsActive state not preserved: expected disabled, got enabled")
 		}
+		if restored.Price() != 7500 {
+			t.Errorf("Price not preserved: got %v, want 7500", restored.Price())
+		}
 	})
 }
 
 func TestSlotConversionAccuracy(t *testing.T) {
 	tests := []struct {
-		name             string
-		domainDuration   offer.SlotDuration
-		domainInterval   offer.SlotInterval
-		expectedDuration int64
-		expectedInterval int64
+		name              string
+		domainDuration    offer.SlotDuration
+		domainInterval    offer.SlotInterval
+		price             uint64
+		expectedDuration  int64
+		expectedInterval  int64
 	}{
-		{"zero values", 0, 0, 0, 0},
-		{"exact minutes", offer.SlotDuration(30 * time.Minute), offer.SlotInterval(10 * time.Minute), 30, 10},
-		{"hours to minutes", offer.SlotDuration(2 * time.Hour), offer.SlotInterval(30 * time.Minute), 120, 30},
-		{"mixed units", offer.SlotDuration(1*time.Hour + 30*time.Minute), offer.SlotInterval(45 * time.Minute), 90, 45},
-		{"seconds truncated", offer.SlotDuration(30*time.Minute + 30*time.Second), offer.SlotInterval(10*time.Minute + 59*time.Second), 30, 10},
+		{"zero values", 0, 0, 0, 0, 0},
+		{"exact minutes", offer.SlotDuration(30 * time.Minute), offer.SlotInterval(10 * time.Minute), 1500, 30, 10},
+		{"hours to minutes", offer.SlotDuration(2 * time.Hour), offer.SlotInterval(30 * time.Minute), 9999, 120, 30},
+		{"mixed units", offer.SlotDuration(1*time.Hour + 30*time.Minute), offer.SlotInterval(45 * time.Minute), 500, 90, 45},
+		{"seconds truncated", offer.SlotDuration(30*time.Minute + 30*time.Second), offer.SlotInterval(10*time.Minute + 59*time.Second), 2500, 30, 10},
 	}
 
 	for _, tt := range tests {
@@ -287,6 +311,7 @@ func TestSlotConversionAccuracy(t *testing.T) {
 				authorID,
 				"Conversion Test",
 				"",
+				tt.price,
 				tt.domainDuration,
 				tt.domainInterval,
 			)
@@ -296,6 +321,9 @@ func TestSlotConversionAccuracy(t *testing.T) {
 
 			record := domainToRecord(domain)
 
+			if record.Price != tt.price {
+				t.Errorf("Price = %v, want %v", record.Price, tt.price)
+			}
 			if record.SlotDurationMinutes != tt.expectedDuration {
 				t.Errorf("SlotDurationMinutes = %v, want %v", record.SlotDurationMinutes, tt.expectedDuration)
 			}
@@ -304,6 +332,9 @@ func TestSlotConversionAccuracy(t *testing.T) {
 			}
 
 			restored := recordToDomain(record)
+			if restored.Price() != tt.price {
+				t.Errorf("Restored Price() = %v, want %v", restored.Price(), tt.price)
+			}
 			if restored.SlotDuration().Minutes() != tt.expectedDuration {
 				t.Errorf("Restored SlotDuration().Minutes() = %v, want %v", restored.SlotDuration().Minutes(), tt.expectedDuration)
 			}

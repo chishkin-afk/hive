@@ -12,6 +12,7 @@ var (
 	ErrInvalidAuthorID    = errors.New("author's id is invalid")
 	ErrInvalidTitle       = errors.New("len of title must be more than 3 and less than 128")
 	ErrInvalidDescription = errors.New("len of description must be more than 3 and less than 512")
+	ErrInvalidPrice       = errors.New("price must be positive number")
 )
 
 type Offer struct {
@@ -19,6 +20,7 @@ type Offer struct {
 	authorID     uuid.UUID
 	title        string
 	description  string // can be empty
+	price        uint64 // in pennies
 	slotDuration SlotDuration
 	slotInterval SlotInterval
 	isActive     IsActive
@@ -29,6 +31,7 @@ type Offer struct {
 func New(
 	authorID uuid.UUID,
 	title, description string,
+	price uint64,
 	slotDuration SlotDuration,
 	slotInterval SlotInterval,
 ) (*Offer, error) {
@@ -60,6 +63,7 @@ func New(
 		authorID:     authorID,
 		title:        title,
 		description:  description,
+		price:        price,
 		slotDuration: slotDuration,
 		slotInterval: slotInterval,
 		isActive:     true,
@@ -72,6 +76,7 @@ func From(
 	id uuid.UUID,
 	authorID uuid.UUID,
 	title, description string,
+	price uint64,
 	slotDuration SlotDuration,
 	slotInterval SlotInterval,
 	isActive IsActive,
@@ -82,6 +87,7 @@ func From(
 		authorID:     authorID,
 		title:        title,
 		description:  description,
+		price:        price,
 		slotDuration: slotDuration,
 		slotInterval: slotInterval,
 		isActive:     isActive,
@@ -112,6 +118,11 @@ func (o *Offer) ChangeDescription(newDescription string) error {
 	o.updatedAt = time.Now().UTC()
 
 	return nil
+}
+
+func (o *Offer) ChangePrice(newPrice uint64) {
+	o.price = newPrice
+	o.updatedAt = time.Now().UTC()
 }
 
 func (o *Offer) ChangeSlotDuration(newSlotDuration SlotDuration) error {
@@ -174,6 +185,10 @@ func (o *Offer) Title() string {
 
 func (o *Offer) Description() string {
 	return o.description
+}
+
+func (o *Offer) Price() uint64 {
+	return o.price
 }
 
 func (o *Offer) SlotDuration() SlotDuration {

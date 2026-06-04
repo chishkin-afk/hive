@@ -18,12 +18,13 @@ func TestDomainToBytes(t *testing.T) {
 		validateJSON  func(t *testing.T, data []byte)
 	}{
 		{
-			name: "active offer with description",
+			name: "active offer with price",
 			domainFactory: func() *offer.Offer {
 				o, _ := offer.New(
 					authorID,
 					"Cache Offer",
 					"Stored in Redis",
+					uint64(1500),
 					offer.SlotDuration(45*time.Minute),
 					offer.SlotInterval(15*time.Minute),
 				)
@@ -31,7 +32,7 @@ func TestDomainToBytes(t *testing.T) {
 			},
 			validateJSON: func(t *testing.T, data []byte) {
 				var rec offerRecord
-				if err := jsonUnmarshal(data, &rec); err != nil {
+				if err := json.Unmarshal(data, &rec); err != nil {
 					t.Fatalf("failed to unmarshal for validation: %v", err)
 				}
 				if rec.Title != "Cache Offer" {
@@ -39,6 +40,9 @@ func TestDomainToBytes(t *testing.T) {
 				}
 				if rec.Description != "Stored in Redis" {
 					t.Errorf("description = %v, want 'Stored in Redis'", rec.Description)
+				}
+				if rec.Price != 1500 {
+					t.Errorf("price = %v, want 1500", rec.Price)
 				}
 				if rec.SlotDurationMinutes != 45 {
 					t.Errorf("slot_duration_minutes = %v, want 45", rec.SlotDurationMinutes)
@@ -52,12 +56,13 @@ func TestDomainToBytes(t *testing.T) {
 			},
 		},
 		{
-			name: "disabled offer with empty description",
+			name: "disabled offer with zero price",
 			domainFactory: func() *offer.Offer {
 				o, _ := offer.New(
 					authorID,
-					"Minimal",
+					"Free Offer",
 					"",
+					uint64(0),
 					offer.SlotDuration(10*time.Minute),
 					offer.SlotInterval(5*time.Minute),
 				)
@@ -66,15 +71,39 @@ func TestDomainToBytes(t *testing.T) {
 			},
 			validateJSON: func(t *testing.T, data []byte) {
 				var rec offerRecord
-				_ = jsonUnmarshal(data, &rec)
+				_ = json.Unmarshal(data, &rec)
 				if rec.Description != "" {
 					t.Errorf("description = %v, want empty", rec.Description)
+				}
+				if rec.Price != 0 {
+					t.Errorf("price = %v, want 0", rec.Price)
 				}
 				if rec.IsActive {
 					t.Error("is_active = true, want false")
 				}
 				if rec.SlotDurationMinutes != 10 {
 					t.Errorf("slot_duration_minutes = %v, want 10", rec.SlotDurationMinutes)
+				}
+			},
+		},
+		{
+			name: "offer with large price value",
+			domainFactory: func() *offer.Offer {
+				o, _ := offer.New(
+					authorID,
+					"Premium",
+					"High value offer",
+					uint64(999999999),
+					offer.SlotDuration(60*time.Minute),
+					offer.SlotInterval(30*time.Minute),
+				)
+				return o
+			},
+			validateJSON: func(t *testing.T, data []byte) {
+				var rec offerRecord
+				_ = json.Unmarshal(data, &rec)
+				if rec.Price != 999999999 {
+					t.Errorf("price = %v, want 999999999", rec.Price)
 				}
 			},
 		},
@@ -107,12 +136,13 @@ func TestBytesToDomain(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			name: "valid active offer",
+			name: "valid active offer with price",
 			record: offerRecord{
 				ID:                  offerID,
 				AuthorID:            authorID,
 				Title:               "Redis Title",
 				Description:         "Redis desc",
+				Price:               2500,
 				SlotDurationMinutes: 30,
 				SlotIntervalMinutes: 10,
 				IsActive:            true,
@@ -126,6 +156,9 @@ func TestBytesToDomain(t *testing.T) {
 				if o.Title() != "Redis Title" {
 					t.Errorf("Title() = %v, want 'Redis Title'", o.Title())
 				}
+				if o.Price() != 2500 {
+					t.Errorf("Price() = %v, want 2500", o.Price())
+				}
 				if o.SlotDuration().Minutes() != 30 {
 					t.Errorf("SlotDuration().Minutes() = %v, want 30", o.SlotDuration().Minutes())
 				}
@@ -136,12 +169,13 @@ func TestBytesToDomain(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "valid disabled offer",
+			name: "valid disabled offer with zero price",
 			record: offerRecord{
 				ID:                  uuid.New(),
 				AuthorID:            uuid.New(),
 				Title:               "Disabled",
 				Description:         "",
+				Price:               0,
 				SlotDurationMinutes: 60,
 				SlotIntervalMinutes: 30,
 				IsActive:            false,
@@ -151,6 +185,9 @@ func TestBytesToDomain(t *testing.T) {
 			validateFunc: func(t *testing.T, o *offer.Offer) {
 				if o.IsActive().Bool() {
 					t.Error("IsActive().Bool() = true, want false")
+				}
+				if o.Price() != 0 {
+					t.Errorf("Price() = %v, want 0", o.Price())
 				}
 				if o.Description() != "" {
 					t.Errorf("Description() = %v, want empty", o.Description())
@@ -175,7 +212,7 @@ func TestBytesToDomain(t *testing.T) {
 			if tt.wantErr {
 				data = []byte("invalid json {{{")
 			} else {
-				data, err = jsonMarshal(tt.record)
+				data, err = json.Marshal(tt.record)
 				if err != nil {
 					t.Fatalf("failed to prepare test data: %v", err)
 				}
@@ -201,6 +238,7 @@ func TestMapperRoundTrip(t *testing.T) {
 			authorID,
 			"RoundTrip Cache",
 			"Testing JSON mapper",
+			uint64(3500),
 			offer.SlotDuration(25*time.Minute),
 			offer.SlotInterval(5*time.Minute),
 		)
@@ -227,6 +265,9 @@ func TestMapperRoundTrip(t *testing.T) {
 		if restoredDomain.Description() != originalDomain.Description() {
 			t.Errorf("Description mismatch: got %v, want %v", restoredDomain.Description(), originalDomain.Description())
 		}
+		if restoredDomain.Price() != originalDomain.Price() {
+			t.Errorf("Price mismatch: got %v, want %v", restoredDomain.Price(), originalDomain.Price())
+		}
 		if restoredDomain.SlotDuration().Minutes() != originalDomain.SlotDuration().Minutes() {
 			t.Errorf("SlotDuration mismatch: got %v, want %v", restoredDomain.SlotDuration().Minutes(), originalDomain.SlotDuration().Minutes())
 		}
@@ -247,11 +288,12 @@ func TestMapperRoundTrip(t *testing.T) {
 		}
 	})
 
-	t.Run("disabled state preserved in JSON round-trip", func(t *testing.T) {
+	t.Run("disabled state and price preserved in JSON round-trip", func(t *testing.T) {
 		domain, _ := offer.New(
 			authorID,
 			"Disabled Cache Test",
 			"desc",
+			uint64(7500),
 			offer.SlotDuration(15*time.Minute),
 			offer.SlotInterval(15*time.Minute),
 		)
@@ -263,6 +305,9 @@ func TestMapperRoundTrip(t *testing.T) {
 		if restored.IsActive().Bool() {
 			t.Error("IsActive state not preserved: expected disabled, got enabled")
 		}
+		if restored.Price() != 7500 {
+			t.Errorf("Price not preserved: got %v, want 7500", restored.Price())
+		}
 	})
 }
 
@@ -271,14 +316,15 @@ func TestSlotConversionAccuracy(t *testing.T) {
 		name             string
 		domainDuration   offer.SlotDuration
 		domainInterval   offer.SlotInterval
+		price            uint64
 		expectedDuration int64
 		expectedInterval int64
 	}{
-		{"zero values", 0, 0, 0, 0},
-		{"exact minutes", offer.SlotDuration(30 * time.Minute), offer.SlotInterval(10 * time.Minute), 30, 10},
-		{"hours to minutes", offer.SlotDuration(2 * time.Hour), offer.SlotInterval(30 * time.Minute), 120, 30},
-		{"mixed units", offer.SlotDuration(1*time.Hour + 30*time.Minute), offer.SlotInterval(45 * time.Minute), 90, 45},
-		{"seconds truncated", offer.SlotDuration(30*time.Minute + 30*time.Second), offer.SlotInterval(10*time.Minute + 59*time.Second), 30, 10},
+		{"zero values", 0, 0, 0, 0, 0},
+		{"exact minutes", offer.SlotDuration(30 * time.Minute), offer.SlotInterval(10 * time.Minute), 1500, 30, 10},
+		{"hours to minutes", offer.SlotDuration(2 * time.Hour), offer.SlotInterval(30 * time.Minute), 9999, 120, 30},
+		{"mixed units", offer.SlotDuration(1*time.Hour + 30*time.Minute), offer.SlotInterval(45 * time.Minute), 500, 90, 45},
+		{"seconds truncated", offer.SlotDuration(30*time.Minute + 30*time.Second), offer.SlotInterval(10*time.Minute + 59*time.Second), 2500, 30, 10},
 	}
 
 	for _, tt := range tests {
@@ -288,6 +334,7 @@ func TestSlotConversionAccuracy(t *testing.T) {
 				authorID,
 				"Conversion Test",
 				"",
+				tt.price,
 				tt.domainDuration,
 				tt.domainInterval,
 			)
@@ -301,10 +348,13 @@ func TestSlotConversionAccuracy(t *testing.T) {
 			}
 
 			var rec offerRecord
-			if err := jsonUnmarshal(bytes, &rec); err != nil {
+			if err := json.Unmarshal(bytes, &rec); err != nil {
 				t.Fatalf("failed to unmarshal: %v", err)
 			}
 
+			if rec.Price != tt.price {
+				t.Errorf("Price = %v, want %v", rec.Price, tt.price)
+			}
 			if rec.SlotDurationMinutes != tt.expectedDuration {
 				t.Errorf("SlotDurationMinutes = %v, want %v", rec.SlotDurationMinutes, tt.expectedDuration)
 			}
@@ -315,6 +365,9 @@ func TestSlotConversionAccuracy(t *testing.T) {
 			restored, err := bytesToDomain(bytes)
 			if err != nil {
 				t.Fatalf("bytesToDomain() error = %v", err)
+			}
+			if restored.Price() != tt.price {
+				t.Errorf("Restored Price() = %v, want %v", restored.Price(), tt.price)
 			}
 			if restored.SlotDuration().Minutes() != tt.expectedDuration {
 				t.Errorf("Restored SlotDuration().Minutes() = %v, want %v", restored.SlotDuration().Minutes(), tt.expectedDuration)
@@ -332,6 +385,7 @@ func TestJSONFieldTags(t *testing.T) {
 		authorID,
 		"Tag Test",
 		"desc",
+		uint64(2000),
 		offer.SlotDuration(20*time.Minute),
 		offer.SlotInterval(10*time.Minute),
 	)
@@ -347,6 +401,7 @@ func TestJSONFieldTags(t *testing.T) {
 		`"author_id"`,
 		`"title"`,
 		`"description"`,
+		`"price"`,
 		`"slot_duration_minutes"`,
 		`"slot_interval_minutes"`,
 		`"is_active"`,
@@ -359,14 +414,6 @@ func TestJSONFieldTags(t *testing.T) {
 			t.Errorf("JSON missing expected field tag: %s", field)
 		}
 	}
-}
-
-func jsonMarshal(v any) ([]byte, error) {
-	return json.Marshal(v)
-}
-
-func jsonUnmarshal(data []byte, v any) error {
-	return json.Unmarshal(data, v)
 }
 
 func contains(s, substr string) bool {

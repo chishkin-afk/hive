@@ -12,9 +12,10 @@ func TestNewOffer(t *testing.T) {
 	validAuthorID := uuid.New()
 	validDuration := SlotDuration(30 * time.Minute)
 	validInterval := SlotInterval(15 * time.Minute)
+	validPrice := uint64(1500)
 
 	t.Run("valid offer creation", func(t *testing.T) {
-		offer, err := New(validAuthorID, "Test Offer", "Test description", validDuration, validInterval)
+		offer, err := New(validAuthorID, "Test Offer", "Test description", validPrice, validDuration, validInterval)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -29,6 +30,9 @@ func TestNewOffer(t *testing.T) {
 		}
 		if offer.Description() != "Test description" {
 			t.Errorf("expected description 'Test description', got %v", offer.Description())
+		}
+		if offer.Price() != validPrice {
+			t.Errorf("expected price %d, got %d", validPrice, offer.Price())
 		}
 		if offer.SlotDuration() != validDuration {
 			t.Errorf("expected slotDuration %v, got %v", validDuration, offer.SlotDuration())
@@ -47,18 +51,18 @@ func TestNewOffer(t *testing.T) {
 		}
 	})
 
-	t.Run("empty description is allowed", func(t *testing.T) {
-		offer, err := New(validAuthorID, "Test Offer", "", validDuration, validInterval)
+	t.Run("zero price is allowed", func(t *testing.T) {
+		offer, err := New(validAuthorID, "Free Offer", "", uint64(0), validDuration, validInterval)
 		if err != nil {
-			t.Fatalf("unexpected error with empty description: %v", err)
+			t.Fatalf("unexpected error with zero price: %v", err)
 		}
-		if offer.Description() != "" {
-			t.Errorf("expected empty description, got %v", offer.Description())
+		if offer.Price() != 0 {
+			t.Errorf("expected price 0, got %d", offer.Price())
 		}
 	})
 
 	t.Run("invalid author ID", func(t *testing.T) {
-		_, err := New(uuid.Nil, "Test Offer", "description", validDuration, validInterval)
+		_, err := New(uuid.Nil, "Test Offer", "description", validPrice, validDuration, validInterval)
 		if err == nil {
 			t.Error("expected error for nil author ID")
 		}
@@ -68,7 +72,7 @@ func TestNewOffer(t *testing.T) {
 	})
 
 	t.Run("title too short", func(t *testing.T) {
-		_, err := New(validAuthorID, "ab", "description", validDuration, validInterval)
+		_, err := New(validAuthorID, "ab", "description", validPrice, validDuration, validInterval)
 		if err == nil {
 			t.Error("expected error for short title")
 		}
@@ -78,7 +82,7 @@ func TestNewOffer(t *testing.T) {
 	})
 
 	t.Run("title too long", func(t *testing.T) {
-		_, err := New(validAuthorID, strings.Repeat("a", 129), "description", validDuration, validInterval)
+		_, err := New(validAuthorID, strings.Repeat("a", 129), "description", validPrice, validDuration, validInterval)
 		if err == nil {
 			t.Error("expected error for long title")
 		}
@@ -88,7 +92,7 @@ func TestNewOffer(t *testing.T) {
 	})
 
 	t.Run("title with spaces trimmed", func(t *testing.T) {
-		offer, err := New(validAuthorID, "  valid title  ", "description", validDuration, validInterval)
+		offer, err := New(validAuthorID, "  valid title  ", "description", validPrice, validDuration, validInterval)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -98,7 +102,7 @@ func TestNewOffer(t *testing.T) {
 	})
 
 	t.Run("description too long", func(t *testing.T) {
-		_, err := New(validAuthorID, "Test Offer", strings.Repeat("a", 513), validDuration, validInterval)
+		_, err := New(validAuthorID, "Test Offer", strings.Repeat("a", 513), validPrice, validDuration, validInterval)
 		if err == nil {
 			t.Error("expected error for long description")
 		}
@@ -108,7 +112,7 @@ func TestNewOffer(t *testing.T) {
 	})
 
 	t.Run("description with spaces trimmed", func(t *testing.T) {
-		offer, err := New(validAuthorID, "Test Offer", "  valid desc  ", validDuration, validInterval)
+		offer, err := New(validAuthorID, "Test Offer", "  valid desc  ", validPrice, validDuration, validInterval)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -118,7 +122,7 @@ func TestNewOffer(t *testing.T) {
 	})
 
 	t.Run("invalid slot duration", func(t *testing.T) {
-		_, err := New(validAuthorID, "Test Offer", "description", SlotDuration(24*time.Hour), validInterval)
+		_, err := New(validAuthorID, "Test Offer", "description", validPrice, SlotDuration(24*time.Hour), validInterval)
 		if err == nil {
 			t.Error("expected error for invalid slot duration")
 		}
@@ -128,7 +132,7 @@ func TestNewOffer(t *testing.T) {
 	})
 
 	t.Run("invalid slot interval", func(t *testing.T) {
-		_, err := New(validAuthorID, "Test Offer", "description", validDuration, SlotInterval(24*time.Hour))
+		_, err := New(validAuthorID, "Test Offer", "description", validPrice, validDuration, SlotInterval(24*time.Hour))
 		if err == nil {
 			t.Error("expected error for invalid slot interval")
 		}
@@ -138,11 +142,48 @@ func TestNewOffer(t *testing.T) {
 	})
 }
 
+func TestOffer_ChangePrice(t *testing.T) {
+	validAuthorID := uuid.New()
+	validDuration := SlotDuration(30 * time.Minute)
+	validInterval := SlotInterval(15 * time.Minute)
+	offer, _ := New(validAuthorID, "Title", "description", uint64(1000), validDuration, validInterval)
+
+	t.Run("change price to higher value", func(t *testing.T) {
+		oldUpdatedAt := offer.UpdatedAt()
+		time.Sleep(10 * time.Millisecond)
+		newPrice := uint64(2500)
+
+		offer.ChangePrice(newPrice)
+		if offer.Price() != newPrice {
+			t.Errorf("expected price %d, got %d", newPrice, offer.Price())
+		}
+		if !offer.UpdatedAt().After(oldUpdatedAt) {
+			t.Error("expected UpdatedAt to be updated")
+		}
+	})
+
+	t.Run("change price to zero", func(t *testing.T) {
+		offer.ChangePrice(0)
+		if offer.Price() != 0 {
+			t.Errorf("expected price 0, got %d", offer.Price())
+		}
+	})
+
+	t.Run("change price to large value", func(t *testing.T) {
+		largePrice := uint64(999999999)
+		offer.ChangePrice(largePrice)
+		if offer.Price() != largePrice {
+			t.Errorf("expected price %d, got %d", largePrice, offer.Price())
+		}
+	})
+}
+
 func TestOffer_ChangeTitle(t *testing.T) {
 	validAuthorID := uuid.New()
 	validDuration := SlotDuration(30 * time.Minute)
 	validInterval := SlotInterval(15 * time.Minute)
-	offer, _ := New(validAuthorID, "Old Title", "description", validDuration, validInterval)
+	validPrice := uint64(1500)
+	offer, _ := New(validAuthorID, "Old Title", "description", validPrice, validDuration, validInterval)
 
 	t.Run("valid title change", func(t *testing.T) {
 		oldUpdatedAt := offer.UpdatedAt()
@@ -185,7 +226,8 @@ func TestOffer_ChangeDescription(t *testing.T) {
 	validAuthorID := uuid.New()
 	validDuration := SlotDuration(30 * time.Minute)
 	validInterval := SlotInterval(15 * time.Minute)
-	offer, _ := New(validAuthorID, "Title", "Old description", validDuration, validInterval)
+	validPrice := uint64(1500)
+	offer, _ := New(validAuthorID, "Title", "Old description", validPrice, validDuration, validInterval)
 
 	t.Run("valid description change", func(t *testing.T) {
 		oldUpdatedAt := offer.UpdatedAt()
@@ -238,7 +280,8 @@ func TestOffer_ChangeSlotDuration(t *testing.T) {
 	validAuthorID := uuid.New()
 	validDuration := SlotDuration(30 * time.Minute)
 	validInterval := SlotInterval(15 * time.Minute)
-	offer, _ := New(validAuthorID, "Title", "description", validDuration, validInterval)
+	validPrice := uint64(1500)
+	offer, _ := New(validAuthorID, "Title", "description", validPrice, validDuration, validInterval)
 
 	t.Run("valid slot duration change", func(t *testing.T) {
 		oldUpdatedAt := offer.UpdatedAt()
@@ -272,7 +315,8 @@ func TestOffer_ChangeSlotInterval(t *testing.T) {
 	validAuthorID := uuid.New()
 	validDuration := SlotDuration(30 * time.Minute)
 	validInterval := SlotInterval(15 * time.Minute)
-	offer, _ := New(validAuthorID, "Title", "description", validDuration, validInterval)
+	validPrice := uint64(1500)
+	offer, _ := New(validAuthorID, "Title", "description", validPrice, validDuration, validInterval)
 
 	t.Run("valid slot interval change", func(t *testing.T) {
 		oldUpdatedAt := offer.UpdatedAt()
@@ -306,9 +350,10 @@ func TestOffer_EnableDisable(t *testing.T) {
 	validAuthorID := uuid.New()
 	validDuration := SlotDuration(30 * time.Minute)
 	validInterval := SlotInterval(15 * time.Minute)
+	validPrice := uint64(1500)
 
 	t.Run("disable active offer", func(t *testing.T) {
-		offer, _ := New(validAuthorID, "Title", "description", validDuration, validInterval)
+		offer, _ := New(validAuthorID, "Title", "description", validPrice, validDuration, validInterval)
 		oldUpdatedAt := offer.UpdatedAt()
 		time.Sleep(10 * time.Millisecond)
 
@@ -325,7 +370,7 @@ func TestOffer_EnableDisable(t *testing.T) {
 	})
 
 	t.Run("disable already disabled offer", func(t *testing.T) {
-		offer, _ := New(validAuthorID, "Title", "description", validDuration, validInterval)
+		offer, _ := New(validAuthorID, "Title", "description", validPrice, validDuration, validInterval)
 		_ = offer.Disable()
 
 		err := offer.Disable()
@@ -338,7 +383,7 @@ func TestOffer_EnableDisable(t *testing.T) {
 	})
 
 	t.Run("enable disabled offer", func(t *testing.T) {
-		offer, _ := New(validAuthorID, "Title", "description", validDuration, validInterval)
+		offer, _ := New(validAuthorID, "Title", "description", validPrice, validDuration, validInterval)
 		_ = offer.Disable()
 		oldUpdatedAt := offer.UpdatedAt()
 		time.Sleep(10 * time.Millisecond)
@@ -356,7 +401,7 @@ func TestOffer_EnableDisable(t *testing.T) {
 	})
 
 	t.Run("enable already enabled offer", func(t *testing.T) {
-		offer, _ := New(validAuthorID, "Title", "description", validDuration, validInterval)
+		offer, _ := New(validAuthorID, "Title", "description", validPrice, validDuration, validInterval)
 
 		err := offer.Enable()
 		if err == nil {
@@ -372,7 +417,8 @@ func TestOffer_Getters(t *testing.T) {
 	validAuthorID := uuid.New()
 	validDuration := SlotDuration(30 * time.Minute)
 	validInterval := SlotInterval(15 * time.Minute)
-	offer, _ := New(validAuthorID, "Title", "description", validDuration, validInterval)
+	validPrice := uint64(2000)
+	offer, _ := New(validAuthorID, "Title", "description", validPrice, validDuration, validInterval)
 
 	if offer.ID() == uuid.Nil {
 		t.Error("ID() returned nil UUID")
@@ -385,6 +431,9 @@ func TestOffer_Getters(t *testing.T) {
 	}
 	if offer.Description() != "description" {
 		t.Errorf("Description() = %v, want 'description'", offer.Description())
+	}
+	if offer.Price() != validPrice {
+		t.Errorf("Price() = %v, want %v", offer.Price(), validPrice)
 	}
 	if offer.SlotDuration() != validDuration {
 		t.Errorf("SlotDuration() = %v, want %v", offer.SlotDuration(), validDuration)

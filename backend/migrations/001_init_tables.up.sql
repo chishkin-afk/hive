@@ -30,6 +30,7 @@ create table
         author_id UUID NOT NULL,
         title VARCHAR(128) NOT NULL,
         description VARCHAR(512),
+        price BIGINT NOT NULL DEFAULT 0,
         slot_duration_minutes BIGINT NOT NULL DEFAULT 0,
         slot_interval_minutes BIGINT NOT NULL DEFAULT 15,
         is_active BOOLEAN DEFAULT TRUE,

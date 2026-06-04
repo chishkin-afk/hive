@@ -11,6 +11,7 @@ type offerRecord struct {
 	AuthorID            uuid.UUID `json:"author_id"`
 	Title               string    `json:"title"`
 	Description         string    `json:"description"`
+	Price               uint64    `json:"price"`
 	SlotDurationMinutes int64     `json:"slot_duration_minutes"`
 	SlotIntervalMinutes int64     `json:"slot_interval_minutes"`
 	IsActive            bool      `json:"is_active"`

@@ -11,6 +11,7 @@ type offerRecord struct {
 	AuthorID            uuid.UUID
 	Title               string
 	Description         string
+	Price               uint64
 	SlotDurationMinutes int64
 	SlotIntervalMinutes int64
 	IsActive            bool
