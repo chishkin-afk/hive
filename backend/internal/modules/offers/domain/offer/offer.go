@@ -68,6 +68,28 @@ func New(
 	}, nil
 }
 
+func From(
+	id uuid.UUID,
+	authorID uuid.UUID,
+	title, description string,
+	slotDuration SlotDuration,
+	slotInterval SlotInterval,
+	isActive IsActive,
+	createdAt, updatedAt time.Time,
+) *Offer {
+	return &Offer{
+		id:           id,
+		authorID:     authorID,
+		title:        title,
+		description:  description,
+		slotDuration: slotDuration,
+		slotInterval: slotInterval,
+		isActive:     isActive,
+		createdAt:    createdAt,
+		updatedAt:    updatedAt,
+	}
+}
+
 func (o *Offer) ChangeTitle(newTitle string) error {
 	newTitle = strings.TrimSpace(newTitle)
 	if !isFit(newTitle, 3, 128) {
