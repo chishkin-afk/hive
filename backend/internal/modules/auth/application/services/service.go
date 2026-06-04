@@ -14,15 +14,8 @@ import (
 	"github.com/devathh/hive/backend/internal/common/auth"
 	"github.com/devathh/hive/backend/internal/common/infrastructure/config"
 	"github.com/devathh/hive/backend/internal/modules/auth/domain/user"
+	"github.com/devathh/hive/backend/pkg/errs"
 	"github.com/google/uuid"
-)
-
-var (
-	ErrInternalServer        = errors.New("internal server error")
-	ErrInvalidCode           = errors.New("invalid code")
-	ErrInvalidCredentials    = errors.New("invalid credentials")
-	ErrInvalidToken          = errors.New("invalid token")
-	ErrUserAlreadyRegistered = errors.New("user already registered")
 )
 
 type JWTManager interface {
@@ -71,10 +64,10 @@ func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (
 	}
 
 	if _, err := as.userPersistence.GetByEmail(ctx, email); err == nil {
-		return nil, ErrUserAlreadyRegistered
+		return nil, errs.ErrUserAlreadyRegistered
 	} else if !errors.Is(err, user.ErrUserNotFound) {
 		as.log.Error("failed to get user by email", slog.String("error", err.Error()))
-		return nil, ErrInternalServer
+		return nil, errs.ErrInternalServer
 	}
 
 	newPassword, isGenerated := as.getPassword(req.Password)
@@ -96,12 +89,12 @@ func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (
 	code := rd.Intn(899999) + 100000
 	if err := as.userCache.Prepare(ctx, user, newPassword, code); err != nil {
 		as.log.Error("failed to set prepared user into cache", slog.String("error", err.Error()), slog.Int("code", code))
-		return nil, ErrInternalServer
+		return nil, errs.ErrInternalServer
 	}
 
 	if err := as.sendCode(ctx, user.ConfirmedEmail(), code); err != nil {
 		as.log.Error("failed to send code to user", slog.String("error", err.Error()))
-		return nil, ErrInternalServer
+		return nil, errs.ErrInternalServer
 	}
 
 	return as.userToDTO(user), nil
@@ -113,13 +106,13 @@ func (as *AuthService) Confirm(ctx context.Context, req *requests.ConfirmUser) (
 	preparedUser, generatedPassword, err := as.userCache.GetPrepared(ctx, req.Code, req.UserID)
 	if err != nil {
 		as.log.Warn("trying to confirm unexisted user", slog.String("error", err.Error()))
-		return nil, ErrInvalidCode
+		return nil, errs.ErrInvalidCode
 	}
 
 	if generatedPassword != "" {
 		if err := as.sendPassword(ctx, preparedUser.ConfirmedEmail(), generatedPassword); err != nil {
 			as.log.Error("failed to send password to user", slog.String("error", err.Error()))
-			return nil, ErrInternalServer
+			return nil, errs.ErrInternalServer
 		}
 	}
 
@@ -136,7 +129,7 @@ func (as *AuthService) Confirm(ctx context.Context, req *requests.ConfirmUser) (
 	token, err := as.jwt.Generate(savedUser.ID())
 	if err != nil {
 		as.log.Error("failed to generate jwt token of user", slog.String("error", err.Error()))
-		return nil, ErrInternalServer
+		return nil, errs.ErrInternalServer
 	}
 
 	return &responses.Token{
@@ -164,13 +157,13 @@ func (as *AuthService) Login(ctx context.Context, req *requests.Login) (*respons
 
 	if !user.PasswordHash().IsEqual(req.Password) {
 		as.log.Warn("trying to login user with incorrect password")
-		return nil, ErrInvalidCredentials
+		return nil, errs.ErrInvalidCredentials
 	}
 
 	token, err := as.jwt.Generate(user.ID())
 	if err != nil {
 		as.log.Error("failed to generate jwt token of user", slog.String("error", err.Error()))
-		return nil, ErrInternalServer
+		return nil, errs.ErrInternalServer
 	}
 
 	return &responses.Token{
@@ -183,7 +176,7 @@ func (as *AuthService) Login(ctx context.Context, req *requests.Login) (*respons
 func (as *AuthService) Update(ctx context.Context, req *requests.UpdateUser) (*responses.User, error) {
 	userID, err := as.getUserID(ctx)
 	if err != nil {
-		return nil, ErrInvalidToken
+		return nil, errs.ErrInvalidToken
 	}
 
 	updUser, err := as.userPersistence.GetByID(ctx, userID)
@@ -218,7 +211,7 @@ func (as *AuthService) Update(ctx context.Context, req *requests.UpdateUser) (*r
 func (as *AuthService) GetSelfUser(ctx context.Context) (*responses.User, error) {
 	userID, err := as.getUserID(ctx)
 	if err != nil {
-		return nil, ErrInvalidToken
+		return nil, errs.ErrInvalidToken
 	}
 
 	if cachedUser, err := as.userCache.Get(ctx, userID); err == nil {
@@ -331,18 +324,18 @@ func (as *AuthService) handleRepoError(err error) (error, bool) {
 		return err, true
 	}
 
-	return ErrInternalServer, false
+	return errs.ErrInternalServer, false
 }
 
 func (as *AuthService) getUserID(ctx context.Context) (uuid.UUID, error) {
 	raw := ctx.Value(auth.KeyUserID)
 	if raw == nil {
-		return uuid.Nil, ErrInvalidToken
+		return uuid.Nil, errs.ErrInvalidToken
 	}
 
 	if id, ok := raw.(uuid.UUID); ok {
 		return id, nil
 	}
 
-	return uuid.Nil, ErrInvalidToken
+	return uuid.Nil, errs.ErrInvalidToken
 }

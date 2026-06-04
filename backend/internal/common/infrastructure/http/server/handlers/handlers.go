@@ -8,6 +8,7 @@ import (
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
 	"github.com/devathh/hive/backend/internal/modules/auth/domain/user"
+	"github.com/devathh/hive/backend/pkg/errs"
 	"github.com/gin-gonic/gin"
 )
 
@@ -129,12 +130,17 @@ func (h *HandlerFuncs) getCodeFromError(err error) int {
 	switch {
 	case errors.Is(err, user.ErrAlreadyOffRest),
 		errors.Is(err, user.ErrAlreadyOnRest),
-		errors.Is(err, user.ErrNotificationTgDisabled):
+		errors.Is(err, user.ErrNotificationTgDisabled),
+		errors.Is(err, errs.ErrInvalidCode):
 		return http.StatusBadRequest
-	case errors.Is(err, user.ErrUserAlreadyExists):
+	case errors.Is(err, user.ErrUserAlreadyExists),
+		errors.Is(err, errs.ErrUserAlreadyRegistered):
 		return http.StatusConflict
 	case errors.Is(err, user.ErrUserNotFound):
 		return http.StatusNotFound
+	case errors.Is(err, errs.ErrInvalidToken),
+		errors.Is(err, errs.ErrInvalidCredentials):
+		return http.StatusUnauthorized
 	}
 
 	return http.StatusInternalServerError
