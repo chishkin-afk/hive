@@ -1,6 +1,7 @@
 package user
 
 import (
+	"errors"
 	"strings"
 	"time"
 
@@ -10,6 +11,16 @@ import (
 const (
 	maxNameLen = 32
 	minNameLen = 3
+)
+
+var (
+	ErrInvalidFirstname = errors.New("invalid firstname of user")
+	ErrInvalidLastname  = errors.New("invalid lastname of user")
+	ErrInvalidTgChatID  = errors.New("tg chat's id is invalid")
+
+	ErrAlreadyOnRest          = errors.New("user already on rest")
+	ErrAlreadyOffRest         = errors.New("user already off rest")
+	ErrNotificationTgDisabled = errors.New("you can't enable notification, tg chat's id is empty")
 )
 
 // User is a root aggregate of auth module
@@ -34,16 +45,12 @@ func New(
 ) (*User, error) {
 	firstname = strings.TrimSpace(firstname)
 	if !isValidName(firstname) {
-		return nil, &InvalidFirstnameError{
-			firstname: firstname,
-		}
+		return nil, ErrInvalidFirstname
 	}
 
 	lastname = strings.TrimSpace(lastname)
 	if len([]rune(lastname)) != 0 && !isValidName(lastname) {
-		return nil, &InvalidLastnameError{
-			lastname: lastname,
-		}
+		return nil, ErrInvalidLastname
 	}
 
 	if err := confirmedEmail.Validate(); err != nil {
@@ -102,9 +109,7 @@ func From(
 func (u *User) ChangeFirstname(newFirstname string) error {
 	newFirstname = strings.TrimSpace(newFirstname)
 	if !isValidName(newFirstname) {
-		return &InvalidFirstnameError{
-			firstname: newFirstname,
-		}
+		return ErrInvalidFirstname
 	}
 
 	u.firstname = newFirstname
@@ -118,9 +123,7 @@ func (u *User) ChangeFirstname(newFirstname string) error {
 func (u *User) ChangeLastname(newLastname string) error {
 	newLastname = strings.TrimSpace(newLastname)
 	if len([]rune(newLastname)) != 0 && !isValidName(newLastname) {
-		return &InvalidLastnameError{
-			lastname: newLastname,
-		}
+		return ErrInvalidLastname
 	}
 
 	u.lastname = newLastname
@@ -173,9 +176,7 @@ func (u *User) OffRest() error {
 // to change telegram chat's id of user (can be empty)
 func (u *User) ChangeTgChatID(newID int64) error {
 	if newID < 0 {
-		return &InvalidTgChatID{
-			tgChatID: newID,
-		}
+		return ErrInvalidTgChatID
 	}
 
 	u.tgChatID = newID

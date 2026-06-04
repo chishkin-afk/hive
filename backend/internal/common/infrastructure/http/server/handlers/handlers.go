@@ -131,7 +131,15 @@ func (h *HandlerFuncs) getCodeFromError(err error) int {
 	case errors.Is(err, user.ErrAlreadyOffRest),
 		errors.Is(err, user.ErrAlreadyOnRest),
 		errors.Is(err, user.ErrNotificationTgDisabled),
-		errors.Is(err, errs.ErrInvalidCode):
+		errors.Is(err, errs.ErrInvalidCode),
+		errors.Is(err, user.ErrInvalidEmail),
+		errors.Is(err, user.ErrInvalidFirstname),
+		errors.Is(err, user.ErrInvalidLastname),
+		errors.Is(err, user.ErrInvalidTgChatID),
+		errors.Is(err, user.ErrAlreadyOffRest),
+		errors.Is(err, user.ErrAlreadyOnRest),
+		errors.Is(err, user.ErrNotificationTgDisabled),
+		errors.Is(err, user.ErrInvalidPassword):
 		return http.StatusBadRequest
 	case errors.Is(err, user.ErrUserAlreadyExists),
 		errors.Is(err, errs.ErrUserAlreadyRegistered):

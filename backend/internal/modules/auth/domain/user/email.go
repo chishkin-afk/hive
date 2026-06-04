@@ -1,25 +1,14 @@
 package user
 
 import (
-	"fmt"
+	"errors"
 	"net/mail"
 	"strings"
 )
 
-// InvalidEmailError is a safe error
-// that can be returned to user
-type InvalidEmailError struct {
-	email    string
-	original error
-}
-
-func (iee *InvalidEmailError) Error() string {
-	return fmt.Sprintf("invalid email: %s", iee.email)
-}
-
-func (iee *InvalidEmailError) Unwrap() error {
-	return iee.original
-}
+var (
+	ErrInvalidEmail = errors.New("invalid email of user")
+)
 
 // Email is a value object of User model
 type Email string
@@ -30,10 +19,7 @@ func (e Email) String() string {
 
 func (e Email) Validate() error {
 	if _, err := mail.ParseAddress(e.String()); err != nil {
-		return &InvalidEmailError{
-			email:    e.String(),
-			original: err,
-		}
+		return ErrInvalidEmail
 	}
 
 	return nil

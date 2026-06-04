@@ -1,21 +1,16 @@
 package user
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-// InvalidPasswordError is a safe error
-// that can be returned to client
-type InvalidPasswordError struct {
-	msg string
-}
-
-func (ipe *InvalidPasswordError) Error() string {
-	return fmt.Sprintf("invalid password: %s", ipe.msg)
-}
+var (
+	ErrInvalidPassword    = errors.New("len of password must be more than 6 and less than 32")
+	ErrFailedGenerateHash = errors.New("failed to generate password hash")
+)
 
 // PasswordHash is a value object of User model
 type PasswordHash string
@@ -32,16 +27,12 @@ func NewPasswordHash(password string) (PasswordHash, error) {
 	password = strings.TrimSpace(password)
 	n := len([]rune(password))
 	if n < 6 || n > 32 {
-		return "", &InvalidPasswordError{
-			msg: "len of password must be more than 6 and less than 32",
-		}
+		return "", ErrInvalidPassword
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return "", &InvalidPasswordError{
-			msg: "failed to generate password hash",
-		}
+		return "", ErrFailedGenerateHash
 	}
 
 	return PasswordHash(hash), nil

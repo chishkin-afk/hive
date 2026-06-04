@@ -215,6 +215,7 @@ func (as *AuthService) GetSelfUser(ctx context.Context) (*responses.User, error)
 	}
 
 	if cachedUser, err := as.userCache.Get(ctx, userID); err == nil {
+		as.log.Debug("user has been taken from cache", slog.String("user_id", userID.String()))
 		return as.userToDTO(cachedUser), nil
 	} else if !errors.Is(err, user.ErrUserNotFound) {
 		as.log.Warn("failed to get user from cache", slog.String("error", err.Error()))

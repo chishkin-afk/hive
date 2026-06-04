@@ -1,6 +1,7 @@
 package user
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -42,8 +43,8 @@ func TestNewUser(t *testing.T) {
 		if err == nil {
 			t.Error("Expected error for short firstname")
 		}
-		if _, ok := err.(*InvalidFirstnameError); !ok {
-			t.Errorf("Expected InvalidFirstnameError, got %T", err)
+		if !errors.Is(err, ErrInvalidFirstname) {
+			t.Errorf("Expected InvalidFirstnameError, got %s", err.Error())
 		}
 	})
 
@@ -59,8 +60,8 @@ func TestNewUser(t *testing.T) {
 		if err == nil {
 			t.Error("Expected error for short lastname")
 		}
-		if _, ok := err.(*InvalidLastnameError); !ok {
-			t.Errorf("Expected InvalidLastnameError, got %T", err)
+		if !errors.Is(err, ErrInvalidLastname) {
+			t.Errorf("Expected InvalidLastnameError, got %s", err.Error())
 		}
 	})
 
