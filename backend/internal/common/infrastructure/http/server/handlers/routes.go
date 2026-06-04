@@ -5,16 +5,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func New(cfg *config.Config) *gin.Engine {
+func New(cfg *config.Config, authService authService, mws ...gin.HandlerFunc) *gin.Engine {
 	router := getRouter(cfg)
-	funcs := HandlerFuncs{}
+	router.Use(mws...)
+
+	funcs := HandlerFuncs{
+		authService: authService,
+	}
 
 	api := router.Group("/api")
 	{
 		v1 := api.Group("/v1")
 		{
-			_ = v1
-			_ = funcs
+			v1.POST("/prepare", funcs.Prepare())
+			v1.POST("/confirm", funcs.Confirm())
+			v1.POST("/login", funcs.Login())
+			v1.PATCH("/user", funcs.UpdateUser())
+			v1.GET("/user", funcs.GetSelfUser())
 		}
 	}
 

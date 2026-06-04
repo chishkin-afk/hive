@@ -1,7 +1,6 @@
 package user
 
 import (
-	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -45,5 +44,5 @@ func NewPasswordHash(password string) (PasswordHash, error) {
 		}
 	}
 
-	return PasswordHash(hex.EncodeToString(hash[:])), nil
+	return PasswordHash(hash), nil
 }

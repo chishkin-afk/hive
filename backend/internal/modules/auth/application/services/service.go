@@ -18,10 +18,11 @@ import (
 )
 
 var (
-	ErrInternalServer     = errors.New("internal server error")
-	ErrInvalidCode        = errors.New("invalid code")
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrInvalidToken       = errors.New("invalid token")
+	ErrInternalServer        = errors.New("internal server error")
+	ErrInvalidCode           = errors.New("invalid code")
+	ErrInvalidCredentials    = errors.New("invalid credentials")
+	ErrInvalidToken          = errors.New("invalid token")
+	ErrUserAlreadyRegistered = errors.New("user already registered")
 )
 
 type JWTManager interface {
@@ -64,6 +65,18 @@ func New(
 // Prepare is a method that prepare user
 // to further confirmation
 func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (*responses.User, error) {
+	email := user.Email(req.Email).Norm()
+	if err := email.Validate(); err != nil {
+		return nil, err
+	}
+
+	if _, err := as.userPersistence.GetByEmail(ctx, email); err == nil {
+		return nil, ErrUserAlreadyRegistered
+	} else if !errors.Is(err, user.ErrUserNotFound) {
+		as.log.Error("failed to get user by email", slog.String("error", err.Error()))
+		return nil, ErrInternalServer
+	}
+
 	newPassword, isGenerated := as.getPassword(req.Password)
 	if isGenerated {
 		req.Password = newPassword

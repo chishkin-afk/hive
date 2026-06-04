@@ -9,22 +9,22 @@ import (
 	"github.com/devathh/hive/backend/internal/common/infrastructure/config"
 )
 
-type smtpClient struct {
+type SMTPClient struct {
 	auth smtp.Auth
 	addr string
 	cfg  *config.Config
 }
 
-func New(cfg *config.Config) *smtpClient {
+func New(cfg *config.Config) *SMTPClient {
 	auth := smtp.PlainAuth("", cfg.SMTP.From, cfg.SMTP.Password, cfg.SMTP.Host)
-	return &smtpClient{
+	return &SMTPClient{
 		auth: auth,
 		addr: fmt.Sprintf("%s:%d", cfg.SMTP.Host, cfg.SMTP.Port),
 		cfg:  cfg,
 	}
 }
 
-func (sc *smtpClient) SendCode(ctx context.Context, code int, to []string) error {
+func (sc *SMTPClient) SendCode(ctx context.Context, code int, to []string) error {
 	errCh := make(chan error, 1)
 
 	go func() {
@@ -56,7 +56,7 @@ func (sc *smtpClient) SendCode(ctx context.Context, code int, to []string) error
 	}
 }
 
-func (sc *smtpClient) SendPassword(ctx context.Context, password string, to []string) error {
+func (sc *SMTPClient) SendPassword(ctx context.Context, password string, to []string) error {
 	errCh := make(chan error, 1)
 
 	go func() {

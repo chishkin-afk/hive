@@ -1,7 +1,6 @@
 package user
 
 import (
-	"encoding/hex"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
@@ -74,17 +73,33 @@ func TestPasswordHash_IsEqual(t *testing.T) {
 		t.Fatalf("Failed to create hash: %v", err)
 	}
 
-	decodedHash, err := hex.DecodeString(string(hash))
-	if err != nil {
-		t.Fatalf("Failed to decode hash: %v", err)
-	}
-
-	if bcrypt.CompareHashAndPassword(decodedHash, []byte(password)) != nil {
+	// Тестируем метод IsEqual напрямую — он должен корректно сравнивать пароль с хешем
+	if !hash.IsEqual(password) {
 		t.Error("IsEqual() returned false for correct password")
 	}
 
-	if bcrypt.CompareHashAndPassword(decodedHash, []byte("wrongPassword")) == nil {
+	if hash.IsEqual("wrongPassword") {
 		t.Error("IsEqual() returned true for incorrect password")
+	}
+}
+
+func TestPasswordHash_RawFormat(t *testing.T) {
+	password := "rawFormatTest456"
+	hash, err := NewPasswordHash(password)
+	if err != nil {
+		t.Fatalf("Failed to create hash: %v", err)
+	}
+
+	// Проверяем, что хеш хранится в оригинальном bcrypt-формате (начинается с $2a$)
+	hashStr := string(hash)
+	if len(hashStr) < 60 || hashStr[:4] != "$2a$" {
+		t.Errorf("PasswordHash should store raw bcrypt format, got: %s", hashStr)
+	}
+
+	// Проверяем совместимость с bcrypt.CompareHashAndPassword напрямую
+	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	if err != nil {
+		t.Errorf("bcrypt.CompareHashAndPassword failed with raw hash: %v", err)
 	}
 }
 

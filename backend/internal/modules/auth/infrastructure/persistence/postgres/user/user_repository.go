@@ -184,7 +184,7 @@ func (upr *userPersistenceRepository) normalizeError(err error) (error, bool) {
 }
 
 func (upr *userPersistenceRepository) buildUpdateQuery(updUser *userRecord) (string, []any, error) {
-	return squirrel.Update("users").SetMap(map[string]any{
+	return upr.sqlBuiler.Update("users").SetMap(map[string]any{
 		"firstname":     updUser.Firstname,
 		"lastname":      updUser.Lastname,
 		"password_hash": updUser.PasswordHash,
@@ -204,7 +204,7 @@ func (upr *userPersistenceRepository) buildSelectQueryByEmail(email user.Email) 
 }
 
 func (upr *userPersistenceRepository) buildSelectQuery() squirrel.SelectBuilder {
-	return squirrel.Select(
+	return upr.sqlBuiler.Select(
 		"id",
 		"firstname",
 		"lastname",
@@ -220,7 +220,7 @@ func (upr *userPersistenceRepository) buildSelectQuery() squirrel.SelectBuilder 
 }
 
 func (upr *userPersistenceRepository) buildInsertQuery(record *userRecord) (string, []any, error) {
-	return squirrel.Insert("users").Columns(
+	return upr.sqlBuiler.Insert("users").Columns(
 		"id",
 		"firstname",
 		"lastname",

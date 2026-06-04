@@ -10,7 +10,13 @@ import (
 	"github.com/devathh/hive/backend/internal/common/infrastructure/config"
 	"github.com/devathh/hive/backend/internal/common/infrastructure/http/server"
 	"github.com/devathh/hive/backend/internal/common/infrastructure/http/server/handlers"
+	"github.com/devathh/hive/backend/internal/common/infrastructure/http/server/middlewares"
+	"github.com/devathh/hive/backend/internal/common/infrastructure/jwt"
 	postgresconnect "github.com/devathh/hive/backend/internal/common/infrastructure/persistence/postgres"
+	smtpinfra "github.com/devathh/hive/backend/internal/common/infrastructure/smtp"
+	authservices "github.com/devathh/hive/backend/internal/modules/auth/application/services"
+	userredis "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/cache/redis/user"
+	userpg "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/persistence/postgres/user"
 	"github.com/devathh/hive/backend/pkg/log"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -21,11 +27,15 @@ type DIContainer struct {
 	cfg *config.Config
 	log *slog.Logger
 
-	pg    *sql.DB
-	redis *redis.Client
+	pg         *sql.DB
+	redis      *redis.Client
+	jwtManager *jwt.JWTManager
 
 	server  *server.Server
 	handler *gin.Engine
+
+	authService *authservices.AuthService
+	smtpClient  *smtpinfra.SMTPClient
 }
 
 func (di *DIContainer) Cfg() *config.Config {
@@ -111,8 +121,58 @@ func (di *DIContainer) Server() *server.Server {
 
 func (di *DIContainer) Handler() *gin.Engine {
 	if di.handler == nil {
-		di.handler = handlers.New(di.Cfg())
+		di.handler = handlers.New(
+			di.Cfg(),
+			di.AuthService(),
+			middlewares.NewAuthMiddleware(di.JWT(), map[string]bool{
+				"/api/v1/user": true,
+			}),
+		)
 	}
 
 	return di.handler
+}
+
+func (di *DIContainer) JWT() *jwt.JWTManager {
+	if di.jwtManager == nil {
+		jwt, err := jwt.New(di.Cfg())
+		if err != nil {
+			slog.Error("failed to create jwt manager", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+
+		di.jwtManager = jwt
+	}
+
+	return di.jwtManager
+}
+
+func (di *DIContainer) SMTP() *smtpinfra.SMTPClient {
+	if di.smtpClient == nil {
+		di.smtpClient = smtpinfra.New(di.Cfg())
+	}
+
+	return di.smtpClient
+}
+
+func (di *DIContainer) AuthService() *authservices.AuthService {
+	if di.authService == nil {
+		di.authService = authservices.New(
+			di.Cfg(),
+			di.Log(),
+			userpg.New(
+				di.Log(),
+				di.PG(),
+			),
+			userredis.New(
+				di.Cfg(),
+				di.Log(),
+				di.Redis(),
+			),
+			di.JWT(),
+			di.SMTP(),
+		)
+	}
+
+	return di.authService
 }

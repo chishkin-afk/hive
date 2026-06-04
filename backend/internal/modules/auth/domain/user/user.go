@@ -40,7 +40,7 @@ func New(
 	}
 
 	lastname = strings.TrimSpace(lastname)
-	if !isValidName(lastname) {
+	if len([]rune(lastname)) != 0 && !isValidName(lastname) {
 		return nil, &InvalidLastnameError{
 			lastname: lastname,
 		}
