@@ -238,29 +238,39 @@ func (as *AuthService) GetSelfUser(ctx context.Context) (*responses.User, error)
 	return as.userToDTO(user), nil
 }
 
-func (as *AuthService) applyUserChanges(user *user.User, req *requests.UpdateUser) error {
+func (as *AuthService) applyUserChanges(updUser *user.User, req *requests.UpdateUser) error {
 	if req.Firstname != nil {
-		if err := user.ChangeFirstname(*req.Firstname); err != nil {
+		if err := updUser.ChangeFirstname(*req.Firstname); err != nil {
 			return err
 		}
 	}
 	if req.Lastname != nil {
-		if err := user.ChangeLastname(*req.Lastname); err != nil {
+		if err := updUser.ChangeLastname(*req.Lastname); err != nil {
 			return err
 		}
 	}
 	if req.Password != nil {
-		if err := user.ChangePassword(*req.Password); err != nil {
+		if err := updUser.ChangePassword(*req.Password); err != nil {
+			return err
+		}
+	}
+	if req.TgChatID != nil {
+		if err := updUser.ChangeTgChatID(*req.TgChatID); err != nil {
+			return err
+		}
+	}
+	if req.Notification != nil {
+		if err := updUser.ChangeNotification(user.NewNotification(req.Notification.TelegramEnable)); err != nil {
 			return err
 		}
 	}
 
 	if req.OnVacation != nil {
 		if *req.OnVacation {
-			return user.OnRest()
+			return updUser.OnRest()
 		}
 
-		return user.OffRest()
+		return updUser.OffRest()
 	}
 
 	return nil

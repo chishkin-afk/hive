@@ -15,6 +15,12 @@ type OfferPersistenceRepository interface {
 	ListByAuthorID(ctx context.Context, authorID uuid.UUID) ([]*Offer, error)
 }
 
+type OfferCacheRepository interface {
+	Set(ctx context.Context, offer *Offer) error
+	Get(ctx context.Context, id uuid.UUID) (*Offer, error)
+	Del(ctx context.Context, id uuid.UUID) error
+}
+
 var (
 	ErrOfferNotFound  = errors.New("offer not found")
 	ErrAuthorNotFound = errors.New("author of offer not found")

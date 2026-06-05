@@ -20,8 +20,14 @@ type Login struct {
 }
 
 type UpdateUser struct {
-	Firstname  *string `json:"firstname"`
-	Lastname   *string `json:"lastname"`
-	Password   *string `json:"password"`
-	OnVacation *bool   `json:"on_vacation"`
+	Firstname    *string             `json:"firstname"`
+	Lastname     *string             `json:"lastname"`
+	Password     *string             `json:"password"`
+	OnVacation   *bool               `json:"on_vacation"`
+	TgChatID     *int64              `json:"tg_chat_id"`
+	Notification *UpdateNotification `json:"notification"`
+}
+
+type UpdateNotification struct {
+	TelegramEnable bool `json:"telegram_enable"`
 }
