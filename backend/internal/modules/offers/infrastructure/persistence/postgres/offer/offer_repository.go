@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/devathh/hive/backend/internal/modules/offers/domain/offer"
@@ -145,7 +146,9 @@ func (opr *offerPersistenceRepository) Delete(ctx context.Context, id uuid.UUID)
 }
 
 func (opr *offerPersistenceRepository) buildDeleteQuery(id uuid.UUID) (string, []any, error) {
-	return opr.sqlBuilder.Delete("offers").Where("id = ?", id).ToSql()
+	return opr.sqlBuilder.Update("offers").Set(
+		"deleted_at", time.Now().UTC(),
+	).Where("id = ?", id).ToSql()
 }
 
 func (opr *offerPersistenceRepository) GetByID(ctx context.Context, id uuid.UUID) (*offer.Offer, error) {
@@ -185,7 +188,7 @@ func (opr *offerPersistenceRepository) buildSelectQuery(id uuid.UUID) (string, [
 		"is_active",
 		"created_at",
 		"updated_at",
-	).From("offers").Where("id = ?", id).ToSql()
+	).From("offers").Where("id = ? AND deleted_at is NULL", id).ToSql()
 }
 
 func (opr *offerPersistenceRepository) ListByAuthorID(ctx context.Context, authorID uuid.UUID, page, limit uint32) ([]*offer.Offer, uint64, error) {
@@ -241,7 +244,7 @@ func (opr *offerPersistenceRepository) count(ctx context.Context, query string, 
 }
 
 func (opr *offerPersistenceRepository) buildCountQuery(authorID uuid.UUID) (string, []any, error) {
-	return opr.sqlBuilder.Select("count(*)").From("offers").Where("author_id = ?", authorID).ToSql()
+	return opr.sqlBuilder.Select("count(*)").From("offers").Where("author_id = ? AND deleted_at is NULL", authorID).ToSql()
 }
 
 func (opr *offerPersistenceRepository) buildListQuery(authorID uuid.UUID, page, limit uint32) (string, []any, error) {
@@ -258,7 +261,7 @@ func (opr *offerPersistenceRepository) buildListQuery(authorID uuid.UUID, page, 
 		"created_at",
 		"updated_at",
 	).From("offers").Offset(uint64(offset)).Limit(uint64(limit)).
-		Where("author_id = ?", authorID).ToSql()
+		Where("author_id = ? AND deleted_at is NULL", authorID).ToSql()
 }
 
 func (opr *offerPersistenceRepository) mapRow(row *sql.Row) (*offerRecord, error) {
