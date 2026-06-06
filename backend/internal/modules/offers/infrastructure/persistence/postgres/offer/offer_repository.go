@@ -43,6 +43,6 @@ func (opr *offerPersistenceRepository) GetByID(ctx context.Context, id uuid.UUID
 	panic("not impl")
 }
 
-func (opr *offerPersistenceRepository) ListByAuthorID(ctx context.Context, authorID uuid.UUID) ([]*offer.Offer, error) {
+func (opr *offerPersistenceRepository) ListByAuthorID(ctx context.Context, authorID uuid.UUID, page, limit uint32) ([]*offer.Offer, uint64, error) {
 	panic("not impl")
 }

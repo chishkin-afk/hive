@@ -12,7 +12,7 @@ type OfferPersistenceRepository interface {
 	Update(ctx context.Context, updOffer *Offer) (*Offer, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Offer, error)
-	ListByAuthorID(ctx context.Context, authorID uuid.UUID) ([]*Offer, error)
+	ListByAuthorID(ctx context.Context, authorID uuid.UUID, page, limit uint32) ([]*Offer, uint64, error)
 }
 
 type OfferCacheRepository interface {

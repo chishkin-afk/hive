@@ -14,5 +14,8 @@ type Offer struct {
 }
 
 type Offers struct {
-	List []*Offer `json:"list"`
+	List        []*Offer `json:"list"`
+	TotalPages  uint32   `json:"total_pages"`
+	HasNextPage bool     `json:"has_next_page"`
+	HasPrevPage bool     `json:"has_prev_page"`
 }

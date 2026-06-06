@@ -186,11 +186,10 @@ func (os *OfferService) GetByID(ctx context.Context, id uuid.UUID) (*responses.O
 	return os.offerToDTO(offer), nil
 }
 
-// TODO: add pagination
 // ListByAuthorID is a service's method
 // that returns a list of the offers by author's id
-func (os *OfferService) ListByAuthorID(ctx context.Context, id uuid.UUID) (*responses.Offers, error) {
-	list, err := os.offerPersistence.ListByAuthorID(ctx, id)
+func (os *OfferService) ListByAuthorID(ctx context.Context, id uuid.UUID, page, limit uint32) (*responses.Offers, error) {
+	list, totalCount, err := os.offerPersistence.ListByAuthorID(ctx, id, page, limit)
 	if err != nil {
 		safeErr, ok := os.handleRepoError(err)
 		if !ok {
@@ -202,8 +201,12 @@ func (os *OfferService) ListByAuthorID(ctx context.Context, id uuid.UUID) (*resp
 		return nil, safeErr
 	}
 
+	totalPages := int64(totalCount / uint64(limit))
 	response := responses.Offers{
-		List: make([]*responses.Offer, len(list)),
+		List:        make([]*responses.Offer, len(list)),
+		TotalPages:  uint32(totalPages),
+		HasNextPage: totalPages < int64(page),
+		HasPrevPage: page > 1,
 	}
 	for idx, offer := range list {
 		response.List[idx] = os.offerToDTO(offer)
