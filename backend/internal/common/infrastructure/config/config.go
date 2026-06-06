@@ -65,6 +65,7 @@ type Persistence struct {
 
 type Cache struct {
 	UserTTL      time.Duration `yaml:"user_ttl" validate:"required,min=1m"`
+	OfferTTL     time.Duration `yaml:"offer_ttl" validate:"required,min=1m"`
 	PreparingTTL time.Duration `yaml:"preparing_ttl" validate:"required,min=1m"`
 	Redis        struct {
 		Host string `yaml:"host" validate:"required,hostname"`

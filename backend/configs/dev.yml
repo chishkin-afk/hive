@@ -33,6 +33,7 @@ persistence:
 
 cache:
   user_ttl: 5m
+  offer_ttl: 5m
   preparing_ttl: 10m
   redis:
     host: ${REDIS_HOST}
