@@ -12,7 +12,7 @@ var (
 type SlotDuration time.Duration
 
 func (sd SlotDuration) Validate() error {
-	if sd < 0 || time.Duration(sd) >= 24*time.Hour {
+	if sd <= 0 || time.Duration(sd) >= 24*time.Hour {
 		return ErrInvalidSlotDuration
 	}
 

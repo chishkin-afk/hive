@@ -111,13 +111,13 @@ func (opr *offerPersistenceRepository) Update(ctx context.Context, updOffer *off
 
 func (opr *offerPersistenceRepository) buildUpdateQuery(record *offerRecord) (string, []any, error) {
 	return opr.sqlBuilder.Update("offers").SetMap(map[string]any{
-		"title":         record.Title,
-		"description":   record.Description,
-		"price":         record.Price,
-		"slot_duration": record.SlotDurationMinutes,
-		"slot_interval": record.SlotIntervalMinutes,
-		"is_active":     record.IsActive,
-		"updated_at":    record.UpdatedAt,
+		"title":                 record.Title,
+		"description":           record.Description,
+		"price":                 record.Price,
+		"slot_duration_minutes": record.SlotDurationMinutes,
+		"slot_interval_minutes": record.SlotIntervalMinutes,
+		"is_active":             record.IsActive,
+		"updated_at":            record.UpdatedAt,
 	}).Where("id = ?", record.ID).ToSql()
 }
 
@@ -170,6 +170,10 @@ func (opr *offerPersistenceRepository) GetByID(ctx context.Context, id uuid.UUID
 
 	record, err := opr.mapRow(row)
 	if err != nil {
+		if safeErr, ok := opr.normalizeError(err); ok {
+			return nil, safeErr
+		}
+
 		return nil, fmt.Errorf("failed to map row: %w", err)
 	}
 
@@ -260,7 +264,7 @@ func (opr *offerPersistenceRepository) buildListQuery(authorID uuid.UUID, page, 
 		"is_active",
 		"created_at",
 		"updated_at",
-	).From("offers").Offset(uint64(offset)).Limit(uint64(limit)).
+	).From("offers").OrderBy("created_at DESC").Offset(uint64(offset)).Limit(uint64(limit)).
 		Where("author_id = ? AND deleted_at is NULL", authorID).ToSql()
 }
 

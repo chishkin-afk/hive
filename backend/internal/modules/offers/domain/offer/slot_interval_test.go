@@ -11,7 +11,7 @@ func TestSlotInterval_Validate(t *testing.T) {
 		interval SlotInterval
 		wantErr  bool
 	}{
-		{"zero interval", 0, false},
+		{"zero interval", 0, true},
 		{"positive interval", SlotInterval(15 * time.Minute), false},
 		{"max valid interval", SlotInterval(24*time.Hour - time.Second), false},
 		{"negative interval", SlotInterval(-time.Minute), true},

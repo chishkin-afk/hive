@@ -131,7 +131,11 @@ func (di *DIContainer) Handler() *gin.Engine {
 			di.AuthService(),
 			di.OfferService(),
 			middlewares.NewAuthMiddleware(di.JWT(), map[string]bool{
-				"/api/v1/user": true,
+				"GET:/api/v1/auth/user":           true,
+				"PATCH:/api/v1/auth/user":         true,
+				"POST:/api/v1/offers/offer":       true,
+				"PATCH:/api/v1/offers/offer":      true,
+				"DELETE:/api/v1/offers/offer/:id": true,
 			}),
 		)
 	}

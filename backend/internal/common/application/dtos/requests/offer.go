@@ -5,7 +5,7 @@ import "github.com/google/uuid"
 type CreateOffer struct {
 	Title               string `json:"title"`
 	Description         string `json:"description"`
-	Price               uint64 `json:"price"`
+	Price               uint64 `json:"price_penny"`
 	SlotDurationMinutes uint32 `json:"slot_duration_minutes"`
 	SlotIntervalMinutes uint32 `json:"slot_interval_minutes"`
 }

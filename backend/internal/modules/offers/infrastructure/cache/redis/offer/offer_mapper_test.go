@@ -320,11 +320,11 @@ func TestSlotConversionAccuracy(t *testing.T) {
 		expectedDuration int64
 		expectedInterval int64
 	}{
-		{"zero values", 0, 0, 0, 0, 0},
 		{"exact minutes", offer.SlotDuration(30 * time.Minute), offer.SlotInterval(10 * time.Minute), 1500, 30, 10},
 		{"hours to minutes", offer.SlotDuration(2 * time.Hour), offer.SlotInterval(30 * time.Minute), 9999, 120, 30},
 		{"mixed units", offer.SlotDuration(1*time.Hour + 30*time.Minute), offer.SlotInterval(45 * time.Minute), 500, 90, 45},
 		{"seconds truncated", offer.SlotDuration(30*time.Minute + 30*time.Second), offer.SlotInterval(10*time.Minute + 59*time.Second), 2500, 30, 10},
+		{"minimal valid values", offer.SlotDuration(1 * time.Minute), offer.SlotInterval(1 * time.Minute), 100, 1, 1},
 	}
 
 	for _, tt := range tests {

@@ -213,7 +213,7 @@ func (os *OfferService) ListByAuthorID(ctx context.Context, id uuid.UUID, page, 
 	response := responses.Offers{
 		List:        make([]*responses.Offer, len(list)),
 		TotalPages:  uint32(totalPages),
-		HasNextPage: totalPages < int64(page),
+		HasNextPage: totalPages > int64(page),
 		HasPrevPage: page > 1,
 	}
 	for idx, offer := range list {

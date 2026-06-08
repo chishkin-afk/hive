@@ -11,7 +11,7 @@ func TestSlotDuration_Validate(t *testing.T) {
 		duration SlotDuration
 		wantErr  bool
 	}{
-		{"zero duration", 0, false},
+		{"zero duration", 0, true},
 		{"positive duration", SlotDuration(30 * time.Minute), false},
 		{"max valid duration", SlotDuration(24*time.Hour - time.Second), false},
 		{"negative duration", SlotDuration(-time.Minute), true},

@@ -11,8 +11,7 @@ create table
         tg_chat_id BIGINT,
         notification JSONB NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
-        CONSTRAINT users_email_unique UNIQUE (confirmed_email)
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW ()
     );
 
 create index if not exists idx_user_email on users (confirmed_email)
@@ -36,6 +35,7 @@ create table
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
+        deleted_at TIMESTAMPTZ DEFAULT NULL,
         FOREIGN KEY (author_id) REFERENCES users (id)
     );
 
@@ -64,9 +64,10 @@ create table
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
         FOREIGN KEY (offer_id) REFERENCES offers (id),
-        FOREIGN KEY (user_id) REFERENCES users (id),
-        CONSTRAINT unique_booking UNIQUE (user_id, offer_id, start_time)
+        FOREIGN KEY (user_id) REFERENCES users (id)
     );
+
+CREATE UNIQUE INDEX if not exists  idx_unique_offer_slot ON bookings (offer_id, start_time) WHERE is_cancelled = FALSE;
 
 -- CLIENT'S TABLE
 create table

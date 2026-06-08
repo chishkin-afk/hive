@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -17,7 +18,7 @@ type jwtManager interface {
 
 func NewAuthMiddleware(jm jwtManager, authRequire map[string]bool) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		if !authRequire[ctx.Request.Pattern] {
+		if !authRequire[fmt.Sprintf("%s:%s", ctx.Request.Method, ctx.FullPath())] {
 			ctx.Next()
 			return
 		}
