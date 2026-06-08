@@ -17,6 +17,9 @@ import (
 	authservices "github.com/devathh/hive/backend/internal/modules/auth/application/services"
 	userredis "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/cache/redis/user"
 	userpg "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/persistence/postgres/user"
+	offerservices "github.com/devathh/hive/backend/internal/modules/offers/application/services"
+	offerredis "github.com/devathh/hive/backend/internal/modules/offers/infrastructure/cache/redis/offer"
+	offerpg "github.com/devathh/hive/backend/internal/modules/offers/infrastructure/persistence/postgres/offer"
 	"github.com/devathh/hive/backend/pkg/log"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -34,8 +37,10 @@ type DIContainer struct {
 	server  *server.Server
 	handler *gin.Engine
 
-	authService *authservices.AuthService
-	smtpClient  *smtpinfra.SMTPClient
+	authService  *authservices.AuthService
+	offerService *offerservices.OfferService
+
+	smtpClient *smtpinfra.SMTPClient
 }
 
 func (di *DIContainer) Cfg() *config.Config {
@@ -124,6 +129,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 		di.handler = handlers.New(
 			di.Cfg(),
 			di.AuthService(),
+			di.OfferService(),
 			middlewares.NewAuthMiddleware(di.JWT(), map[string]bool{
 				"/api/v1/user": true,
 			}),
@@ -175,4 +181,17 @@ func (di *DIContainer) AuthService() *authservices.AuthService {
 	}
 
 	return di.authService
+}
+
+func (di *DIContainer) OfferService() *offerservices.OfferService {
+	if di.offerService == nil {
+		di.offerService = offerservices.New(
+			di.Cfg(),
+			di.Log(),
+			offerpg.New(di.Log(), di.PG()),
+			offerredis.New(di.Cfg(), di.Log(), di.Redis()),
+		)
+	}
+
+	return di.offerService
 }

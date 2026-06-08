@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
-	"github.com/devathh/hive/backend/internal/modules/auth/domain/user"
 	"github.com/devathh/hive/backend/pkg/errs"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type authService interface {
@@ -20,8 +21,17 @@ type authService interface {
 	GetSelfUser(ctx context.Context) (*responses.User, error)
 }
 
+type offerService interface {
+	Create(ctx context.Context, req *requests.CreateOffer) (*responses.Offer, error)
+	Update(ctx context.Context, req *requests.UpdateOffer) (*responses.Offer, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+	GetByID(ctx context.Context, id uuid.UUID) (*responses.Offer, error)
+	ListByAuthorID(ctx context.Context, id uuid.UUID, page, limit uint32) (*responses.Offers, error)
+}
+
 type HandlerFuncs struct {
-	authService authService
+	authService  authService
+	offerService offerService
 }
 
 func (h *HandlerFuncs) Prepare() gin.HandlerFunc {
@@ -126,29 +136,152 @@ func (h *HandlerFuncs) GetSelfUser() gin.HandlerFunc {
 	}
 }
 
+func (h *HandlerFuncs) CreateOffer() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req requests.CreateOffer
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		resp, err := h.offerService.Create(ctx.Request.Context(), &req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusCreated, resp)
+	}
+}
+
+func (h *HandlerFuncs) UpdateOffer() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req requests.UpdateOffer
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		resp, err := h.offerService.Update(ctx.Request.Context(), &req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *HandlerFuncs) DeleteOffer() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := uuid.Parse(ctx.Param("id"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid id of offer",
+			})
+			return
+		}
+
+		if err := h.offerService.Delete(ctx.Request.Context(), id); err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.Status(http.StatusNoContent)
+	}
+}
+
+func (h *HandlerFuncs) GetByID() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := uuid.Parse(ctx.Param("id"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid id of offer",
+			})
+			return
+		}
+
+		resp, err := h.offerService.GetByID(ctx.Request.Context(), id)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *HandlerFuncs) ListOffersByAuthorID() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		authorID, err := uuid.Parse(ctx.Param("authorID"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid author's id",
+			})
+			return
+		}
+
+		page, err := strconv.Atoi(ctx.Query("page"))
+		if err != nil || page < 1 {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid page",
+			})
+			return
+		}
+
+		limit, err := strconv.Atoi(ctx.Query("limit"))
+		if err != nil || limit < 1 {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid limit",
+			})
+			return
+		}
+
+		resp, err := h.offerService.ListByAuthorID(ctx, authorID, uint32(page), uint32(limit))
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
 func (h *HandlerFuncs) getCodeFromError(err error) int {
-	switch {
-	case errors.Is(err, user.ErrAlreadyOffRest),
-		errors.Is(err, user.ErrAlreadyOnRest),
-		errors.Is(err, user.ErrNotificationTgDisabled),
-		errors.Is(err, errs.ErrInvalidCode),
-		errors.Is(err, user.ErrInvalidEmail),
-		errors.Is(err, user.ErrInvalidFirstname),
-		errors.Is(err, user.ErrInvalidLastname),
-		errors.Is(err, user.ErrInvalidTgChatID),
-		errors.Is(err, user.ErrAlreadyOffRest),
-		errors.Is(err, user.ErrAlreadyOnRest),
-		errors.Is(err, user.ErrNotificationTgDisabled),
-		errors.Is(err, user.ErrInvalidPassword):
+	var errKind *errs.ErrorKind
+	if !errors.As(err, &errKind) {
+		return http.StatusInternalServerError
+	}
+
+	switch errKind.Kind() {
+	case errs.KindRequest:
 		return http.StatusBadRequest
-	case errors.Is(err, user.ErrUserAlreadyExists),
-		errors.Is(err, errs.ErrUserAlreadyRegistered):
-		return http.StatusConflict
-	case errors.Is(err, user.ErrUserNotFound):
-		return http.StatusNotFound
-	case errors.Is(err, errs.ErrInvalidToken),
-		errors.Is(err, errs.ErrInvalidCredentials):
+	case errs.KindInternal:
+		return http.StatusInternalServerError
+	case errs.KindUnauthorized:
 		return http.StatusUnauthorized
+	case errs.KindConflict:
+		return http.StatusConflict
+	case errs.KindTimeout:
+		return http.StatusRequestTimeout
+	case errs.KindNotFound:
+		return http.StatusNotFound
+	case errs.KindPermissionDenied:
+		return http.StatusForbidden
 	}
 
 	return http.StatusInternalServerError

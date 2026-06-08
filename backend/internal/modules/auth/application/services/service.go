@@ -60,14 +60,17 @@ func New(
 func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (*responses.User, error) {
 	email := user.Email(req.Email).Norm()
 	if err := email.Validate(); err != nil {
-		return nil, err
+		return nil, errs.NewErrorWithKind(
+			err,
+			errs.KindRequest,
+		)
 	}
 
 	if _, err := as.userPersistence.GetByEmail(ctx, email); err == nil {
-		return nil, errs.ErrUserAlreadyRegistered
+		return nil, errs.NewErrorWithKind(errs.ErrUserAlreadyRegistered, errs.KindConflict)
 	} else if !errors.Is(err, user.ErrUserNotFound) {
 		as.log.Error("failed to get user by email", slog.String("error", err.Error()))
-		return nil, errs.ErrInternalServer
+		return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
 	}
 
 	newPassword, isGenerated := as.getPassword(req.Password)
@@ -83,18 +86,18 @@ func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (
 	)
 	if err != nil {
 		as.log.Warn("trying to create invalid user", slog.String("error", err.Error()))
-		return nil, err
+		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
 	}
 
 	code := rd.Intn(899999) + 100000
 	if err := as.userCache.Prepare(ctx, user, newPassword, code); err != nil {
 		as.log.Error("failed to set prepared user into cache", slog.String("error", err.Error()), slog.Int("code", code))
-		return nil, errs.ErrInternalServer
+		return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
 	}
 
 	if err := as.sendCode(ctx, user.ConfirmedEmail(), code); err != nil {
 		as.log.Error("failed to send code to user", slog.String("error", err.Error()))
-		return nil, errs.ErrInternalServer
+		return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
 	}
 
 	return as.userToDTO(user), nil
@@ -106,13 +109,13 @@ func (as *AuthService) Confirm(ctx context.Context, req *requests.ConfirmUser) (
 	preparedUser, generatedPassword, err := as.userCache.GetPrepared(ctx, req.Code, req.UserID)
 	if err != nil {
 		as.log.Warn("trying to confirm unexisted user", slog.String("error", err.Error()))
-		return nil, errs.ErrInvalidCode
+		return nil, errs.NewErrorWithKind(errs.ErrInvalidCode, errs.KindRequest)
 	}
 
 	if generatedPassword != "" {
 		if err := as.sendPassword(ctx, preparedUser.ConfirmedEmail(), generatedPassword); err != nil {
 			as.log.Error("failed to send password to user", slog.String("error", err.Error()))
-			return nil, errs.ErrInternalServer
+			return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
 		}
 	}
 
@@ -129,7 +132,7 @@ func (as *AuthService) Confirm(ctx context.Context, req *requests.ConfirmUser) (
 	token, err := as.jwt.Generate(savedUser.ID())
 	if err != nil {
 		as.log.Error("failed to generate jwt token of user", slog.String("error", err.Error()))
-		return nil, errs.ErrInternalServer
+		return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
 	}
 
 	return &responses.Token{
@@ -142,7 +145,7 @@ func (as *AuthService) Confirm(ctx context.Context, req *requests.ConfirmUser) (
 func (as *AuthService) Login(ctx context.Context, req *requests.Login) (*responses.Token, error) {
 	email := user.Email(req.Email)
 	if err := email.Validate(); err != nil {
-		return nil, err
+		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
 	}
 
 	user, err := as.userPersistence.GetByEmail(ctx, email)
@@ -157,13 +160,13 @@ func (as *AuthService) Login(ctx context.Context, req *requests.Login) (*respons
 
 	if !user.PasswordHash().IsEqual(req.Password) {
 		as.log.Warn("trying to login user with incorrect password")
-		return nil, errs.ErrInvalidCredentials
+		return nil, errs.NewErrorWithKind(errs.ErrInvalidCredentials, errs.KindUnauthorized)
 	}
 
 	token, err := as.jwt.Generate(user.ID())
 	if err != nil {
 		as.log.Error("failed to generate jwt token of user", slog.String("error", err.Error()))
-		return nil, errs.ErrInternalServer
+		return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
 	}
 
 	return &responses.Token{
@@ -176,7 +179,7 @@ func (as *AuthService) Login(ctx context.Context, req *requests.Login) (*respons
 func (as *AuthService) Update(ctx context.Context, req *requests.UpdateUser) (*responses.User, error) {
 	userID, err := as.getUserID(ctx)
 	if err != nil {
-		return nil, errs.ErrInvalidToken
+		return nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
 	}
 
 	updUser, err := as.userPersistence.GetByID(ctx, userID)
@@ -190,7 +193,7 @@ func (as *AuthService) Update(ctx context.Context, req *requests.UpdateUser) (*r
 	}
 
 	if err := as.applyUserChanges(updUser, req); err != nil {
-		return nil, err
+		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
 	}
 
 	updatedUser, err := as.userPersistence.Update(ctx, updUser)
@@ -211,7 +214,7 @@ func (as *AuthService) Update(ctx context.Context, req *requests.UpdateUser) (*r
 func (as *AuthService) GetSelfUser(ctx context.Context) (*responses.User, error) {
 	userID, err := as.getUserID(ctx)
 	if err != nil {
-		return nil, errs.ErrInvalidToken
+		return nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
 	}
 
 	if cachedUser, err := as.userCache.Get(ctx, userID); err == nil {
@@ -329,13 +332,14 @@ func (as *AuthService) handleRepoError(err error) (error, bool) {
 	switch {
 	case errors.Is(err, context.DeadlineExceeded),
 		errors.Is(err, context.Canceled):
-		return err, true
-	case errors.Is(err, user.ErrUserNotFound),
-		errors.Is(err, user.ErrUserAlreadyExists):
-		return err, true
+		return errs.NewErrorWithKind(err, errs.KindTimeout), true
+	case errors.Is(err, user.ErrUserNotFound):
+		return errs.NewErrorWithKind(err, errs.KindNotFound), true
+	case errors.Is(err, user.ErrUserAlreadyExists):
+		return errs.NewErrorWithKind(err, errs.KindConflict), true
 	}
 
-	return errs.ErrInternalServer, false
+	return errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal), false
 }
 
 func (as *AuthService) getUserID(ctx context.Context) (uuid.UUID, error) {

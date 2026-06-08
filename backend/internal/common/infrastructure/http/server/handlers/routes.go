@@ -5,12 +5,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func New(cfg *config.Config, authService authService, mws ...gin.HandlerFunc) *gin.Engine {
+func New(cfg *config.Config,
+	authService authService,
+	offerService offerService,
+	mws ...gin.HandlerFunc) *gin.Engine {
 	router := getRouter(cfg)
 	router.Use(mws...)
 
 	funcs := HandlerFuncs{
-		authService: authService,
+		authService:  authService,
+		offerService: offerService,
 	}
 
 	api := router.Group("/api")

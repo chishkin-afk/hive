@@ -41,7 +41,7 @@ func New(
 func (os *OfferService) Create(ctx context.Context, req *requests.CreateOffer) (*responses.Offer, error) {
 	userID, err := os.getUserID(ctx)
 	if err != nil {
-		return nil, errs.ErrInvalidToken
+		return nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
 	}
 
 	offer, err := offer.New(
@@ -53,7 +53,7 @@ func (os *OfferService) Create(ctx context.Context, req *requests.CreateOffer) (
 		offer.SlotInterval(time.Duration(req.SlotIntervalMinutes)*time.Minute),
 	)
 	if err != nil {
-		return nil, err
+		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
 	}
 
 	savedOffer, err := os.offerPersistence.Save(ctx, offer)
@@ -77,7 +77,7 @@ func (os *OfferService) Create(ctx context.Context, req *requests.CreateOffer) (
 func (os *OfferService) Update(ctx context.Context, req *requests.UpdateOffer) (*responses.Offer, error) {
 	userID, err := os.getUserID(ctx)
 	if err != nil {
-		return nil, errs.ErrInvalidToken
+		return nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
 	}
 
 	updOffer, err := os.offerPersistence.GetByID(ctx, req.OfferID)
@@ -93,11 +93,11 @@ func (os *OfferService) Update(ctx context.Context, req *requests.UpdateOffer) (
 		return nil, safeErr
 	}
 	if updOffer.AuthorID() != userID {
-		return nil, errs.ErrNotEnoughRights
+		return nil, errs.NewErrorWithKind(errs.ErrNotEnoughRights, errs.KindPermissionDenied)
 	}
 
 	if err := os.applyChanges(updOffer, req); err != nil {
-		return nil, err
+		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
 	}
 
 	updatedOffer, err := os.offerPersistence.Update(ctx, updOffer)
@@ -120,7 +120,7 @@ func (os *OfferService) Update(ctx context.Context, req *requests.UpdateOffer) (
 func (os *OfferService) Delete(ctx context.Context, id uuid.UUID) error {
 	userID, err := os.getUserID(ctx)
 	if err != nil {
-		return errs.ErrInvalidToken
+		return errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
 	}
 
 	offer, err := os.offerPersistence.GetByID(ctx, id)
@@ -137,7 +137,7 @@ func (os *OfferService) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 
 	if offer.AuthorID() != userID {
-		return errs.ErrNotEnoughRights
+		return errs.NewErrorWithKind(errs.ErrNotEnoughRights, errs.KindPermissionDenied)
 	}
 
 	if err := os.offerPersistence.Delete(ctx, offer.ID()); err != nil {
@@ -189,6 +189,14 @@ func (os *OfferService) GetByID(ctx context.Context, id uuid.UUID) (*responses.O
 // ListByAuthorID is a service's method
 // that returns a list of the offers by author's id
 func (os *OfferService) ListByAuthorID(ctx context.Context, id uuid.UUID, page, limit uint32) (*responses.Offers, error) {
+	if page < 1 || page > 1000 {
+		return nil, errs.NewErrorWithKind(errs.ErrInvalidPage, errs.KindRequest)
+	}
+
+	if limit < 1 || limit > 100 {
+		return nil, errs.NewErrorWithKind(errs.ErrInvalidLimit, errs.KindRequest)
+	}
+
 	list, totalCount, err := os.offerPersistence.ListByAuthorID(ctx, id, page, limit)
 	if err != nil {
 		safeErr, ok := os.handleRepoError(err)
@@ -271,12 +279,12 @@ func (os *OfferService) handleRepoError(err error) (error, bool) {
 	switch {
 	case errors.Is(err, context.DeadlineExceeded),
 		errors.Is(err, context.Canceled):
-		return err, true
+		return errs.NewErrorWithKind(err, errs.KindTimeout), true
 	case errors.Is(err, offer.ErrOfferNotFound):
-		return err, true
+		return errs.NewErrorWithKind(err, errs.KindNotFound), true
 	}
 
-	return err, false
+	return errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal), false
 }
 
 func (os *OfferService) getUserID(ctx context.Context) (uuid.UUID, error) {
