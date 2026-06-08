@@ -21,11 +21,23 @@ func New(cfg *config.Config,
 	{
 		v1 := api.Group("/v1")
 		{
-			v1.POST("/prepare", funcs.Prepare())
-			v1.POST("/confirm", funcs.Confirm())
-			v1.POST("/login", funcs.Login())
-			v1.PATCH("/user", funcs.UpdateUser())
-			v1.GET("/user", funcs.GetSelfUser())
+			auth := v1.Group("/auth")
+			{
+				auth.POST("/prepare", funcs.Prepare())
+				auth.POST("/confirm", funcs.Confirm())
+				auth.POST("/login", funcs.Login())
+				auth.PATCH("/user", funcs.UpdateUser())
+				auth.GET("/user", funcs.GetSelfUser())
+			}
+
+			offers := v1.Group("/offers")
+			{
+				offers.POST("/offer", funcs.CreateOffer())
+				offers.PATCH("/offer", funcs.UpdateOffer())
+				offers.DELETE("/offer/:id", funcs.DeleteOffer())
+				offers.GET("/offer/:id", funcs.GetOfferByID())
+				offers.GET("/offers/:authorID", funcs.ListOffersByAuthorID()) // ?limit=&page=
+			}
 		}
 	}
 

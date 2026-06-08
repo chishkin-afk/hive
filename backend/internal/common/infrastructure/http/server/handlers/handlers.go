@@ -201,7 +201,7 @@ func (h *HandlerFuncs) DeleteOffer() gin.HandlerFunc {
 	}
 }
 
-func (h *HandlerFuncs) GetByID() gin.HandlerFunc {
+func (h *HandlerFuncs) GetOfferByID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id, err := uuid.Parse(ctx.Param("id"))
 		if err != nil {
