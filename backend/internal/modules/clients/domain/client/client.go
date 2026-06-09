@@ -44,6 +44,24 @@ func New(
 	}, nil
 }
 
+func From(
+	id uuid.UUID,
+	userID uuid.UUID,
+	offerID uuid.UUID,
+	visits uint64,
+	lastVisit time.Time,
+	createdAt time.Time,
+) *Client {
+	return &Client{
+		id:        id,
+		userID:    userID,
+		offerID:   offerID,
+		visits:    visits,
+		lastVisit: lastVisit,
+		createdAt: createdAt,
+	}
+}
+
 func (c *Client) AddVisit() {
 	c.visits++
 	c.lastVisit = time.Now().UTC()
