@@ -35,7 +35,7 @@ create table
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
-        deleted_at TIMESTAMPTZ DEFAULT NULL,
+        deleted_at TIMESTAMPTZ DEFAULT,
         FOREIGN KEY (author_id) REFERENCES users (id)
     );
 
