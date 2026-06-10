@@ -12,7 +12,6 @@ import (
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
 	"github.com/devathh/hive/backend/internal/common/auth"
-	"github.com/devathh/hive/backend/internal/common/infrastructure/config"
 	"github.com/devathh/hive/backend/internal/modules/auth/domain/user"
 	"github.com/devathh/hive/backend/pkg/errs"
 	"github.com/google/uuid"
@@ -29,7 +28,6 @@ type SMTPClient interface {
 }
 
 type AuthService struct {
-	cfg             *config.Config
 	log             *slog.Logger
 	userPersistence user.UserPersistenceRepository
 	userCache       user.UserCacheRepository
@@ -38,7 +36,6 @@ type AuthService struct {
 }
 
 func New(
-	cfg *config.Config,
 	log *slog.Logger,
 	userPersistence user.UserPersistenceRepository,
 	userCache user.UserCacheRepository,
@@ -46,7 +43,6 @@ func New(
 	smtpClient SMTPClient,
 ) *AuthService {
 	return &AuthService{
-		cfg:             cfg,
 		log:             log,
 		userPersistence: userPersistence,
 		userCache:       userCache,

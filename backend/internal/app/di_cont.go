@@ -168,7 +168,6 @@ func (di *DIContainer) SMTP() *smtpinfra.SMTPClient {
 func (di *DIContainer) AuthService() *authservices.AuthService {
 	if di.authService == nil {
 		di.authService = authservices.New(
-			di.Cfg(),
 			di.Log(),
 			userpg.New(
 				di.Log(),
@@ -190,7 +189,6 @@ func (di *DIContainer) AuthService() *authservices.AuthService {
 func (di *DIContainer) OfferService() *offerservices.OfferService {
 	if di.offerService == nil {
 		di.offerService = offerservices.New(
-			di.Cfg(),
 			di.Log(),
 			offerpg.New(di.Log(), di.PG()),
 			offerredis.New(di.Cfg(), di.Log(), di.Redis()),

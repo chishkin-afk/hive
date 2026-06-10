@@ -83,6 +83,27 @@ create table
         CONSTRAINT unique_client UNIQUE (user_id, offer_id)
     );
 
+create or replace function check_offer_active()
+return trigger as $$
+begin
+    if NEW.offer_id is not null then
+        if not exists(
+            select 1 from offers where id = NEW.offer_id and deleted_at is null
+        ) then
+            raise EXCEPTION 'Referential integrity violation: offer (id: %)', NEW.offer_id
+            using ERRCODE = 'foreign_key_violation';
+        end if;
+    end if;
+    
+    return NEW;
+end;
+$$ language plpgsql;
+
+create trigger trg_ensure_offer_active
+before insert or update of offer_id on clients
+for EACH row
+execute function check_offer_active();
+
 -- PAYMENT'S HISTORY
 create table
     if not exists payments_history (

@@ -9,27 +9,23 @@ import (
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
 	"github.com/devathh/hive/backend/internal/common/auth"
-	"github.com/devathh/hive/backend/internal/common/infrastructure/config"
 	"github.com/devathh/hive/backend/internal/modules/offers/domain/offer"
 	"github.com/devathh/hive/backend/pkg/errs"
 	"github.com/google/uuid"
 )
 
 type OfferService struct {
-	cfg              *config.Config
 	log              *slog.Logger
 	offerPersistence offer.OfferPersistenceRepository
 	offerCache       offer.OfferCacheRepository
 }
 
 func New(
-	cfg *config.Config,
 	log *slog.Logger,
 	offerPersistence offer.OfferPersistenceRepository,
 	offerCache offer.OfferCacheRepository,
 ) *OfferService {
 	return &OfferService{
-		cfg:              cfg,
 		log:              log,
 		offerPersistence: offerPersistence,
 		offerCache:       offerCache,

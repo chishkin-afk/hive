@@ -10,8 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type updateFunc func(*client.Client) error
-
 type DB interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
@@ -35,7 +33,7 @@ func (cpr *clientPersistenceRepository) Save(ctx context.Context, client *client
 	panic("not impl")
 }
 
-func (cpr *clientPersistenceRepository) Update(ctx context.Context, updFunc updateFunc, id uuid.UUID) (*client.Client, error) {
+func (cpr *clientPersistenceRepository) Update(ctx context.Context, updFunc client.UpdateFunc, id uuid.UUID) (*client.Client, error) {
 	panic("not impl")
 }
 
@@ -43,11 +41,15 @@ func (cpr *clientPersistenceRepository) GetByID(ctx context.Context, id uuid.UUI
 	panic("not impl")
 }
 
-func (cpr *clientPersistenceRepository) ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) ([]*client.Client, error) {
+func (cpr *clientPersistenceRepository) GetByPairIDs(ctx context.Context, userID, offerID uuid.UUID) (*client.Client, error) {
 	panic("not impl")
 }
 
-func (cpr *clientPersistenceRepository) ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*client.Client, error) {
+func (cpr *clientPersistenceRepository) ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) ([]*client.Client, int64, error) {
+	panic("not impl")
+}
+
+func (cpr *clientPersistenceRepository) ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*client.Client, int64, error) {
 	panic("not impl")
 }
 
