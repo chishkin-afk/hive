@@ -132,7 +132,12 @@ func (cs *ClientService) ListByOfferID(ctx context.Context, offerID uuid.UUID, p
 
 // ListByUserID is a method that
 // returns a list of clients by user's id
-func (cs *ClientService) ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) (*responses.Clients, error) {
+func (cs *ClientService) ListByUserID(ctx context.Context, page, limit uint32) (*responses.Clients, error) {
+	userID, err := cs.getUserID(ctx)
+	if err != nil {
+		return nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
+	}
+
 	if page < 1 || page > 1000 {
 		return nil, errs.NewErrorWithKind(errs.ErrInvalidPage, errs.KindRequest)
 	}
