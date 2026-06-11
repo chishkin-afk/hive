@@ -14,6 +14,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// TODO: add check paid days
+
 type OfferService struct {
 	log              *slog.Logger
 	offerPersistence offer.OfferPersistenceRepository

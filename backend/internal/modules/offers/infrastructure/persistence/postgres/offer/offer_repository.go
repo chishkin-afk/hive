@@ -222,6 +222,7 @@ func (opr *offerPersistenceRepository) ListByAuthorID(ctx context.Context, autho
 
 		return nil, 0, fmt.Errorf("failed to get list of offers: %w", err)
 	}
+	defer rows.Close()
 
 	records, err := opr.mapRows(rows)
 	if err != nil {

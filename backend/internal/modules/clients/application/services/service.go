@@ -239,8 +239,11 @@ func (cs *ClientService) handleRepoError(err error) (error, bool) {
 	case errors.Is(err, context.DeadlineExceeded),
 		errors.Is(err, context.Canceled):
 		return errs.NewErrorWithKind(err, errs.KindTimeout), true
-	case errors.Is(err, client.ErrClientNotFound):
+	case errors.Is(err, client.ErrClientNotFound),
+		errors.Is(err, client.ErrOfferNotFound):
 		return errs.NewErrorWithKind(err, errs.KindNotFound), true
+	case errors.Is(err, client.ErrClientAlreadyExists):
+		return errs.NewErrorWithKind(err, errs.KindConflict), true
 	}
 
 	return errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal), false

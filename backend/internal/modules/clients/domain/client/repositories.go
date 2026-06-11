@@ -26,5 +26,7 @@ type ClientCacheRepository interface {
 }
 
 var (
-	ErrClientNotFound = errors.New("client not found")
+	ErrClientNotFound      = errors.New("client not found")
+	ErrClientAlreadyExists = errors.New("client already exists")
+	ErrOfferNotFound       = errors.New("offer not found")
 )
