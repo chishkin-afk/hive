@@ -29,9 +29,17 @@ type offerService interface {
 	ListByAuthorID(ctx context.Context, id uuid.UUID, page, limit uint32) (*responses.Offers, error)
 }
 
+type clientService interface {
+	Upsert(ctx context.Context, req *requests.UpsertClient) (*responses.Client, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*responses.Client, error)
+	ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) (*responses.Clients, error)
+	ListByUserID(ctx context.Context, page, limit uint32) (*responses.Clients, error)
+}
+
 type HandlerFuncs struct {
-	authService  authService
-	offerService offerService
+	authService   authService
+	offerService  offerService
+	clientService clientService
 }
 
 func (h *HandlerFuncs) Prepare() gin.HandlerFunc {
@@ -250,6 +258,118 @@ func (h *HandlerFuncs) ListOffersByAuthorID() gin.HandlerFunc {
 		}
 
 		resp, err := h.offerService.ListByAuthorID(ctx, authorID, uint32(page), uint32(limit))
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *HandlerFuncs) UpsertClient() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req requests.UpsertClient
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		resp, err := h.clientService.Upsert(ctx.Request.Context(), &req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *HandlerFuncs) GetClientByID() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := uuid.Parse(ctx.Param("id"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid id",
+			})
+			return
+		}
+
+		resp, err := h.clientService.GetByID(ctx.Request.Context(), id)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *HandlerFuncs) ListClientsByOfferID() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		offerID, err := uuid.Parse(ctx.Param("id"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid offer's id",
+			})
+			return
+		}
+
+		page, err := strconv.Atoi(ctx.Query("page"))
+		if err != nil || page < 1 {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid page",
+			})
+			return
+		}
+
+		limit, err := strconv.Atoi(ctx.Query("limit"))
+		if err != nil || limit < 1 {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid limit",
+			})
+			return
+		}
+
+		resp, err := h.clientService.ListByOfferID(ctx.Request.Context(), offerID, uint32(page), uint32(limit))
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *HandlerFuncs) ListClientsByUserID() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		page, err := strconv.Atoi(ctx.Query("page"))
+		if err != nil || page < 1 {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid page",
+			})
+			return
+		}
+
+		limit, err := strconv.Atoi(ctx.Query("limit"))
+		if err != nil || limit < 1 {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid limit",
+			})
+			return
+		}
+
+		resp, err := h.clientService.ListByUserID(ctx.Request.Context(), uint32(page), uint32(limit))
 		if err != nil {
 			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
 				Error: err.Error(),

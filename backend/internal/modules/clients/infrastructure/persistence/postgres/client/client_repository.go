@@ -21,16 +21,16 @@ type DB interface {
 }
 
 type clientPersistenceRepository struct {
-	sqlBuiler squirrel.StatementBuilderType
-	log       *slog.Logger
-	db        DB
+	sqlBuilder squirrel.StatementBuilderType
+	log        *slog.Logger
+	db         DB
 }
 
 func New(log *slog.Logger, db DB) *clientPersistenceRepository {
 	return &clientPersistenceRepository{
-		sqlBuiler: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
-		log:       log,
-		db:        db,
+		sqlBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
+		log:        log,
+		db:         db,
 	}
 }
 
@@ -57,7 +57,7 @@ func (cpr *clientPersistenceRepository) Save(ctx context.Context, client *client
 }
 
 func (cpr *clientPersistenceRepository) buildInsertQuery(record *clientRecord) (string, []any, error) {
-	return cpr.sqlBuiler.Insert("clients").Columns(
+	return cpr.sqlBuilder.Insert("clients").Columns(
 		"id",
 		"user_id",
 		"offer_id",
@@ -117,6 +117,14 @@ func (cpr *clientPersistenceRepository) Update(ctx context.Context, updFunc clie
 		return nil, fmt.Errorf("failed to update client: %w", err)
 	}
 
+	if err := tx.Commit(); err != nil {
+		if safeErr, ok := cpr.handleError(err); ok {
+			return nil, safeErr
+		}
+
+		return nil, fmt.Errorf("failed to commit tx: %w", err)
+	}
+
 	return recordToClient(updatedRecord), nil
 }
 
@@ -127,7 +135,7 @@ func (cpr *clientPersistenceRepository) txUpdateClient(ctx context.Context, tx *
 		return nil, err
 	}
 
-	cpr.log.Debug("exec the update sql query", slog.String("client_id", updRecord.ID.String()))
+	cpr.log.Debug("exec the update sql query", slog.String("query", updateQuery), slog.String("client_id", updRecord.ID.String()))
 	result, err := tx.ExecContext(ctx, updateQuery, updateArgs...)
 	if err != nil {
 		return nil, err
@@ -149,26 +157,23 @@ func (cpr *clientPersistenceRepository) txSelectForUpdate(ctx context.Context, t
 
 	cpr.log.Debug("exec the select query", slog.String("client_id", id.String()))
 	row := tx.QueryRowContext(ctx, selectQuery, selectArgs...)
-	if err := row.Err(); err != nil {
-		return nil, err
-	}
 
 	return cpr.mapRow(row)
 }
 
 func (cpr *clientPersistenceRepository) buildSelectQueryForUpdate(id uuid.UUID) (string, []any, error) {
-	return cpr.sqlBuiler.Select(
+	return cpr.sqlBuilder.Select(
 		"id",
 		"user_id",
 		"offer_id",
 		"visits",
 		"last_visit",
 		"created_at",
-	).From("clients").Where("id = ?", id).Options("FOR UPDATE").ToSql()
+	).From("clients").Where("id = ?", id).Suffix("FOR UPDATE").ToSql()
 }
 
 func (cpr *clientPersistenceRepository) buildUpdateQuery(updRecord *clientRecord) (string, []any, error) {
-	return cpr.sqlBuiler.Update("clients").SetMap(map[string]any{
+	return cpr.sqlBuilder.Update("clients").SetMap(map[string]any{
 		"visits":     updRecord.Visits,
 		"last_visit": updRecord.LastVisit,
 	}).Where("id = ?", updRecord.ID).ToSql()
@@ -183,13 +188,6 @@ func (cpr *clientPersistenceRepository) GetByID(ctx context.Context, id uuid.UUI
 
 	cpr.log.Debug("exec the select query by id", slog.String("query", query))
 	row := cpr.db.QueryRowContext(ctx, query, args...)
-	if err := row.Err(); err != nil {
-		if safeErr, ok := cpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get client by id from db: %w", err)
-	}
 
 	cpr.log.Debug("map the row of client", slog.String("client_id", id.String()))
 	record, err := cpr.mapRow(row)
@@ -205,7 +203,7 @@ func (cpr *clientPersistenceRepository) GetByID(ctx context.Context, id uuid.UUI
 }
 
 func (cpr *clientPersistenceRepository) buildSelectQueryByID(id uuid.UUID) (string, []any, error) {
-	return cpr.sqlBuiler.Select(
+	return cpr.sqlBuilder.Select(
 		"id",
 		"user_id",
 		"offer_id",
@@ -226,13 +224,6 @@ func (cpr *clientPersistenceRepository) GetByPairIDs(ctx context.Context, userID
 
 	cpr.log.Debug("exec the sql select query", slog.String("query", query))
 	row := cpr.db.QueryRowContext(ctx, query, args...)
-	if err := row.Err(); err != nil {
-		if safeErr, ok := cpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get client by id from db: %w", err)
-	}
 
 	cpr.log.Debug("map the row of client")
 	record, err := cpr.mapRow(row)
@@ -248,7 +239,7 @@ func (cpr *clientPersistenceRepository) GetByPairIDs(ctx context.Context, userID
 }
 
 func (cpr *clientPersistenceRepository) buildSelectQueryByPair(userID, offerID uuid.UUID) (string, []any, error) {
-	return cpr.sqlBuiler.Select(
+	return cpr.sqlBuilder.Select(
 		"id",
 		"user_id",
 		"offer_id",
@@ -311,7 +302,7 @@ func (cpr *clientPersistenceRepository) ListByOfferID(ctx context.Context, offer
 
 func (cpr *clientPersistenceRepository) buildListQueryByOfferID(offerID uuid.UUID, page, limit uint32) (string, []any, error) {
 	offset := limit * (page - 1)
-	return cpr.sqlBuiler.Select(
+	return cpr.sqlBuilder.Select(
 		"id",
 		"user_id",
 		"offer_id",
@@ -376,7 +367,7 @@ func (cpr *clientPersistenceRepository) ListByUserID(ctx context.Context, userID
 
 func (cpr *clientPersistenceRepository) buildListQueryByUserID(userID uuid.UUID, page, limit uint32) (string, []any, error) {
 	offset := limit * (page - 1)
-	return cpr.sqlBuiler.Select(
+	return cpr.sqlBuilder.Select(
 		"id",
 		"user_id",
 		"offer_id",
@@ -413,7 +404,7 @@ func (cpr *clientPersistenceRepository) Delete(ctx context.Context, id uuid.UUID
 }
 
 func (cpr *clientPersistenceRepository) buildDeleteQuery(id uuid.UUID) (string, []any, error) {
-	return cpr.sqlBuiler.Delete("clients").Where("id = ?", id).ToSql()
+	return cpr.sqlBuilder.Delete("clients").Where("id = ?", id).ToSql()
 }
 
 func (cpr *clientPersistenceRepository) count(ctx context.Context, query string, args ...any) (uint64, error) {
@@ -428,11 +419,11 @@ func (cpr *clientPersistenceRepository) count(ctx context.Context, query string,
 }
 
 func (cpr *clientPersistenceRepository) buildCountQueryByOfferID(offerID uuid.UUID) (string, []any, error) {
-	return cpr.sqlBuiler.Select("count(*)").From("clients").Where("offer_id = ?", offerID).ToSql()
+	return cpr.sqlBuilder.Select("count(*)").From("clients").Where("offer_id = ?", offerID).ToSql()
 }
 
 func (cpr *clientPersistenceRepository) buildCountQueryByUserID(userID uuid.UUID) (string, []any, error) {
-	return cpr.sqlBuiler.Select("count(*)").From("clients").Where("user_id = ?", userID).ToSql()
+	return cpr.sqlBuilder.Select("count(*)").From("clients").Where("user_id = ?", userID).ToSql()
 }
 
 func (cpr *clientPersistenceRepository) handleError(err error) (error, bool) {
@@ -467,6 +458,10 @@ func (cpr *clientPersistenceRepository) mapRow(row *sql.Row) (*clientRecord, err
 		&record.LastVisit,
 		&record.CreatedAt,
 	); err != nil {
+		return nil, err
+	}
+
+	if err := row.Err(); err != nil {
 		return nil, err
 	}
 

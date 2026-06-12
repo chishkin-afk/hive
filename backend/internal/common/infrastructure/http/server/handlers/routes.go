@@ -8,13 +8,15 @@ import (
 func New(cfg *config.Config,
 	authService authService,
 	offerService offerService,
+	clientService clientService,
 	mws ...gin.HandlerFunc) *gin.Engine {
 	router := getRouter(cfg)
 	router.Use(mws...)
 
 	funcs := HandlerFuncs{
-		authService:  authService,
-		offerService: offerService,
+		authService:   authService,
+		offerService:  offerService,
+		clientService: clientService,
 	}
 
 	api := router.Group("/api")
@@ -37,6 +39,14 @@ func New(cfg *config.Config,
 				offers.DELETE("/offer/:id", funcs.DeleteOffer())
 				offers.GET("/offer/:id", funcs.GetOfferByID())
 				offers.GET("/offers/:authorID", funcs.ListOffersByAuthorID()) // ?limit=&page=
+			}
+
+			clients := v1.Group("/clients")
+			{
+				clients.POST("/client", funcs.UpsertClient())
+				clients.GET("/client/:id", funcs.GetClientByID())
+				clients.GET("/offer/:id", funcs.ListClientsByOfferID()) // ?limit=&page=
+				clients.GET("/user", funcs.ListClientsByUserID())
 			}
 		}
 	}

@@ -17,6 +17,9 @@ import (
 	authservices "github.com/devathh/hive/backend/internal/modules/auth/application/services"
 	userredis "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/cache/redis/user"
 	userpg "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/persistence/postgres/user"
+	clientservices "github.com/devathh/hive/backend/internal/modules/clients/application/services"
+	clientredis "github.com/devathh/hive/backend/internal/modules/clients/infrastructure/cache/redis/client"
+	clientpg "github.com/devathh/hive/backend/internal/modules/clients/infrastructure/persistence/postgres/client"
 	offerservices "github.com/devathh/hive/backend/internal/modules/offers/application/services"
 	offerredis "github.com/devathh/hive/backend/internal/modules/offers/infrastructure/cache/redis/offer"
 	offerpg "github.com/devathh/hive/backend/internal/modules/offers/infrastructure/persistence/postgres/offer"
@@ -37,8 +40,9 @@ type DIContainer struct {
 	server  *server.Server
 	handler *gin.Engine
 
-	authService  *authservices.AuthService
-	offerService *offerservices.OfferService
+	authService   *authservices.AuthService
+	offerService  *offerservices.OfferService
+	clientService *clientservices.ClientService
 
 	smtpClient *smtpinfra.SMTPClient
 }
@@ -130,12 +134,15 @@ func (di *DIContainer) Handler() *gin.Engine {
 			di.Cfg(),
 			di.AuthService(),
 			di.OfferService(),
+			di.ClientService(),
 			middlewares.NewAuthMiddleware(di.JWT(), map[string]bool{
 				"GET:/api/v1/auth/user":           true,
 				"PATCH:/api/v1/auth/user":         true,
 				"POST:/api/v1/offers/offer":       true,
 				"PATCH:/api/v1/offers/offer":      true,
 				"DELETE:/api/v1/offers/offer/:id": true,
+				"POST:/api/v1/clients/client":     true,
+				"GET:/api/v1/clients/user":        true,
 			}),
 		)
 	}
@@ -196,4 +203,16 @@ func (di *DIContainer) OfferService() *offerservices.OfferService {
 	}
 
 	return di.offerService
+}
+
+func (di *DIContainer) ClientService() *clientservices.ClientService {
+	if di.clientService == nil {
+		di.clientService = clientservices.New(
+			di.Log(),
+			clientpg.New(di.Log(), di.PG()),
+			clientredis.New(di.Cfg(), di.Log(), di.Redis()),
+		)
+	}
+
+	return di.clientService
 }
