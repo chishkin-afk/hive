@@ -78,6 +78,7 @@ func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (
 		req.Firstname,
 		req.Lastname,
 		user.Email(req.Email),
+		user.PhoneNumber(req.PhoneNumber),
 		req.Password,
 	)
 	if err != nil {
@@ -248,6 +249,11 @@ func (as *AuthService) applyUserChanges(updUser *user.User, req *requests.Update
 			return err
 		}
 	}
+	if req.PhoneNumber != nil {
+		if err := updUser.ChangePhoneNumber(user.PhoneNumber(*req.PhoneNumber)); err != nil {
+			return err
+		}
+	}
 	if req.Password != nil {
 		if err := updUser.ChangePassword(*req.Password); err != nil {
 			return err
@@ -277,13 +283,14 @@ func (as *AuthService) applyUserChanges(updUser *user.User, req *requests.Update
 
 func (as *AuthService) userToDTO(user *user.User) *responses.User {
 	return &responses.User{
-		ID:         user.ID(),
-		Firstname:  user.Firstname(),
-		Lastname:   user.Lastname(),
-		Email:      user.ConfirmedEmail().String(),
-		PaidUntil:  user.PaidUntil().Unix(),
-		OnVacation: user.OnVacation(),
-		TgChatID:   user.TgChatID(),
+		ID:          user.ID(),
+		Firstname:   user.Firstname(),
+		Lastname:    user.Lastname(),
+		Email:       user.ConfirmedEmail().String(),
+		PhoneNumber: user.PhoneNumber().String(),
+		PaidUntil:   user.PaidUntil().Unix(),
+		OnVacation:  user.OnVacation(),
+		TgChatID:    user.TgChatID(),
 		Notification: responses.Notification{
 			TelegramEnable: user.Notification().IsTelegramEnable(),
 		},

@@ -11,6 +11,7 @@ type userRecord struct {
 	Firstname      string
 	Lastname       string
 	ConfirmedEmail string
+	PhoneNumber    string
 	PasswordHash   string
 	PaidUntil      time.Time
 	OnVacation     bool

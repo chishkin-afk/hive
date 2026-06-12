@@ -20,6 +20,7 @@ func TestDomainToRecord(t *testing.T) {
 			"John",
 			"Doe",
 			user.Email("john@example.com"),
+			user.PhoneNumber("79998887766"),
 			user.PasswordHash("$2a$10$should_not_be_cached"),
 			paidUntil,
 			true,
@@ -51,6 +52,9 @@ func TestDomainToRecord(t *testing.T) {
 		}
 		if record.ConfirmedEmail != "john@example.com" {
 			t.Errorf("ConfirmedEmail = %v, want %v", record.ConfirmedEmail, "john@example.com")
+		}
+		if record.PhoneNumber != "79998887766" {
+			t.Errorf("PhoneNumber = %v, want %v", record.PhoneNumber, "79998887766")
 		}
 		// PasswordHash should be omitted when empty due to omitempty tag
 		if record.PasswordHash != "" {
@@ -85,6 +89,7 @@ func TestDomainToRecord(t *testing.T) {
 			"Jane",
 			"",
 			user.Email("jane@example.com"),
+			user.PhoneNumber("79998887766"),
 			user.PasswordHash(""),
 			now,
 			false,
@@ -117,6 +122,7 @@ func TestRecordToDomain(t *testing.T) {
 			"firstname":"Alice",
 			"lastname":"Smith",
 			"confirmed_email":"alice@example.com",
+			"phone_number":"79998887766",
 			"paid_until":"` + paidUntil.Format(time.RFC3339Nano) + `",
 			"on_vacation":false,
 			"tg_chat_id":987654321,
@@ -141,6 +147,9 @@ func TestRecordToDomain(t *testing.T) {
 		}
 		if domainUser.ConfirmedEmail().String() != "alice@example.com" {
 			t.Errorf("ConfirmedEmail() = %v, want %v", domainUser.ConfirmedEmail(), "alice@example.com")
+		}
+		if domainUser.PhoneNumber() != "79998887766" {
+			t.Errorf("PhoneNumber() = %v, want %v", domainUser.PhoneNumber(), "79998887766")
 		}
 		// PasswordHash should be empty when loading from standard cache
 		if domainUser.PasswordHash().String() != "" {
@@ -178,6 +187,7 @@ func TestDomainToPrepared(t *testing.T) {
 			"NewUser",
 			"Test",
 			user.Email("new@test.com"),
+			user.PhoneNumber("79998887766"),
 			user.PasswordHash("$2a$10$hash"),
 			now,
 			false,
@@ -215,6 +225,7 @@ func TestDomainToPrepared(t *testing.T) {
 			"User",
 			"NoPass",
 			user.Email("user@test.com"),
+			user.PhoneNumber("79998887766"),
 			user.PasswordHash("$2a$10$hash"),
 			now,
 			false,
@@ -248,6 +259,7 @@ func TestPreparedToDomain(t *testing.T) {
 				"firstname":"Prepared",
 				"lastname":"User",
 				"confirmed_email":"prepared@test.com",
+				"phone_number":"79998887766",
 				"password_hash":"$2a$10$fromprepared",
 				"paid_until":"` + now.Format(time.RFC3339Nano) + `",
 				"on_vacation":true,
@@ -294,6 +306,7 @@ func TestPreparedToDomain(t *testing.T) {
 				"firstname":"NoGen",
 				"lastname":"Pass",
 				"confirmed_email":"nogen@test.com",
+				"phone_number":"79998887766",
 				"password_hash":"$2a$10$hash",
 				"paid_until":"` + now.Format(time.RFC3339Nano) + `",
 				"on_vacation":false,
@@ -319,7 +332,7 @@ func TestPreparedToDomain(t *testing.T) {
 }
 
 func TestRoundTrip_StandardCache(t *testing.T) {
-	t.Run("domain → record → domain preserves non-sensitive fields", func(t *testing.T) {
+	t.Run("domain - record - domain preserves non-sensitive fields", func(t *testing.T) {
 		originalID := uuid.New()
 		now := time.Now().UTC().Truncate(time.Microsecond)
 		paidUntil := now.AddDate(0, 6, 0)
@@ -329,6 +342,7 @@ func TestRoundTrip_StandardCache(t *testing.T) {
 			"RoundTrip",
 			"Test",
 			user.Email("roundtrip@test.com"),
+			user.PhoneNumber("79998887766"),
 			user.PasswordHash("$2a$10$original_hash"),
 			paidUntil,
 			true,
@@ -398,6 +412,7 @@ func TestRoundTrip_PreparedCache(t *testing.T) {
 			"PreparedRound",
 			"Trip",
 			user.Email("prepared@test.com"),
+			user.PhoneNumber("79998887766"),
 			originalHash,
 			now,
 			false,

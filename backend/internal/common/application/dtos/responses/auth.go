@@ -13,6 +13,7 @@ type User struct {
 	Firstname    string       `json:"firstname"`
 	Lastname     string       `json:"lastname"`
 	Email        string       `json:"email"`
+	PhoneNumber  string       `json:"phone_number"`
 	PaidUntil    int64        `json:"paid_until"`
 	OnVacation   bool         `json:"on_vacation"`
 	TgChatID     int64        `json:"tg_chat_id"`

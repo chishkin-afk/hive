@@ -29,6 +29,7 @@ type User struct {
 	firstname      string
 	lastname       string // can be empty
 	confirmedEmail Email
+	phoneNumber    PhoneNumber
 	passwordHash   PasswordHash
 	paidUntil      time.Time // by default: now
 	onVacation     bool
@@ -41,6 +42,7 @@ type User struct {
 func New(
 	firstname, lastname string,
 	confirmedEmail Email,
+	phoneNumber PhoneNumber,
 	password string,
 ) (*User, error) {
 	firstname = strings.TrimSpace(firstname)
@@ -57,6 +59,15 @@ func New(
 		return nil, err
 	}
 
+	if phoneNumber.String() != "" {
+		standartPhoneNumber, err := phoneNumber.Standart()
+		if err != nil {
+			return nil, err
+		}
+
+		phoneNumber = standartPhoneNumber
+	}
+
 	passwordHash, err := NewPasswordHash(password)
 	if err != nil {
 		return nil, err
@@ -68,6 +79,7 @@ func New(
 		firstname:      firstname,
 		lastname:       lastname,
 		confirmedEmail: confirmedEmail,
+		phoneNumber:    phoneNumber,
 		passwordHash:   passwordHash,
 		paidUntil:      now,
 		onVacation:     false,
@@ -82,6 +94,7 @@ func From(
 	id uuid.UUID,
 	firstname, lastname string,
 	confirmedEmail Email,
+	phoneNumber PhoneNumber,
 	passwordHash PasswordHash,
 	paidUntil time.Time,
 	onVacation bool,
@@ -94,6 +107,7 @@ func From(
 		firstname:      firstname,
 		lastname:       lastname,
 		confirmedEmail: confirmedEmail,
+		phoneNumber:    phoneNumber,
 		passwordHash:   passwordHash,
 		paidUntil:      paidUntil,
 		onVacation:     onVacation,
@@ -141,6 +155,24 @@ func (u *User) ChangePassword(password string) error {
 	}
 
 	u.passwordHash = hash
+	u.updatedAt = time.Now().UTC()
+
+	return nil
+}
+
+// ChangePhoneNumber is a business-logic method
+// to set new phone number (or remove old)
+func (u *User) ChangePhoneNumber(newPhoneNumber PhoneNumber) error {
+	if newPhoneNumber.String() != "" {
+		standart, err := newPhoneNumber.Standart()
+		if err != nil {
+			return err
+		}
+
+		newPhoneNumber = standart
+	}
+
+	u.phoneNumber = newPhoneNumber
 	u.updatedAt = time.Now().UTC()
 
 	return nil
@@ -212,6 +244,10 @@ func (u *User) Lastname() string {
 
 func (u *User) ConfirmedEmail() Email {
 	return u.confirmedEmail
+}
+
+func (u *User) PhoneNumber() PhoneNumber {
+	return u.phoneNumber
 }
 
 func (u *User) PasswordHash() PasswordHash {

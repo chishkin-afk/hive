@@ -11,7 +11,7 @@ func TestNewUser(t *testing.T) {
 	email := Email("test@example.com")
 
 	t.Run("valid user creation", func(t *testing.T) {
-		user, err := New("John", "Doe", email, "securePass123")
+		user, err := New("John", "Doe", email, "+79998887766", "securePass123")
 		if err != nil {
 			t.Fatalf("New() error = %v", err)
 		}
@@ -23,6 +23,9 @@ func TestNewUser(t *testing.T) {
 		}
 		if user.confirmedEmail != email {
 			t.Errorf("Email = %v, want %v", user.confirmedEmail, email)
+		}
+		if user.phoneNumber != "79998887766" {
+			t.Errorf("PhoneNumber = %v, want %v", user.phoneNumber, "79998887766")
 		}
 		if user.passwordHash == "" {
 			t.Error("PasswordHash should not be empty")
@@ -39,7 +42,7 @@ func TestNewUser(t *testing.T) {
 	})
 
 	t.Run("invalid firstname too short", func(t *testing.T) {
-		_, err := New("Jo", "Doe", email, "securePass123")
+		_, err := New("Jo", "Doe", email, "+779998887766", "securePass123")
 		if err == nil {
 			t.Error("Expected error for short firstname")
 		}
@@ -49,14 +52,14 @@ func TestNewUser(t *testing.T) {
 	})
 
 	t.Run("invalid firstname too long", func(t *testing.T) {
-		_, err := New("ThisNameIsWayTooLongAndExceedsLimit", "Doe", email, "securePass123")
+		_, err := New("ThisNameIsWayTooLongAndExceedsLimit", "Doe", email, "+779998887766", "securePass123")
 		if err == nil {
 			t.Error("Expected error for long firstname")
 		}
 	})
 
 	t.Run("invalid lastname", func(t *testing.T) {
-		_, err := New("John", "A", email, "securePass123")
+		_, err := New("John", "A", email, "+779998887766", "securePass123")
 		if err == nil {
 			t.Error("Expected error for short lastname")
 		}
@@ -66,21 +69,21 @@ func TestNewUser(t *testing.T) {
 	})
 
 	t.Run("invalid email", func(t *testing.T) {
-		_, err := New("John", "Doe", Email("invalid"), "securePass123")
+		_, err := New("John", "Doe", Email("invalid"), "+779998887766", "securePass123")
 		if err == nil {
 			t.Error("Expected error for invalid email")
 		}
 	})
 
 	t.Run("invalid password", func(t *testing.T) {
-		_, err := New("John", "Doe", email, "12345")
+		_, err := New("John", "Doe", email, "+779998887766", "12345")
 		if err == nil {
 			t.Error("Expected error for short password")
 		}
 	})
 
 	t.Run("trim names", func(t *testing.T) {
-		user, err := New("  John  ", "  Doe  ", email, "securePass123")
+		user, err := New("  John  ", "  Doe  ", email, "+79998887766", "securePass123")
 		if err != nil {
 			t.Fatalf("New() error = %v", err)
 		}
@@ -95,7 +98,7 @@ func TestNewUser(t *testing.T) {
 
 func TestUser_ChangeFirstname(t *testing.T) {
 	email := Email("test@example.com")
-	user, _ := New("John", "Doe", email, "securePass123")
+	user, _ := New("John", "Doe", email, "+79998887766", "securePass123")
 	oldUpdated := user.updatedAt
 
 	t.Run("valid change", func(t *testing.T) {
@@ -131,7 +134,7 @@ func TestUser_ChangeFirstname(t *testing.T) {
 
 func TestUser_ChangeLastname(t *testing.T) {
 	email := Email("test@example.com")
-	user, _ := New("John", "Doe", email, "securePass123")
+	user, _ := New("John", "Doe", email, "+79998887766", "securePass123")
 
 	t.Run("valid change", func(t *testing.T) {
 		err := user.ChangeLastname("Smith")
@@ -153,7 +156,7 @@ func TestUser_ChangeLastname(t *testing.T) {
 
 func TestUser_ChangePassword(t *testing.T) {
 	email := Email("test@example.com")
-	user, _ := New("John", "Doe", email, "securePass123")
+	user, _ := New("John", "Doe", email, "+79998887766", "securePass123")
 	oldHash := user.passwordHash
 
 	t.Run("valid password change", func(t *testing.T) {
@@ -176,7 +179,7 @@ func TestUser_ChangePassword(t *testing.T) {
 
 func TestUser_ChangeTgChatID(t *testing.T) {
 	email := Email("test@example.com")
-	user, _ := New("John", "Doe", email, "securePass123")
+	user, _ := New("John", "Doe", email, "+79998887766", "securePass123")
 
 	t.Run("valid ID", func(t *testing.T) {
 		err := user.ChangeTgChatID(123456789)
@@ -205,7 +208,7 @@ func TestUser_ChangeTgChatID(t *testing.T) {
 
 func TestUser_ChangeNotification(t *testing.T) {
 	email := Email("test@example.com")
-	user, _ := New("John", "Doe", email, "securePass123")
+	user, _ := New("John", "Doe", email, "+79998887766", "securePass123")
 
 	t.Run("disable telegram notification", func(t *testing.T) {
 		notif := NewNotification(false)
@@ -238,7 +241,7 @@ func TestUser_ChangeNotification(t *testing.T) {
 
 func TestUser_Getters(t *testing.T) {
 	email := Email("test@example.com")
-	user, _ := New("John", "Doe", email, "securePass123")
+	user, _ := New("John", "Doe", email, "+79998887766", "securePass123")
 
 	if user.ID() == uuid.Nil {
 		t.Error("ID() should return valid UUID")

@@ -11,6 +11,7 @@ type userRecord struct {
 	Firstname      string       `json:"firstname"`
 	Lastname       string       `json:"lastname"`
 	ConfirmedEmail string       `json:"confirmed_email"`
+	PhoneNumber    string       `json:"phone_number"`
 	PasswordHash   string       `json:"password_hash,omitempty"`
 	PaidUntil      time.Time    `json:"paid_until"`
 	OnVacation     bool         `json:"on_vacation"`

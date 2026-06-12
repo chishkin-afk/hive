@@ -3,10 +3,11 @@ package requests
 import "github.com/google/uuid"
 
 type PrepareUser struct {
-	Firstname string `json:"firstname"`
-	Lastname  string `json:"lastname"`
-	Email     string `json:"email"`
-	Password  string `json:"password"` // can be empty
+	Firstname   string `json:"firstname"`
+	Lastname    string `json:"lastname"` // can be empty
+	Email       string `json:"email"`
+	PhoneNumber string `json:"phone_number"` // can be empty
+	Password    string `json:"password"`     // can be empty
 }
 
 type ConfirmUser struct {
@@ -22,6 +23,7 @@ type Login struct {
 type UpdateUser struct {
 	Firstname    *string             `json:"firstname"`
 	Lastname     *string             `json:"lastname"`
+	PhoneNumber  *string             `json:"phone_number"`
 	Password     *string             `json:"password"`
 	OnVacation   *bool               `json:"on_vacation"`
 	TgChatID     *int64              `json:"tg_chat_id"`
