@@ -1,0 +1,45 @@
+package schedule
+
+import "errors"
+
+var (
+	ErrInvalidBreak = errors.New("interval beetween break's must be more than 5 minutes")
+)
+
+type Break struct {
+	startTime DayTime
+	endTime   DayTime
+}
+
+func NewBreak(startTime, endTime DayTime) (Break, error) {
+	if endTime.AllMinutes()-startTime.AllMinutes() < 5 {
+		return Break{}, ErrInvalidBreak
+	}
+
+	return Break{
+		startTime: startTime,
+		endTime:   endTime,
+	}, nil
+}
+
+func (b *Break) StartTime() DayTime {
+	return b.startTime
+}
+
+func (b *Break) EndTime() DayTime {
+	return b.endTime
+}
+
+func (b *Break) IsValid(startTime, endTime DayTime) bool {
+	if b.startTime.AllMinutes() < startTime.AllMinutes() ||
+		b.startTime.AllMinutes() > endTime.AllMinutes() {
+		return false
+	}
+
+	if b.endTime.AllMinutes() > endTime.AllMinutes() ||
+		b.endTime.AllMinutes() < startTime.AllMinutes() {
+		return false
+	}
+
+	return b.endTime.AllMinutes()-b.startTime.AllMinutes() >= 5
+}

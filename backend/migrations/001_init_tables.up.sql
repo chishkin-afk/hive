@@ -40,9 +40,9 @@ CREATE TABLE IF NOT EXISTS public.schedules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     day_of_week SMALLINT NOT NULL DEFAULT 1,
-    is_working_day BOOLEAN DEFAULT TRUE,
-    working_time JSONB NOT NULL DEFAULT '{}'::jsonb,
-    breaks JSONB,
+    start_time JSONB NOT NULL DEFAULT '{}'::jsonb,
+    end_time JSONB NOT NULL DEFAULT '{}'::jsonb,
+    breaks JSONB NOT NULL DEFAULT '[]'::jsonb,
     CONSTRAINT fk_schedules_user FOREIGN KEY (user_id) REFERENCES public.users (id) ON DELETE CASCADE,
     CONSTRAINT unique_user_day UNIQUE (user_id, day_of_week)
 );
