@@ -26,7 +26,6 @@ type UpdateUser struct {
 	PhoneNumber  *string             `json:"phone_number"`
 	Password     *string             `json:"password"`
 	OnVacation   *bool               `json:"on_vacation"`
-	TgChatID     *int64              `json:"tg_chat_id"`
 	Notification *UpdateNotification `json:"notification"`
 }
 

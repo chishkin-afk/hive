@@ -259,11 +259,6 @@ func (as *AuthService) applyUserChanges(updUser *user.User, req *requests.Update
 			return err
 		}
 	}
-	if req.TgChatID != nil {
-		if err := updUser.ChangeTgChatID(*req.TgChatID); err != nil {
-			return err
-		}
-	}
 	if req.Notification != nil {
 		if err := updUser.ChangeNotification(user.NewNotification(req.Notification.TelegramEnable)); err != nil {
 			return err
