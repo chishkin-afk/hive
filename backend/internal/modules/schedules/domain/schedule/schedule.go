@@ -9,6 +9,7 @@ import (
 var (
 	ErrInvalidSchedule  = errors.New("times of schedule must be more than 5")
 	ErrInvalidDayOfWeek = errors.New("invalid day of week")
+	ErrInvalidUserID    = errors.New("invalid user's id")
 )
 
 type Schedule struct {
@@ -27,6 +28,10 @@ func New(
 	endTime DayTime,
 	breaks []Break,
 ) (*Schedule, error) {
+	if userID == uuid.Nil {
+		return nil, ErrInvalidUserID
+	}
+
 	if endTime.AllMinutes()-startTime.AllMinutes() < 5 {
 		return nil, ErrInvalidSchedule
 	}

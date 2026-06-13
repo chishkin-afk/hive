@@ -12,7 +12,8 @@ type Break struct {
 }
 
 func NewBreak(startTime, endTime DayTime) (Break, error) {
-	if endTime.AllMinutes()-startTime.AllMinutes() < 5 {
+	duration := endTime.AllMinutes() - startTime.AllMinutes()
+	if duration < 5 || duration >= 24*60 {
 		return Break{}, ErrInvalidBreak
 	}
 
