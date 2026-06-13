@@ -27,14 +27,14 @@ func NewDayTime(hour, minute uint8) (DayTime, error) {
 	}, nil
 }
 
-func (dt *DayTime) Hour() uint8 {
+func (dt DayTime) Hour() uint8 {
 	return dt.hour
 }
 
-func (dt *DayTime) Minute() uint8 {
+func (dt DayTime) Minute() uint8 {
 	return dt.minute
 }
 
-func (dt *DayTime) AllMinutes() int {
+func (dt DayTime) AllMinutes() int {
 	return int(dt.Minute()) + int(dt.hour)*60
 }

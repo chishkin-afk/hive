@@ -56,6 +56,24 @@ func New(
 	}, nil
 }
 
+func From(
+	id uuid.UUID,
+	userID uuid.UUID,
+	dayOfWeek uint8,
+	startTime DayTime,
+	endTime DayTime,
+	breaks []Break,
+) *Schedule {
+	return &Schedule{
+		id:        id,
+		userID:    userID,
+		dayOfWeek: dayOfWeek,
+		startTime: startTime,
+		endTime:   endTime,
+		breaks:    breaks,
+	}
+}
+
 func (s *Schedule) ChangeSchedule(startTime, endTime DayTime) error {
 	if endTime.AllMinutes()-startTime.AllMinutes() < 5 {
 		return ErrInvalidSchedule
