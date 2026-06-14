@@ -23,6 +23,13 @@ func NewBreak(startTime, endTime DayTime) (Break, error) {
 	}, nil
 }
 
+func FromBreak(startTime, endTime DayTime) Break {
+	return Break{
+		startTime: startTime,
+		endTime:   endTime,
+	}
+}
+
 func (b *Break) StartTime() DayTime {
 	return b.startTime
 }

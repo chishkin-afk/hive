@@ -27,6 +27,13 @@ func NewDayTime(hour, minute uint8) (DayTime, error) {
 	}, nil
 }
 
+func FromDayTime(hour, minute uint8) DayTime {
+	return DayTime{
+		hour:   hour,
+		minute: minute,
+	}
+}
+
 func (dt DayTime) Hour() uint8 {
 	return dt.hour
 }
