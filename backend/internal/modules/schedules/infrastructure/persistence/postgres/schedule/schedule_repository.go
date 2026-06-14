@@ -42,10 +42,14 @@ func (spr *schedulePersistenceRepository) GetScheduleByUserID(ctx context.Contex
 	panic("not impl")
 }
 
+func (spr *schedulePersistenceRepository) GetScheduleByID(ctx context.Context, id uuid.UUID) (*schedule.Schedule, error) {
+	panic("not impl")
+}
+
 func (spr *schedulePersistenceRepository) Update(ctx context.Context, updSchedule *schedule.Schedule) (*schedule.Schedule, error) {
 	panic("not impl")
 }
 
-func (spr *schedulePersistenceRepository) Delete(ctx context.Context, userID uuid.UUID, dayOfWeek uint8) error {
+func (spr *schedulePersistenceRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	panic("not impl")
 }

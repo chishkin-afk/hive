@@ -85,6 +85,26 @@ func (s *Schedule) ChangeSchedule(startTime, endTime DayTime) error {
 	return nil
 }
 
+func (s *Schedule) ChangeStartTime(startTime DayTime) error {
+	if s.endTime.AllMinutes()-startTime.AllMinutes() < 5 {
+		return ErrInvalidSchedule
+	}
+
+	s.startTime = startTime
+
+	return nil
+}
+
+func (s *Schedule) ChangeEndTime(endTime DayTime) error {
+	if endTime.AllMinutes()-s.startTime.AllMinutes() < 5 {
+		return ErrInvalidSchedule
+	}
+
+	s.endTime = endTime
+
+	return nil
+}
+
 func (s *Schedule) ChangeBreaks(breaks []Break) error {
 	for _, b := range breaks {
 		if !b.IsValid(s.startTime, s.endTime) {
