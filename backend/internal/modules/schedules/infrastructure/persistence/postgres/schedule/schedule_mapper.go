@@ -6,7 +6,7 @@ import (
 	"github.com/devathh/hive/backend/internal/modules/schedules/domain/schedule"
 )
 
-// TODO: write the From methods to VOs
+// TODO: write the unit-tests
 
 func scheduleToRecord(schedule *schedule.Schedule) (*scheduleRecord, error) {
 	breakRecords := make([]breakRecord, len(schedule.Breaks()))
@@ -52,17 +52,9 @@ func recordToSchedule(record *scheduleRecord) (*schedule.Schedule, error) {
 	if err := json.Unmarshal(record.StartTime, &startTimeRecord); err != nil {
 		return nil, err
 	}
-	startTime, err := schedule.NewDayTime(startTimeRecord.Hour, startTimeRecord.Minute)
-	if err != nil {
-		return nil, err
-	}
 
 	var endTimeRecord dayTimeRecord
 	if err := json.Unmarshal(record.EndTime, &endTimeRecord); err != nil {
-		return nil, err
-	}
-	endTime, err := schedule.NewDayTime(endTimeRecord.Hour, endTimeRecord.Minute)
-	if err != nil {
 		return nil, err
 	}
 
@@ -75,8 +67,8 @@ func recordToSchedule(record *scheduleRecord) (*schedule.Schedule, error) {
 		record.ID,
 		record.UserID,
 		record.DayOfWeek,
-		startTime,
-		endTime,
+		schedule.FromDayTime(startTimeRecord.Hour, startTimeRecord.Minute),
+		schedule.FromDayTime(endTimeRecord.Hour, endTimeRecord.Minute),
 		breaks,
 	), nil
 }
@@ -84,22 +76,10 @@ func recordToSchedule(record *scheduleRecord) (*schedule.Schedule, error) {
 func convertBreaksToDomain(breakRecords []breakRecord) ([]schedule.Break, error) {
 	breaks := make([]schedule.Break, len(breakRecords))
 	for i, brRecord := range breakRecords {
-		startTime, err := schedule.NewDayTime(brRecord.StartTime.Hour, brRecord.StartTime.Minute)
-		if err != nil {
-			return nil, err
-		}
-
-		endTime, err := schedule.NewDayTime(brRecord.EndTime.Hour, brRecord.EndTime.Minute)
-		if err != nil {
-			return nil, err
-		}
-
-		br, err := schedule.NewBreak(startTime, endTime)
-		if err != nil {
-			return nil, err
-		}
-
-		breaks[i] = br
+		breaks[i] = schedule.FromBreak(
+			schedule.FromDayTime(brRecord.StartTime.Hour, brRecord.StartTime.Minute),
+			schedule.FromDayTime(brRecord.EndTime.Hour, brRecord.EndTime.Minute),
+		)
 	}
 
 	return breaks, nil
