@@ -23,6 +23,9 @@ import (
 	offerservices "github.com/devathh/hive/backend/internal/modules/offers/application/services"
 	offerredis "github.com/devathh/hive/backend/internal/modules/offers/infrastructure/cache/redis/offer"
 	offerpg "github.com/devathh/hive/backend/internal/modules/offers/infrastructure/persistence/postgres/offer"
+	scheduleservices "github.com/devathh/hive/backend/internal/modules/schedules/application/services"
+	scheduleredis "github.com/devathh/hive/backend/internal/modules/schedules/infrastructure/cache/redis/schedule"
+	schedulepg "github.com/devathh/hive/backend/internal/modules/schedules/infrastructure/persistence/postgres/schedule"
 	"github.com/devathh/hive/backend/pkg/log"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -40,9 +43,10 @@ type DIContainer struct {
 	server  *server.Server
 	handler *gin.Engine
 
-	authService   *authservices.AuthService
-	offerService  *offerservices.OfferService
-	clientService *clientservices.ClientService
+	authService     *authservices.AuthService
+	offerService    *offerservices.OfferService
+	clientService   *clientservices.ClientService
+	scheduleService *scheduleservices.ScheduleService
 
 	smtpClient *smtpinfra.SMTPClient
 }
@@ -135,6 +139,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 			di.AuthService(),
 			di.OfferService(),
 			di.ClientService(),
+			di.ScheduleService(),
 			middlewares.NewAuthMiddleware(di.JWT(), map[string]bool{
 				"GET:/api/v1/auth/user":           true,
 				"PATCH:/api/v1/auth/user":         true,
@@ -215,4 +220,17 @@ func (di *DIContainer) ClientService() *clientservices.ClientService {
 	}
 
 	return di.clientService
+}
+
+func (di *DIContainer) ScheduleService() *scheduleservices.ScheduleService {
+	if di.scheduleService == nil {
+		di.scheduleService = scheduleservices.New(
+			di.Cfg(),
+			di.Log(),
+			schedulepg.New(di.Log(), di.PG()),
+			scheduleredis.New(di.Cfg(), di.Log(), di.Redis()),
+		)
+	}
+
+	return di.scheduleService
 }

@@ -9,6 +9,7 @@ func New(cfg *config.Config,
 	authService authService,
 	offerService offerService,
 	clientService clientService,
+	scheduleService scheduleService,
 	mws ...gin.HandlerFunc) *gin.Engine {
 	router := getRouter(cfg)
 	router.Use(mws...)
@@ -46,8 +47,17 @@ func New(cfg *config.Config,
 			{
 				clients.POST("/client", funcs.UpsertClient())
 				clients.GET("/client/:id", funcs.GetClientByID())
-				clients.GET("/offer/:id", funcs.ListClientsByOfferID()) // ?limit=&page=
-				clients.GET("/user", funcs.ListClientsByUserID())
+				clients.GET("/clients/offer/:id", funcs.ListClientsByOfferID()) // ?limit=&page=
+				clients.GET("/clients/user", funcs.ListClientsByUserID())
+			}
+
+			schedules := v1.Group("/schedules")
+			{
+				schedules.POST("/schedule", funcs.CreateSchedule())
+				schedules.PATCH("/schedule", funcs.UpdateSchedule())
+				schedules.GET("/schedule/:userID/d/:dayOfWeek", funcs.GetScheduleByUserID())
+				schedules.GET("/schedules/user/:userID", funcs.GetSchedulesByUserID())
+				schedules.DELETE("/schedule/:id", funcs.DeleteSchedule())
 			}
 		}
 	}
