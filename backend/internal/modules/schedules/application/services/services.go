@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
 
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
@@ -260,8 +261,8 @@ func (s *ScheduleService) applyChanges(updSchedule *schedule.Schedule, req *requ
 	}
 
 	if req.DoUpdateBreak {
-		breaks := make([]schedule.Break, len(req.Breaks))
-		for i, brDTO := range req.Breaks {
+		var breaks []schedule.Break
+		for _, brDTO := range req.Breaks {
 			startTime, err := schedule.NewDayTime(brDTO.StartTime.Hour, brDTO.StartTime.Minute)
 			if err != nil {
 				return err
@@ -277,7 +278,11 @@ func (s *ScheduleService) applyChanges(updSchedule *schedule.Schedule, req *requ
 				return err
 			}
 
-			breaks[i] = br
+			if slices.ContainsFunc(breaks, br.IsOverlap) {
+				return schedule.ErrBreakOverlap
+			}
+
+			breaks = append(breaks, br)
 		}
 
 		if err := updSchedule.ChangeBreaks(breaks); err != nil {

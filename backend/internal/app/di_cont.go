@@ -141,13 +141,16 @@ func (di *DIContainer) Handler() *gin.Engine {
 			di.ClientService(),
 			di.ScheduleService(),
 			middlewares.NewAuthMiddleware(di.JWT(), map[string]bool{
-				"GET:/api/v1/auth/user":           true,
-				"PATCH:/api/v1/auth/user":         true,
-				"POST:/api/v1/offers/offer":       true,
-				"PATCH:/api/v1/offers/offer":      true,
-				"DELETE:/api/v1/offers/offer/:id": true,
-				"POST:/api/v1/clients/client":     true,
-				"GET:/api/v1/clients/user":        true,
+				"GET:/api/v1/auth/user":                 true,
+				"PATCH:/api/v1/auth/user":               true,
+				"POST:/api/v1/offers/offer":             true,
+				"PATCH:/api/v1/offers/offer":            true,
+				"DELETE:/api/v1/offers/offer/:id":       true,
+				"POST:/api/v1/clients/client":           true,
+				"GET:/api/v1/clients/user":              true,
+				"POST:/api/v1/schedules/schedule":       true,
+				"PATCH:/api/v1/schedules/schedule":      true,
+				"DELETE:/api/v1/schedules/schedule/:id": true,
 			}),
 		)
 	}

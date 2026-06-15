@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	ErrInvalidBreak = errors.New("interval beetween break's must be more than 5 minutes")
+	ErrBreakOverlap = errors.New("some breaks is overlap")
 )
 
 type Break struct {
@@ -30,15 +31,15 @@ func FromBreak(startTime, endTime DayTime) Break {
 	}
 }
 
-func (b *Break) StartTime() DayTime {
+func (b Break) StartTime() DayTime {
 	return b.startTime
 }
 
-func (b *Break) EndTime() DayTime {
+func (b Break) EndTime() DayTime {
 	return b.endTime
 }
 
-func (b *Break) IsValid(startTime, endTime DayTime) bool {
+func (b Break) IsValid(startTime, endTime DayTime) bool {
 	if b.startTime.AllMinutes() < startTime.AllMinutes() ||
 		b.startTime.AllMinutes() > endTime.AllMinutes() {
 		return false
@@ -50,4 +51,9 @@ func (b *Break) IsValid(startTime, endTime DayTime) bool {
 	}
 
 	return b.endTime.AllMinutes()-b.startTime.AllMinutes() >= 5
+}
+
+func (b Break) IsOverlap(another Break) bool {
+	return b.EndTime().AllMinutes() > another.StartTime().AllMinutes() &&
+		b.StartTime().AllMinutes() < another.EndTime().AllMinutes()
 }

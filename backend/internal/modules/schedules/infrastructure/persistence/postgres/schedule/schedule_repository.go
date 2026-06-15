@@ -46,8 +46,8 @@ func (spr *schedulePersistenceRepository) Save(ctx context.Context, schedule *sc
 		return nil, fmt.Errorf("failed to build insert query: %w", err)
 	}
 
-	spr.log.Debug("exec the insert query", slog.String("query", query))
-	if _, err := spr.db.ExecContext(ctx, query, args); err != nil {
+	spr.log.Debug("exec the insert query", slog.String("query", query), slog.Int("len_args", len(args)))
+	if _, err := spr.db.ExecContext(ctx, query, args...); err != nil {
 		if safeErr, ok := spr.handleError(err); ok {
 			return nil, safeErr
 		}
@@ -84,7 +84,7 @@ func (spr *schedulePersistenceRepository) GetSchedulesByUserID(ctx context.Conte
 	}
 
 	spr.log.Debug("exec the list query", slog.String("query", query))
-	rows, err := spr.db.QueryContext(ctx, query, args)
+	rows, err := spr.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		if safeErr, ok := spr.handleError(err); ok {
 			return nil, safeErr
@@ -139,7 +139,7 @@ func (spr *schedulePersistenceRepository) GetScheduleByUserID(ctx context.Contex
 	}
 
 	spr.log.Debug("exec the select query", slog.String("query", query))
-	row := spr.db.QueryRowContext(ctx, query, args)
+	row := spr.db.QueryRowContext(ctx, query, args...)
 
 	spr.log.Debug("map the row of schedule",
 		slog.String("user_id", userID.String()),
@@ -177,7 +177,7 @@ func (spr *schedulePersistenceRepository) GetScheduleByID(ctx context.Context, i
 	}
 
 	spr.log.Debug("exec the select query by schedule's id", slog.String("query", query))
-	row := spr.db.QueryRowContext(ctx, query, args)
+	row := spr.db.QueryRowContext(ctx, query, args...)
 
 	spr.log.Debug("map the row of schedule", slog.String("schedule_id", id.String()))
 	record, err := spr.mapRow(row)
@@ -217,7 +217,7 @@ func (spr *schedulePersistenceRepository) Update(ctx context.Context, updSchedul
 	}
 
 	spr.log.Debug("exec the sql update query", slog.String("query", query))
-	result, err := spr.db.ExecContext(ctx, query, args)
+	result, err := spr.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		if safeErr, ok := spr.handleError(err); ok {
 			return nil, safeErr
@@ -249,7 +249,7 @@ func (spr *schedulePersistenceRepository) Delete(ctx context.Context, id uuid.UU
 	}
 
 	spr.log.Debug("exec the delete query", slog.String("query", query))
-	result, err := spr.db.ExecContext(ctx, query, args)
+	result, err := spr.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		if safeErr, ok := spr.handleError(err); ok {
 			return safeErr

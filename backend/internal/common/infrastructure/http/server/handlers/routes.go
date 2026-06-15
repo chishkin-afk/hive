@@ -15,9 +15,10 @@ func New(cfg *config.Config,
 	router.Use(mws...)
 
 	funcs := HandlerFuncs{
-		authService:   authService,
-		offerService:  offerService,
-		clientService: clientService,
+		authService:     authService,
+		offerService:    offerService,
+		clientService:   clientService,
+		scheduleService: scheduleService,
 	}
 
 	api := router.Group("/api")
