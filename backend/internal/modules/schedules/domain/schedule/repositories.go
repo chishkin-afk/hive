@@ -25,4 +25,5 @@ type ScheduleCacheRepository interface {
 var (
 	ErrScheduleNotFound      = errors.New("schedule not found")
 	ErrScheduleAlreadyExists = errors.New("schedule already exists")
+	ErrUserNotFound          = errors.New("user not found")
 )

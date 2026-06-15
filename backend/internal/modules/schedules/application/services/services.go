@@ -295,7 +295,8 @@ func (s *ScheduleService) handleRepoError(err error) (error, bool) {
 		return errs.NewErrorWithKind(err, errs.KindTimeout), true
 	case errors.Is(err, schedule.ErrScheduleAlreadyExists):
 		return errs.NewErrorWithKind(err, errs.KindConflict), true
-	case errors.Is(err, schedule.ErrScheduleNotFound):
+	case errors.Is(err, schedule.ErrScheduleNotFound),
+		errors.Is(err, schedule.ErrUserNotFound):
 		return errs.NewErrorWithKind(err, errs.KindNotFound), true
 	}
 
