@@ -67,6 +67,7 @@ type Cache struct {
 	UserTTL      time.Duration `yaml:"user_ttl" validate:"required,min=1m"`
 	OfferTTL     time.Duration `yaml:"offer_ttl" validate:"required,min=1m"`
 	ClientTTL    time.Duration `yaml:"client_ttl" validate:"required,min=1m"`
+	SchedulesTTL time.Duration `yaml:"schedules_ttl" validate:"required,min=1m"`
 	PreparingTTL time.Duration `yaml:"preparing_ttl" validate:"required,min=1m"`
 	Redis        struct {
 		Host string `yaml:"host" validate:"required,hostname"`

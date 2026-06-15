@@ -2,6 +2,8 @@ package scheduleredis
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -32,13 +34,62 @@ func New(cfg *config.Config, log *slog.Logger, cache Cache) *scheduleCacheReposi
 }
 
 func (scr *scheduleCacheRepository) SaveSchedules(ctx context.Context, userID uuid.UUID, schedules []*schedule.Schedule) error {
-	panic("not impl")
+	scr.log.Debug("converting domain schedules into bytes", slog.String("user_id", userID.String()))
+	bytes, err := schedulesToBytes(schedules)
+	if err != nil {
+		return fmt.Errorf("failed to convert domain into bytes: %w", err)
+	}
+
+	scr.log.Debug("setting the schedules into cache", slog.String("user_id", userID.String()))
+	if err := scr.cache.Set(ctx, scr.getSchedulesKey(userID), bytes, scr.cfg.Cache.SchedulesTTL).Err(); err != nil {
+		if safeErr, ok := scr.handleError(err); ok {
+			return safeErr
+		}
+
+		return fmt.Errorf("failed to save schedules into cache: %w", err)
+	}
+
+	return nil
 }
 
 func (scr *scheduleCacheRepository) GetSchedules(ctx context.Context, userID uuid.UUID) ([]*schedule.Schedule, error) {
-	panic("not impl")
+	scr.log.Debug("getting the schedules from cache by user's id", slog.String("user_id", userID.String()))
+	bytes, err := scr.cache.Get(ctx, scr.getSchedulesKey(userID)).Bytes()
+	if err != nil {
+		if safeErr, ok := scr.handleError(err); ok {
+			return nil, safeErr
+		}
+
+		return nil, fmt.Errorf("failed to get schedules: %w", err)
+	}
+
+	return bytesToSchedules(bytes)
 }
 
 func (scr *scheduleCacheRepository) DeleteSchedules(ctx context.Context, userID uuid.UUID) error {
-	panic("not impl")
+	if err := scr.cache.Del(ctx, scr.getSchedulesKey(userID)).Err(); err != nil {
+		if safeErr, ok := scr.handleError(err); ok {
+			return safeErr
+		}
+
+		return fmt.Errorf("failed to delete schedules: %w", err)
+	}
+
+	return nil
+}
+
+func (scr *scheduleCacheRepository) getSchedulesKey(userID uuid.UUID) string {
+	return fmt.Sprintf("schedules:%s", userID.String())
+}
+
+func (scr *scheduleCacheRepository) handleError(err error) (error, bool) {
+	switch {
+	case errors.Is(err, context.DeadlineExceeded),
+		errors.Is(err, context.Canceled):
+		return err, true
+	case errors.Is(err, redis.Nil):
+		return schedule.ErrScheduleNotFound, true
+	}
+
+	return err, false
 }
