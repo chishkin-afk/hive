@@ -263,12 +263,7 @@ func (s *ScheduleService) applyChanges(updSchedule *schedule.Schedule, req *requ
 	if req.DoUpdateBreak {
 		var breaks []schedule.Break
 		for _, brDTO := range req.Breaks {
-			startTime, err := schedule.NewDayTime(brDTO.StartTime.Hour, brDTO.StartTime.Minute)
-			if err != nil {
-				return err
-			}
-
-			endTime, err := schedule.NewDayTime(brDTO.EndTime.Hour, brDTO.EndTime.Minute)
+			startTime, endTime, err := s.getBreakTimes(brDTO)
 			if err != nil {
 				return err
 			}
@@ -291,6 +286,20 @@ func (s *ScheduleService) applyChanges(updSchedule *schedule.Schedule, req *requ
 	}
 
 	return nil
+}
+
+func (s *ScheduleService) getBreakTimes(brDTO requests.Break) (schedule.DayTime, schedule.DayTime, error) {
+	startTime, err := schedule.NewDayTime(brDTO.StartTime.Hour, brDTO.StartTime.Minute)
+	if err != nil {
+		return schedule.DayTime{}, schedule.DayTime{}, err
+	}
+
+	endTime, err := schedule.NewDayTime(brDTO.EndTime.Hour, brDTO.EndTime.Minute)
+	if err != nil {
+		return schedule.DayTime{}, schedule.DayTime{}, err
+	}
+
+	return startTime, endTime, nil
 }
 
 func (s *ScheduleService) handleRepoError(err error) (error, bool) {
