@@ -2,6 +2,7 @@ package booking
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -10,10 +11,7 @@ func TestNewBooking_Success(t *testing.T) {
 	offerID := uuid.New()
 	userID := uuid.New()
 	comment := "Test comment"
-	startTime, err := NewDayTime(10, 30)
-	if err != nil {
-		t.Fatalf("unexpected error creating DayTime: %v", err)
-	}
+	startTime := time.Now().UTC().Add(24 * time.Hour)
 
 	booking, err := New(offerID, userID, comment, startTime)
 
@@ -32,7 +30,7 @@ func TestNewBooking_Success(t *testing.T) {
 	if booking.Comment() != comment {
 		t.Errorf("expected comment %q, got %q", comment, booking.Comment())
 	}
-	if booking.StartTime() != startTime {
+	if !booking.StartTime().Equal(startTime) {
 		t.Errorf("expected startTime %v, got %v", startTime, booking.StartTime())
 	}
 	if booking.IsCancelled() {
@@ -51,7 +49,7 @@ func TestNewBooking_Success(t *testing.T) {
 
 func TestNewBooking_EmptyOfferID(t *testing.T) {
 	userID := uuid.New()
-	startTime, _ := NewDayTime(10, 0)
+	startTime := time.Now().UTC()
 
 	_, err := New(uuid.Nil, userID, "", startTime)
 
@@ -62,7 +60,7 @@ func TestNewBooking_EmptyOfferID(t *testing.T) {
 
 func TestNewBooking_EmptyUserID(t *testing.T) {
 	offerID := uuid.New()
-	startTime, _ := NewDayTime(10, 0)
+	startTime := time.Now().UTC()
 
 	_, err := New(offerID, uuid.Nil, "", startTime)
 
@@ -136,14 +134,14 @@ func TestChangeComment_CancelledBooking(t *testing.T) {
 
 func TestChangeStartTime_Success(t *testing.T) {
 	booking := createValidBooking(t)
-	newStartTime, _ := NewDayTime(14, 0)
+	newStartTime := time.Now().UTC().Add(48 * time.Hour)
 
 	err := booking.ChangeStartTime(newStartTime)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if booking.StartTime() != newStartTime {
+	if !booking.StartTime().Equal(newStartTime) {
 		t.Errorf("expected startTime %v, got %v", newStartTime, booking.StartTime())
 	}
 }
@@ -151,7 +149,7 @@ func TestChangeStartTime_Success(t *testing.T) {
 func TestChangeStartTime_CancelledBooking(t *testing.T) {
 	booking := createValidBooking(t)
 	_ = booking.Cancel()
-	newStartTime, _ := NewDayTime(14, 0)
+	newStartTime := time.Now().UTC().Add(48 * time.Hour)
 
 	err := booking.ChangeStartTime(newStartTime)
 
@@ -163,10 +161,7 @@ func TestChangeStartTime_CancelledBooking(t *testing.T) {
 func createValidBooking(t *testing.T) *Booking {
 	offerID := uuid.New()
 	userID := uuid.New()
-	startTime, err := NewDayTime(10, 0)
-	if err != nil {
-		t.Fatalf("failed to create DayTime: %v", err)
-	}
+	startTime := time.Now().UTC().Add(24 * time.Hour)
 
 	booking, err := New(offerID, userID, "test", startTime)
 	if err != nil {

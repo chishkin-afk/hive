@@ -19,7 +19,7 @@ type Booking struct {
 	offerID     uuid.UUID
 	userID      uuid.UUID
 	comment     string
-	startTime   DayTime
+	startTime   time.Time
 	isCancelled bool
 	createdAt   time.Time
 	updatedAt   time.Time
@@ -28,7 +28,7 @@ type Booking struct {
 func New(
 	offerID, userID uuid.UUID,
 	comment string,
-	startTime DayTime,
+	startTime time.Time,
 ) (*Booking, error) {
 	if offerID == uuid.Nil {
 		return nil, ErrEmptyOfferID
@@ -73,7 +73,7 @@ func (b *Booking) ChangeComment(newComment string) error {
 	return nil
 }
 
-func (b *Booking) ChangeStartTime(newStartTime DayTime) error {
+func (b *Booking) ChangeStartTime(newStartTime time.Time) error {
 	if b.isCancelled {
 		return ErrCancelled
 	}
@@ -100,7 +100,7 @@ func (b *Booking) Comment() string {
 	return b.comment
 }
 
-func (b *Booking) StartTime() DayTime {
+func (b *Booking) StartTime() time.Time {
 	return b.startTime
 }
 

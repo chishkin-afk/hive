@@ -53,15 +53,13 @@ CREATE TABLE IF NOT EXISTS bookings (
     offer_id UUID NOT NULL,
     user_id UUID NOT NULL,
     comment VARCHAR(128),
-    start_time JSONB NOT NULL DEFAULT '{}'::jsonb,
+    start_time TIMESTAMPTZ NOT NULL,
     is_cancelled BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_bookings_offer FOREIGN KEY (offer_id) REFERENCES offers (id),
     CONSTRAINT fk_bookings_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_offer_slot ON bookings (offer_id, start_time) WHERE is_cancelled = FALSE;
 
 -- CLIENTS TABLE
 CREATE TABLE IF NOT EXISTS clients (
