@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     offer_id UUID NOT NULL,
     user_id UUID NOT NULL,
     comment VARCHAR(128),
-    start_time TIMESTAMPTZ NOT NULL,
+    start_time JSONB NOT NULL DEFAULT '{}'::jsonb,
     is_cancelled BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
