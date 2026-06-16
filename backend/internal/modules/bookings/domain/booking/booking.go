@@ -1,6 +1,7 @@
 package booking
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"time"
@@ -8,10 +9,16 @@ import (
 	"github.com/google/uuid"
 )
 
+type (
+	CreateFunc func(ctx context.Context, booking *Booking, coachID uuid.UUID) error
+	UpdateFunc func(ctx context.Context, booking *Booking) error
+)
+
 var (
-	ErrEmptyOfferID = errors.New("offer's id is empty")
-	ErrEmptyUserID  = errors.New("user's id is empty")
-	ErrCancelled    = errors.New("booking is cancelled")
+	ErrInvalidComment = errors.New("len of comment must be less than 128")
+	ErrEmptyOfferID   = errors.New("offer's id is empty")
+	ErrEmptyUserID    = errors.New("user's id is empty")
+	ErrCancelled      = errors.New("booking is cancelled")
 )
 
 type Booking struct {
@@ -38,6 +45,11 @@ func New(
 		return nil, ErrEmptyUserID
 	}
 
+	comment = strings.TrimSpace(comment)
+	if len([]rune(comment)) > 128 {
+		return nil, ErrInvalidComment
+	}
+
 	now := time.Now().UTC()
 	return &Booking{
 		id:          uuid.New(),
@@ -49,6 +61,27 @@ func New(
 		createdAt:   now,
 		updatedAt:   now,
 	}, nil
+}
+
+func From(
+	id uuid.UUID,
+	offerID, userID uuid.UUID,
+	comment string,
+	startTime time.Time,
+	isCancelled bool,
+	createdAt time.Time,
+	updatedAt time.Time,
+) *Booking {
+	return &Booking{
+		id:          id,
+		offerID:     offerID,
+		userID:      userID,
+		comment:     comment,
+		startTime:   startTime,
+		isCancelled: isCancelled,
+		createdAt:   createdAt,
+		updatedAt:   updatedAt,
+	}
 }
 
 func (b *Booking) Cancel() error {
