@@ -47,6 +47,11 @@ func (bpr *bookingPersistenceRepository) ListByUserID(ctx context.Context, userI
 	panic("not impl")
 }
 
+// ListAllByOfferID returns all future bookings for the offer
+func (bpr *bookingPersistenceRepository) ListAllByOfferID(ctx context.Context, offerID uuid.UUID) ([]*booking.Booking, error) {
+	panic("not impl")
+}
+
 // GetByID returns a single booking by its ID.
 // It is important to check whether this record belongs to a userID
 // or whether the offer owns a userID

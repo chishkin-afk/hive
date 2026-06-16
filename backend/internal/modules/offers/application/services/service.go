@@ -258,8 +258,8 @@ func (os *OfferService) applyChanges(updOffer *offer.Offer, req *requests.Update
 
 func (os *OfferService) offerToDTO(offer *offer.Offer) *responses.Offer {
 	return &responses.Offer{
-		ID:                  offer.ID().String(),
-		AuthorID:            offer.AuthorID().String(),
+		ID:                  offer.ID(),
+		AuthorID:            offer.AuthorID(),
 		Title:               offer.Title(),
 		Description:         offer.Description(),
 		Price:               offer.Price(),

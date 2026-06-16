@@ -1,16 +1,18 @@
 package responses
 
+import "github.com/google/uuid"
+
 type Offer struct {
-	ID                  string `json:"id"`
-	AuthorID            string `json:"author_id"`
-	Title               string `json:"title"`
-	Description         string `json:"description"`
-	Price               uint64 `json:"price"`
-	SlotDurationMinutes uint32 `json:"slot_duration_minutes"`
-	SlotIntervalMinutes uint32 `json:"slot_interval_minutes"`
-	IsActive            bool   `json:"is_active"`
-	CreatedAt           int64  `json:"created_at"`
-	UpdatedAt           int64  `json:"updated_at"`
+	ID                  uuid.UUID `json:"id"`
+	AuthorID            uuid.UUID `json:"author_id"`
+	Title               string    `json:"title"`
+	Description         string    `json:"description"`
+	Price               uint64    `json:"price"`
+	SlotDurationMinutes uint32    `json:"slot_duration_minutes"`
+	SlotIntervalMinutes uint32    `json:"slot_interval_minutes"`
+	IsActive            bool      `json:"is_active"`
+	CreatedAt           int64     `json:"created_at"`
+	UpdatedAt           int64     `json:"updated_at"`
 }
 
 type Offers struct {

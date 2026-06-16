@@ -6,8 +6,6 @@ import (
 	"github.com/devathh/hive/backend/internal/modules/schedules/domain/schedule"
 )
 
-// TODO: write the unit-tests
-
 func scheduleToRecord(schedule *schedule.Schedule) (*scheduleRecord, error) {
 	breakRecords := make([]breakRecord, len(schedule.Breaks()))
 	for i, br := range schedule.Breaks() {

@@ -39,7 +39,7 @@ func (bcr *bookingCacheRepository) GetByID(ctx context.Context, id uuid.UUID) (*
 	panic("not impl")
 }
 
-func (bcr *bookingCacheRepository) Delete(ctx context.Context, id uuid.UUID) (*booking.Booking, error) {
+func (bcr *bookingCacheRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	panic("not impl")
 }
 

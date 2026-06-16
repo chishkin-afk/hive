@@ -330,8 +330,8 @@ func (s *ScheduleService) schedulesToDTO(schedules []*schedule.Schedule) *respon
 
 func (s *ScheduleService) scheduleToDTO(schedule *schedule.Schedule) *responses.Schedule {
 	response := &responses.Schedule{
-		ID:        schedule.ID().String(),
-		UserID:    schedule.UserID().String(),
+		ID:        schedule.ID(),
+		UserID:    schedule.UserID(),
 		DayOfWeek: schedule.DayOfWeek(),
 		StartTime: s.dayTimeToDTO(schedule.StartTime()),
 		EndTime:   s.dayTimeToDTO(schedule.EndTime()),

@@ -225,9 +225,9 @@ func (cs *ClientService) createClient(ctx context.Context, userID, offerID uuid.
 
 func (cs *ClientService) domainToDTO(client *client.Client) *responses.Client {
 	return &responses.Client{
-		ID:        client.ID().String(),
-		UserID:    client.UserID().String(),
-		OfferID:   client.OfferID().String(),
+		ID:        client.ID(),
+		UserID:    client.UserID(),
+		OfferID:   client.OfferID(),
 		Visits:    client.Visits(),
 		LastVisit: client.LastVisit().Unix(),
 		CreatedAt: client.CreatedAt().Unix(),

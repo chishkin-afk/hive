@@ -10,7 +10,7 @@ import (
 )
 
 type (
-	CreateFunc func(ctx context.Context, booking *Booking, coachID uuid.UUID) error
+	CreateFunc func(ctx context.Context, bookings []*Booking) error
 	UpdateFunc func(ctx context.Context, booking *Booking) error
 )
 
