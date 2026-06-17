@@ -14,5 +14,8 @@ type Booking struct {
 }
 
 type Bookings struct {
-	List []*Booking `json:"list"`
+	List        []*Booking `json:"list"`
+	TotalPages  uint32     `json:"total_pages"`
+	HasNextPage bool       `json:"has_next_page"`
+	HasPrevPage bool       `json:"has_prev_page"`
 }

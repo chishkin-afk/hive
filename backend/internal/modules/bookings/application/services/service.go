@@ -3,6 +3,7 @@ package bookingservices
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -76,7 +77,12 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 		return nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
 	}
 
-	bookingToSave, err := booking.New(req.OfferID, userID, req.Comment, time.Unix(req.StartTime, 0))
+	bookingTime := time.Unix(req.StartTime, 0).UTC()
+	if bookingTime.Compare(time.Now().UTC()) < 0 {
+		return nil, errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
+	}
+
+	bookingToSave, err := booking.New(req.OfferID, userID, req.Comment, bookingTime)
 	if err != nil {
 		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
 	}
@@ -95,11 +101,12 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 		// Checks for overlap bookings
 		for _, other := range bookings {
 			otherStartTime := other.StartTime().Hour()*60 + other.StartTime().Minute()
-			otherEndTime := otherStartTime + int(offer.SlotDurationMinutes)
+			otherEndTime := otherStartTime + int(offer.SlotDurationMinutes) + int(offer.SlotIntervalMinutes)
 
 			if bookingEndTime > otherStartTime &&
 				bookingStartTime < otherEndTime {
-				return errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
+
+				return errs.ErrInvalidTimeForBooking
 			}
 		}
 
@@ -209,7 +216,7 @@ func (bs *BookingService) ListByOfferID(ctx context.Context, offerID uuid.UUID, 
 		return nil, errs.NewErrorWithKind(errs.ErrNotEnoughRights, errs.KindPermissionDenied)
 	}
 
-	list, err := bs.bookingPersistence.ListByOfferID(ctx, offerID, page, limit)
+	list, totalCount, err := bs.bookingPersistence.ListByOfferID(ctx, offerID, page, limit)
 	if err != nil {
 		safeErr, ok := bs.handleRepoError(err)
 		if !ok {
@@ -222,8 +229,12 @@ func (bs *BookingService) ListByOfferID(ctx context.Context, offerID uuid.UUID, 
 		return nil, safeErr
 	}
 
+	totalPages := totalCount / int64(limit)
 	response := responses.Bookings{
-		List: make([]*responses.Booking, len(list)),
+		List:        make([]*responses.Booking, len(list)),
+		HasNextPage: int64(page) < totalPages,
+		HasPrevPage: page > 1,
+		TotalPages:  uint32(totalPages),
 	}
 	for i, booking := range list {
 		response.List[i] = bs.bookingToDTO(booking)
@@ -248,7 +259,7 @@ func (bs *BookingService) ListByUserID(ctx context.Context, page, limit uint32) 
 		return nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
 	}
 
-	list, err := bs.bookingPersistence.ListByUserID(ctx, userID, page, limit)
+	list, totalCount, err := bs.bookingPersistence.ListByUserID(ctx, userID, page, limit)
 	if err != nil {
 		safeErr, ok := bs.handleRepoError(err)
 		if !ok {
@@ -261,8 +272,12 @@ func (bs *BookingService) ListByUserID(ctx context.Context, page, limit uint32) 
 		return nil, safeErr
 	}
 
+	totalPages := totalCount / int64(limit)
 	response := responses.Bookings{
-		List: make([]*responses.Booking, len(list)),
+		List:        make([]*responses.Booking, len(list)),
+		HasNextPage: totalPages > int64(page),
+		HasPrevPage: page > 1,
+		TotalPages:  uint32(totalPages),
 	}
 	for i, booking := range list {
 		response.List[i] = bs.bookingToDTO(booking)
@@ -407,8 +422,11 @@ func (bs *BookingService) checkSchedule(schedule *responses.Schedule, bStartTime
 
 		if bEndTime > brStartTime &&
 			bStartTime < brEndTime {
-			return errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
+			return errs.ErrInvalidTimeForBooking
 		}
+
+		fmt.Println(brEndTime, brStartTime)
+		fmt.Println(bEndTime, bStartTime)
 	}
 
 	// Checks for start & end times of coach's schedule
@@ -416,7 +434,7 @@ func (bs *BookingService) checkSchedule(schedule *responses.Schedule, bStartTime
 	endTime := int(schedule.EndTime.Hour)*60 + int(schedule.EndTime.Minute)
 
 	if startTime > bStartTime || endTime < bEndTime {
-		return errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
+		return errs.ErrInvalidTimeForBooking
 	}
 
 	return nil
@@ -428,7 +446,7 @@ func (bs *BookingService) getBookingTime(startTime time.Time, offer *responses.O
 	bookingStartTime := startTime.Hour()*60 + startTime.Minute()
 	bookingEndTime := int(offer.SlotDurationMinutes) + bookingStartTime
 	if bookingStartTime >= bookingEndTime {
-		return 0, 0, errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
+		return 0, 0, errs.ErrInvalidTimeForBooking
 	}
 
 	return bookingStartTime, bookingEndTime, nil
@@ -449,7 +467,7 @@ func (bs *BookingService) getCoachOffer(ctx context.Context, booking *booking.Bo
 
 	// Checks for paid period of coach
 	if coach.PaidUntil < booking.StartTime().Unix() {
-		return nil, nil, errs.NewErrorWithKind(errs.ErrUserNotPaid, errs.KindPermissionDenied)
+		return nil, nil, errs.ErrUserNotPaid
 	}
 
 	return coach, offer, nil
@@ -488,6 +506,14 @@ func (bs *BookingService) handleRepoError(err error) (error, bool) {
 		return errs.NewErrorWithKind(err, errs.KindTimeout), true
 	case errors.Is(err, booking.ErrBookingNotFound):
 		return errs.NewErrorWithKind(err, errs.KindNotFound), true
+	case errors.Is(err, booking.ErrBookingAlreadyExists):
+		return errs.NewErrorWithKind(err, errs.KindConflict), true
+	case errors.Is(err, booking.ErrInvalidOfferID),
+		errors.Is(err, errs.ErrInvalidTimeForBooking):
+		return errs.NewErrorWithKind(err, errs.KindRequest), true
+	case errors.Is(err, booking.ErrTooMuchBookings),
+		errors.Is(err, errs.ErrUserNotPaid):
+		return errs.NewErrorWithKind(err, errs.KindPermissionDenied), true
 	}
 
 	return errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal), false

@@ -13,6 +13,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// TODO: раскидать роуты сервисов по файлам
+
 type authService interface {
 	Prepare(ctx context.Context, req *requests.PrepareUser) (*responses.User, error)
 	Confirm(ctx context.Context, req *requests.ConfirmUser) (*responses.Token, error)
@@ -44,11 +46,20 @@ type scheduleService interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
+type bookingService interface {
+	Create(ctx context.Context, req *requests.CreateBooking) (*responses.Booking, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*responses.Booking, error)
+	ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) (*responses.Bookings, error)
+	ListByUserID(ctx context.Context, page, limit uint32) (*responses.Bookings, error)
+	Update(ctx context.Context, req *requests.UpdateBooking) (*responses.Booking, error)
+}
+
 type HandlerFuncs struct {
 	authService     authService
 	offerService    offerService
 	clientService   clientService
 	scheduleService scheduleService
+	bookingService  bookingService
 }
 
 func (h *HandlerFuncs) Prepare() gin.HandlerFunc {
@@ -503,6 +514,28 @@ func (h *HandlerFuncs) DeleteSchedule() gin.HandlerFunc {
 		}
 
 		ctx.Status(http.StatusNoContent)
+	}
+}
+
+func (h *HandlerFuncs) CreateBooking() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req *requests.CreateBooking
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		resp, err := h.bookingService.Create(ctx.Request.Context(), req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusCreated, resp)
 	}
 }
 

@@ -9,8 +9,8 @@ import (
 
 type BookingPersistenceRepository interface {
 	Save(ctx context.Context, booking *Booking, cbFunc CreateFunc) (*Booking, error)
-	ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) ([]*Booking, error)
-	ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*Booking, error)
+	ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) ([]*Booking, int64, error)
+	ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*Booking, int64, error)
 	ListAllByOfferID(ctx context.Context, offerID uuid.UUID) ([]*Booking, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*Booking, error)
 	Update(ctx context.Context, id uuid.UUID, updFunc UpdateFunc) (*Booking, error)
@@ -23,5 +23,8 @@ type BookingCacheRepository interface {
 }
 
 var (
-	ErrBookingNotFound = errors.New("booking not found")
+	ErrBookingNotFound      = errors.New("booking not found")
+	ErrBookingAlreadyExists = errors.New("booking already exists")
+	ErrInvalidOfferID       = errors.New("invalid offer's id")
+	ErrTooMuchBookings      = errors.New("too much bookings")
 )

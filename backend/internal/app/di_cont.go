@@ -17,6 +17,9 @@ import (
 	authservices "github.com/devathh/hive/backend/internal/modules/auth/application/services"
 	userredis "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/cache/redis/user"
 	userpg "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/persistence/postgres/user"
+	bookingservices "github.com/devathh/hive/backend/internal/modules/bookings/application/services"
+	bookingredis "github.com/devathh/hive/backend/internal/modules/bookings/infrastructure/cache/redis/booking"
+	bookingpg "github.com/devathh/hive/backend/internal/modules/bookings/infrastructure/persistence/postgres/booking"
 	clientservices "github.com/devathh/hive/backend/internal/modules/clients/application/services"
 	clientredis "github.com/devathh/hive/backend/internal/modules/clients/infrastructure/cache/redis/client"
 	clientpg "github.com/devathh/hive/backend/internal/modules/clients/infrastructure/persistence/postgres/client"
@@ -47,6 +50,7 @@ type DIContainer struct {
 	offerService    *offerservices.OfferService
 	clientService   *clientservices.ClientService
 	scheduleService *scheduleservices.ScheduleService
+	bookingService  *bookingservices.BookingService
 
 	smtpClient *smtpinfra.SMTPClient
 }
@@ -140,6 +144,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 			di.OfferService(),
 			di.ClientService(),
 			di.ScheduleService(),
+			di.BookingService(),
 			middlewares.NewAuthMiddleware(di.JWT(), map[string]bool{
 				"GET:/api/v1/auth/user":                 true,
 				"PATCH:/api/v1/auth/user":               true,
@@ -151,6 +156,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 				"POST:/api/v1/schedules/schedule":       true,
 				"PATCH:/api/v1/schedules/schedule":      true,
 				"DELETE:/api/v1/schedules/schedule/:id": true,
+				"POST:/api/v1/bookings/booking":         true,
 			}),
 		)
 	}
@@ -236,4 +242,21 @@ func (di *DIContainer) ScheduleService() *scheduleservices.ScheduleService {
 	}
 
 	return di.scheduleService
+}
+
+func (di *DIContainer) BookingService() *bookingservices.BookingService {
+	if di.bookingService == nil {
+		di.bookingService = bookingservices.New(
+			di.Cfg(),
+			di.Log(),
+			bookingpg.New(di.Log(), di.PG()),
+			bookingredis.New(di.Cfg(), di.Log(), di.Redis()),
+			di.ScheduleService(),
+			di.ClientService(),
+			di.AuthService(),
+			di.OfferService(),
+		)
+	}
+
+	return di.bookingService
 }
