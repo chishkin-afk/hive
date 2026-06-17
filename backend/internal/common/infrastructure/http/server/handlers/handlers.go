@@ -539,6 +539,116 @@ func (h *HandlerFuncs) CreateBooking() gin.HandlerFunc {
 	}
 }
 
+func (h *HandlerFuncs) GetBookingByID() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, err := uuid.Parse(ctx.Param("id"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid id",
+			})
+			return
+		}
+
+		resp, err := h.bookingService.GetByID(ctx.Request.Context(), id)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *HandlerFuncs) ListBookings() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		page, limit, err := h.parsePagination(ctx)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		rawOfferID := ctx.Query("offer_id")
+		if rawOfferID == "" {
+			h.listBookingsByUserID(ctx, uint32(page), uint32(limit))
+			return
+		}
+
+		offerID, err := uuid.Parse(rawOfferID)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid offer's id",
+			})
+			return
+		}
+
+		h.listBookingsByOfferID(ctx, offerID, uint32(page), uint32(limit))
+	}
+}
+
+func (h *HandlerFuncs) listBookingsByUserID(ctx *gin.Context, page, limit uint32) {
+	resp, err := h.bookingService.ListByUserID(ctx.Request.Context(), page, limit)
+	if err != nil {
+		ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+			Error: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, resp)
+}
+
+func (h *HandlerFuncs) listBookingsByOfferID(ctx *gin.Context, offerID uuid.UUID, page, limit uint32) {
+	resp, err := h.bookingService.ListByOfferID(ctx.Request.Context(), offerID, page, limit)
+	if err != nil {
+		ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+			Error: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, resp)
+}
+
+func (h *HandlerFuncs) UpdateBooking() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req *requests.UpdateBooking
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		resp, err := h.bookingService.Update(ctx.Request.Context(), req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *HandlerFuncs) parsePagination(ctx *gin.Context) (uint32, uint32, error) {
+	page, err := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	if err != nil || page < 1 || page > 1000 {
+		return 0, 0, errs.ErrInvalidPage
+	}
+
+	limit, err := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 || limit > 100 {
+		return 0, 0, errs.ErrInvalidLimit
+	}
+
+	return uint32(page), uint32(limit), nil
+}
+
 func (h *HandlerFuncs) getCodeFromError(err error) int {
 	var errKind *errs.ErrorKind
 	if !errors.As(err, &errKind) {

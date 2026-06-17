@@ -300,6 +300,7 @@ func (bs *BookingService) Update(ctx context.Context, req *requests.UpdateBookin
 			return err
 		}
 
+		fmt.Println("HERE")
 		if err := bs.applyChanges(ctx, booking, req); err != nil {
 			return err
 		}

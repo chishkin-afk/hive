@@ -78,7 +78,7 @@ func (bcr *bookingCacheRepository) Delete(ctx context.Context, id uuid.UUID) err
 }
 
 func (bcr *bookingCacheRepository) getBookingKey(id uuid.UUID) string {
-	panic("not impl")
+	return fmt.Sprintf("booking:%s", id.String())
 }
 
 func (bcr *bookingCacheRepository) handleError(err error) (error, bool) {

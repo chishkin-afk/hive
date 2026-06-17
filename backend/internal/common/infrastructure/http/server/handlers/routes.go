@@ -66,6 +66,9 @@ func New(cfg *config.Config,
 			bookings := v1.Group("/bookings")
 			{
 				bookings.POST("/booking", funcs.CreateBooking())
+				bookings.PATCH("/booking", funcs.UpdateBooking())
+				bookings.GET("/booking/:id", funcs.GetBookingByID())
+				bookings.GET("/bookings", funcs.ListBookings()) // ?limit=&page=&offer_id=?
 			}
 		}
 	}

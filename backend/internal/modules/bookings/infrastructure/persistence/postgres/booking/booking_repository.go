@@ -452,7 +452,7 @@ func (bpr *bookingPersistenceRepository) Update(ctx context.Context, id uuid.UUI
 	}
 
 	bpr.log.Debug("exec the update query", slog.String("query", updateQuery))
-	result, err := bpr.db.ExecContext(ctx, updateQuery, updateArgs...)
+	result, err := tx.ExecContext(ctx, updateQuery, updateArgs...)
 	if err != nil {
 		if safeErr, ok := bpr.handleError(err); ok {
 			return nil, safeErr
@@ -463,6 +463,14 @@ func (bpr *bookingPersistenceRepository) Update(ctx context.Context, id uuid.UUI
 
 	if count, _ := result.RowsAffected(); count == 0 {
 		return nil, booking.ErrBookingNotFound
+	}
+
+	if err := tx.Commit(); err != nil {
+		if safeErr, ok := bpr.handleError(err); ok {
+			return nil, safeErr
+		}
+
+		return nil, fmt.Errorf("failed to commit tx: %w", err)
 	}
 
 	return updBooking, nil
