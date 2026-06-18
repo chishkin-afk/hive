@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
@@ -15,6 +16,7 @@ type bookingService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*responses.Booking, error)
 	ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) (*responses.Bookings, error)
 	ListByUserID(ctx context.Context, page, limit uint32) (*responses.Bookings, error)
+	GetFreeSlots(ctx context.Context, offerID uuid.UUID, date time.Time) (*responses.Slots, error)
 	Update(ctx context.Context, req *requests.UpdateBooking) (*responses.Booking, error)
 }
 
@@ -125,6 +127,41 @@ func (h *HandlerFuncs) UpdateBooking() gin.HandlerFunc {
 		}
 
 		resp, err := h.bookingService.Update(ctx.Request.Context(), req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *HandlerFuncs) GetFreeSlots() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		rawDate, err := time.Parse(time.DateOnly, ctx.Query("date"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid date",
+			})
+			return
+		}
+
+		offerID, err := uuid.Parse(ctx.Param("offerID"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid offer id",
+			})
+			return
+		}
+
+		resp, err := h.bookingService.GetFreeSlots(ctx.Request.Context(), offerID, time.Date(
+			rawDate.Year(),
+			rawDate.Month(),
+			rawDate.Day(),
+			0, 0, 0, 0, time.UTC,
+		))
 		if err != nil {
 			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
 				Error: err.Error(),

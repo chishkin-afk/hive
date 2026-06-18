@@ -32,8 +32,6 @@ type offerService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*responses.Offer, error)
 }
 
-// TODO: add slot's method
-
 type BookingService struct {
 	cfg                *config.Config
 	log                *slog.Logger
@@ -115,6 +113,7 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 			return err
 		}
 
+		// Checks for schedules
 		if err := bs.checkSchedule(schedule, bookingStartTime, bookingEndTime); err != nil {
 			return err
 		}
@@ -157,6 +156,7 @@ func (bs *BookingService) GetByID(ctx context.Context, id uuid.UUID) (*responses
 			return nil, err
 		}
 
+		bs.log.Debug("booking was taken from cache", slog.String("booking_id", id.String()))
 		return bs.bookingToDTO(cachedBooking), nil
 	} else if !errors.Is(err, booking.ErrBookingNotFound) {
 		bs.log.Warn("failed to get booking from cache",
@@ -229,18 +229,7 @@ func (bs *BookingService) ListByOfferID(ctx context.Context, offerID uuid.UUID, 
 		return nil, safeErr
 	}
 
-	totalPages := totalCount / int64(limit)
-	response := responses.Bookings{
-		List:        make([]*responses.Booking, len(list)),
-		HasNextPage: int64(page) < totalPages,
-		HasPrevPage: page > 1,
-		TotalPages:  uint32(totalPages),
-	}
-	for i, booking := range list {
-		response.List[i] = bs.bookingToDTO(booking)
-	}
-
-	return &response, nil
+	return bs.listToDTO(list, totalCount, page, limit), nil
 }
 
 // ListByUserID method that returns a list of all bookings
@@ -272,6 +261,10 @@ func (bs *BookingService) ListByUserID(ctx context.Context, page, limit uint32) 
 		return nil, safeErr
 	}
 
+	return bs.listToDTO(list, totalCount, page, limit), nil
+}
+
+func (bs *BookingService) listToDTO(list []*booking.Booking, totalCount int64, page, limit uint32) *responses.Bookings {
 	totalPages := totalCount / int64(limit)
 	response := responses.Bookings{
 		List:        make([]*responses.Booking, len(list)),
@@ -283,7 +276,7 @@ func (bs *BookingService) ListByUserID(ctx context.Context, page, limit uint32) 
 		response.List[i] = bs.bookingToDTO(booking)
 	}
 
-	return &response, nil
+	return &response
 }
 
 // Update is a method that updates the fields of a booking.
@@ -300,7 +293,6 @@ func (bs *BookingService) Update(ctx context.Context, req *requests.UpdateBookin
 			return err
 		}
 
-		fmt.Println("HERE")
 		if err := bs.applyChanges(ctx, booking, req); err != nil {
 			return err
 		}
@@ -327,6 +319,97 @@ func (bs *BookingService) Update(ctx context.Context, req *requests.UpdateBookin
 	}
 
 	return bs.bookingToDTO(updatedBooking), nil
+}
+
+func (bs *BookingService) GetFreeSlots(ctx context.Context, offerID uuid.UUID, date time.Time) (*responses.Slots, error) {
+	offer, err := bs.offerService.GetByID(ctx, offerID)
+	if err != nil {
+		return nil, err
+	}
+
+	schedule, err := bs.scheduleService.GetScheduleByUserID(ctx, offer.AuthorID, uint8(date.Weekday()))
+	if err != nil {
+		return nil, err
+	}
+
+	dayStart := date.Add(time.Duration(schedule.StartTime.Hour)*time.Hour + time.Duration(schedule.StartTime.Minute)*time.Minute)
+	dayEnd := date.Add(time.Duration(schedule.EndTime.Hour)*time.Hour + time.Duration(schedule.EndTime.Minute)*time.Minute)
+
+	bookings, err := bs.bookingPersistence.ListAllPerTime(ctx, offerID, dayStart, dayEnd)
+	if err != nil {
+		safeErr, ok := bs.handleRepoError(err)
+		if !ok {
+			bs.log.Error("failed to get list of all the bookings",
+				slog.String("offer_id", offerID.String()),
+				slog.String("error", err.Error()),
+			)
+		}
+
+		return nil, safeErr
+	}
+
+	rawSlots := make([]responses.DayTime, 0)
+	currSlot := bs.allMinutes(&schedule.StartTime)
+	slotInterval := offer.SlotIntervalMinutes
+	for currSlot < bs.allMinutes(&schedule.EndTime)-int64(offer.SlotIntervalMinutes+offer.SlotDurationMinutes) {
+		rawSlot := responses.DayTime{
+			Hour:   uint8(currSlot / 60),
+			Minute: uint8(currSlot % 60),
+		}
+
+		startSlot := int(currSlot)
+		endSlot := int(currSlot) + int(offer.SlotDurationMinutes+offer.SlotIntervalMinutes)
+
+		currSlot += int64(slotInterval)
+
+		if !bs.checkBookings(offer, bookings, startSlot, endSlot) {
+			continue
+		}
+
+		if !bs.checkBreaks(schedule, startSlot, endSlot) {
+			continue
+		}
+
+		rawSlots = append(rawSlots, rawSlot)
+	}
+
+	year, month, day := date.Date()
+	return &responses.Slots{
+		Date:  fmt.Sprintf("%d-%s-%d", year, month.String(), day),
+		Times: rawSlots,
+	}, nil
+}
+
+func (bs *BookingService) checkBreaks(schedule *responses.Schedule, startSlot, endSlot int) bool {
+	for _, b := range schedule.Breaks {
+		bStartTime := int(b.StartTime.Hour)*60 + int(b.StartTime.Minute)
+		bEndTime := int(b.EndTime.Hour)*60 + int(b.EndTime.Minute)
+
+		if endSlot > int(bStartTime) &&
+			startSlot < bEndTime {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (bs *BookingService) checkBookings(offer *responses.Offer, bookings []*booking.Booking, startSlot, endSlot int) bool {
+	for _, booking := range bookings {
+		otherStartTime := booking.StartTime().Hour()*60 + booking.StartTime().Minute()
+		otherEndTime := otherStartTime + int(offer.SlotDurationMinutes+offer.SlotIntervalMinutes)
+
+		if endSlot > otherStartTime &&
+			startSlot < otherEndTime {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (bs *BookingService) allMinutes(dayTime *responses.DayTime) int64 {
+	return int64(dayTime.Hour)*60 + int64(dayTime.Minute)
 }
 
 func (bs *BookingService) applyChanges(ctx context.Context, booking *booking.Booking, req *requests.UpdateBooking) error {

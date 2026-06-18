@@ -3,6 +3,7 @@ package booking
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -12,6 +13,7 @@ type BookingPersistenceRepository interface {
 	ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) ([]*Booking, int64, error)
 	ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*Booking, int64, error)
 	ListAllByOfferID(ctx context.Context, offerID uuid.UUID) ([]*Booking, error)
+	ListAllPerTime(ctx context.Context, offerID uuid.UUID, startTime, endTime time.Time) ([]*Booking, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*Booking, error)
 	Update(ctx context.Context, id uuid.UUID, updFunc UpdateFunc) (*Booking, error)
 }

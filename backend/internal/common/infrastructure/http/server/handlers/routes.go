@@ -68,7 +68,8 @@ func New(cfg *config.Config,
 				bookings.POST("/booking", funcs.CreateBooking())
 				bookings.PATCH("/booking", funcs.UpdateBooking())
 				bookings.GET("/booking/:id", funcs.GetBookingByID())
-				bookings.GET("/bookings", funcs.ListBookings()) // ?limit=&page=&offer_id=?
+				bookings.GET("/bookings", funcs.ListBookings())       // ?limit=&page=&offer_id=?
+				bookings.GET("/slots/:offerID", funcs.GetFreeSlots()) // ?date=2026-06-18
 			}
 		}
 	}

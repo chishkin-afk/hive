@@ -19,3 +19,8 @@ type Bookings struct {
 	HasNextPage bool       `json:"has_next_page"`
 	HasPrevPage bool       `json:"has_prev_page"`
 }
+
+type Slots struct {
+	Date  string    `json:"date"`
+	Times []DayTime `json:"times"`
+}

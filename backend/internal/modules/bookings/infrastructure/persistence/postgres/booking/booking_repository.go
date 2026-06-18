@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/devathh/hive/backend/internal/modules/bookings/domain/booking"
@@ -145,6 +146,7 @@ func (bpr *bookingPersistenceRepository) getAllTx(ctx context.Context, tx *sql.T
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	records, err := bpr.mapRows(rows)
 	if err != nil {
@@ -178,7 +180,6 @@ func (bpr *bookingPersistenceRepository) buildInsertQuery(record *bookingRecord)
 
 // ListByOfferID returns a list of all bookings for a specific offer.
 // It is important to check whether the user is the author of the offer before doing so
-// TODO: refactor
 func (bpr *bookingPersistenceRepository) ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) ([]*booking.Booking, int64, error) {
 	bpr.log.Debug("build the count query by offer's id", slog.String("offer_id", offerID.String()))
 	countQuery, countArgs, err := bpr.buildCountQueryByOfferID(offerID)
@@ -250,7 +251,6 @@ func (bpr *bookingPersistenceRepository) buildListByOfferIDQuery(offerID uuid.UU
 
 // ListByUserID is a function that returns a list of all bookings for a specific user.
 // The UserID should be taken from the token
-// TODO: refactor
 func (bpr *bookingPersistenceRepository) ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*booking.Booking, int64, error) {
 	bpr.log.Debug("build the count query", slog.String("user_id", userID.String()))
 	countQuery, countArgs, err := bpr.buildCountQueryByUserID(userID)
@@ -367,6 +367,54 @@ func (bpr *bookingPersistenceRepository) buildListAllQuery(offerID uuid.UUID) (s
 		"created_at",
 		"updated_at",
 	).From("bookings").Limit(100000).Where("start_time >= NOW() AND offer_id = ?", offerID).ToSql()
+}
+
+func (bpr *bookingPersistenceRepository) ListAllPerTime(ctx context.Context, offerID uuid.UUID, startTime, endTime time.Time) ([]*booking.Booking, error) {
+	bpr.log.Debug("build the list all query per time")
+	query, args, err := bpr.buildListAllPerDay(offerID, startTime, endTime)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build list all query: %w", err)
+	}
+
+	bpr.log.Debug("exec the query", slog.String("query", query))
+	rows, err := bpr.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		if safeErr, ok := bpr.handleError(err); ok {
+			return nil, safeErr
+		}
+
+		return nil, fmt.Errorf("failed to get list of all bookings: %w", err)
+	}
+	defer rows.Close()
+
+	records, err := bpr.mapRows(rows)
+	if err != nil {
+		if safeErr, ok := bpr.handleError(err); ok {
+			return nil, safeErr
+		}
+
+		return nil, fmt.Errorf("failed to map rows: %w", err)
+	}
+
+	result := make([]*booking.Booking, len(records))
+	for i, record := range records {
+		result[i] = recordToBooking(record)
+	}
+
+	return result, nil
+}
+
+func (bpr *bookingPersistenceRepository) buildListAllPerDay(offerID uuid.UUID, startTime, endTime time.Time) (string, []any, error) {
+	return bpr.sqlBuilder.Select(
+		"id",
+		"offer_id",
+		"user_id",
+		"comment",
+		"start_time",
+		"is_cancelled",
+		"created_at",
+		"updated_at",
+	).From("bookings").Limit(1000).Where("offer_id = ? AND start_time >= ? AND start_time < ?", offerID, startTime, endTime).ToSql()
 }
 
 // GetByID returns a single booking by its ID.
