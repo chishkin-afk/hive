@@ -1,7 +1,5 @@
 package requests
 
-import "github.com/google/uuid"
-
 type PrepareUser struct {
 	Firstname   string `json:"firstname"`
 	Lastname    string `json:"lastname"` // can be empty
@@ -11,8 +9,8 @@ type PrepareUser struct {
 }
 
 type ConfirmUser struct {
-	UserID uuid.UUID `json:"user_id"`
-	Code   int       `json:"code"`
+	Email string `json:"email"`
+	Code  int    `json:"code"`
 }
 
 type Login struct {

@@ -81,15 +81,23 @@ func (ucr *userCacheRepository) Del(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (ucr *userCacheRepository) Prepare(ctx context.Context, user *user.User, generatedPassword string, code int) error {
-	ucr.log.Debug("converting domain into prepared", slog.Int("code", code))
-	preparedRecord, err := domainToPrepared(user, generatedPassword)
+func (ucr *userCacheRepository) Prepare(ctx context.Context, preparingUser *user.User, generatedPassword string, code int) error {
+	key := ucr.getPreparedKey(preparingUser.ConfirmedEmail())
+	ucr.log.Debug("check for already prepared user", slog.String("email", preparingUser.ConfirmedEmail().String()))
+	if err := ucr.cache.Get(ctx, key).Err(); err == nil {
+		return user.ErrUserAlreadyExists
+	} else if !errors.Is(err, redis.Nil) {
+		return fmt.Errorf("failed to check prepared user: %w", err)
+	}
+
+	ucr.log.Debug("converting domain into prepared")
+	preparedRecord, err := domainToPreparedBytes(preparingUser, generatedPassword, code)
 	if err != nil {
 		return fmt.Errorf("failed to convert domain into prepared: %w", err)
 	}
 
-	ucr.log.Debug("setting the prepared record into cache", slog.Int("code", code))
-	if err := ucr.cache.Set(ctx, ucr.getPreparedKey(code, user.ID()), preparedRecord, ucr.cfg.Cache.PreparingTTL).Err(); err != nil {
+	ucr.log.Debug("setting the prepared record into cache")
+	if err := ucr.cache.Set(ctx, key, preparedRecord, ucr.cfg.Cache.PreparingTTL).Err(); err != nil {
 		if safeErr, ok := ucr.normalizeError(err); ok {
 			return safeErr
 		}
@@ -100,18 +108,23 @@ func (ucr *userCacheRepository) Prepare(ctx context.Context, user *user.User, ge
 	return nil
 }
 
-func (ucr *userCacheRepository) GetPrepared(ctx context.Context, code int, id uuid.UUID) (*user.User, string, error) {
-	ucr.log.Debug("get the prepared user from cache", slog.Int("code", code))
-	bytes, err := ucr.cache.Get(ctx, ucr.getPreparedKey(code, id)).Bytes()
+func (ucr *userCacheRepository) GetPrepared(ctx context.Context, code int, email user.Email) (*user.User, string, int, error) {
+	ucr.log.Debug("get the prepared user from cache")
+	bytes, err := ucr.cache.Get(ctx, ucr.getPreparedKey(email)).Bytes()
 	if err != nil {
 		if safeErr, ok := ucr.normalizeError(err); ok {
-			return nil, "", safeErr
+			return nil, "", 0, safeErr
 		}
 
-		return nil, "", fmt.Errorf("failed to get prepared record: %w", err)
+		return nil, "", 0, fmt.Errorf("failed to get prepared record: %w", err)
 	}
 
-	return preparedToDomain(bytes)
+	prepared, err := bytesToPrepared(bytes)
+	if err != nil {
+		return nil, "", 0, fmt.Errorf("failed to convert prepared model: %w", err)
+	}
+
+	return preparedToUser(prepared), prepared.GeneratedPassword, prepared.Code, nil
 }
 
 func (ucr *userCacheRepository) normalizeError(err error) (error, bool) {
@@ -126,9 +139,9 @@ func (ucr *userCacheRepository) normalizeError(err error) (error, bool) {
 	return err, false
 }
 
-func (ucr *userCacheRepository) getPreparedKey(code int, id uuid.UUID) string {
-	hash := sha256.Sum256(fmt.Appendf(nil, "%d:%s", code, id.String()))
-	return fmt.Sprintf("code:%s", hex.EncodeToString(hash[:]))
+func (ucr *userCacheRepository) getPreparedKey(email user.Email) string {
+	hash := sha256.Sum256([]byte(email.String()))
+	return fmt.Sprintf("prepared:%s", hex.EncodeToString(hash[:]))
 }
 
 func (ucr *userCacheRepository) getUserKey(id uuid.UUID) string {

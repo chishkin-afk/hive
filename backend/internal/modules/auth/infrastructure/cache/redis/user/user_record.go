@@ -27,5 +27,6 @@ type notification struct {
 
 type preparedUserRecord struct {
 	User              userRecord `json:"user_record"`
+	Code              int        `json:"code"`
 	GeneratedPassword string     `json:"generated_password,omitempty"`
 }

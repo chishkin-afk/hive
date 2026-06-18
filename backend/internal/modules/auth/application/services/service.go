@@ -63,7 +63,7 @@ func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (
 	}
 
 	if _, err := as.userPersistence.GetByEmail(ctx, email); err == nil {
-		return nil, errs.NewErrorWithKind(errs.ErrUserAlreadyRegistered, errs.KindConflict)
+		return nil, errs.NewErrorWithKind(user.ErrUserAlreadyExists, errs.KindConflict)
 	} else if !errors.Is(err, user.ErrUserNotFound) {
 		as.log.Error("failed to get user by email", slog.String("error", err.Error()))
 		return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
@@ -88,8 +88,12 @@ func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (
 
 	code := rd.Intn(899999) + 100000
 	if err := as.userCache.Prepare(ctx, user, newPassword, code); err != nil {
-		as.log.Error("failed to set prepared user into cache", slog.String("error", err.Error()), slog.Int("code", code))
-		return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
+		safeErr, ok := as.handleRepoError(err)
+		if !ok {
+			as.log.Error("failed to set prepared user into cache", slog.String("error", err.Error()))
+		}
+
+		return nil, errs.NewErrorWithKind(safeErr, errs.KindInternal)
 	}
 
 	if err := as.sendCode(ctx, user.ConfirmedEmail(), code); err != nil {
@@ -103,10 +107,19 @@ func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (
 // Confirm is a method that finding prepared user in cache
 // and save his into db, also generate the jwt token
 func (as *AuthService) Confirm(ctx context.Context, req *requests.ConfirmUser) (*responses.Token, error) {
-	preparedUser, generatedPassword, err := as.userCache.GetPrepared(ctx, req.Code, req.UserID)
+	email := user.Email(req.Email).Norm()
+	if err := email.Validate(); err != nil {
+		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
+	}
+
+	preparedUser, generatedPassword, code, err := as.userCache.GetPrepared(ctx, req.Code, email)
 	if err != nil {
 		as.log.Warn("trying to confirm unexisted user", slog.String("error", err.Error()))
 		return nil, errs.NewErrorWithKind(errs.ErrInvalidCode, errs.KindRequest)
+	}
+
+	if code != req.Code {
+		return nil, errs.NewErrorWithKind(errs.ErrInvalidCode, errs.KindNotFound)
 	}
 
 	if generatedPassword != "" {
