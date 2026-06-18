@@ -39,10 +39,9 @@ func New(log *slog.Logger, db DB) *bookingPersistenceRepository {
 // then requests the coach's offer ID, and calls the callback function with these arguments.
 // If the callback function does not return an error, it saves the user.
 // Everything happens within a transaction
-func (bpr *bookingPersistenceRepository) Save(ctx context.Context, bookingToSave *booking.Booking, cbFunc booking.CreateFunc) (*booking.Booking, error) {
+func (bpr *bookingPersistenceRepository) Save(ctx context.Context, offerID uuid.UUID, startTime, endTime time.Time, cbFunc booking.CreateFunc) (*booking.Booking, error) {
 	bpr.log.Debug("start the transaction to save booking",
-		slog.String("booking_id", bookingToSave.ID().String()),
-		slog.String("offer_id", bookingToSave.OfferID().String()),
+		slog.String("offer_id", offerID.String()),
 	)
 
 	tx, err := bpr.db.BeginTx(ctx, &sql.TxOptions{
@@ -60,25 +59,22 @@ func (bpr *bookingPersistenceRepository) Save(ctx context.Context, bookingToSave
 		}
 	}()
 
-	records, err := bpr.getAllTx(ctx, tx, bookingToSave.OfferID())
+	records, err := bpr.getListAllPerDay(ctx, tx, offerID, startTime, endTime)
 	if err != nil {
 		if safeErr, ok := bpr.handleError(err); ok {
 			return nil, safeErr
 		}
 
-		return nil, fmt.Errorf("failed to get list of all future bookings: %w", err)
-	}
-
-	if bpr.checkCount(records, bookingToSave.UserID()) >= 3 {
-		return nil, booking.ErrTooMuchBookings
+		return nil, fmt.Errorf("failed to count bookings per day: %w", err)
 	}
 
 	// Call the main validation function (with business-logic)
-	if err := cbFunc(ctx, bpr.getBookings(records)); err != nil {
+	booking, err := cbFunc(ctx, bpr.getBookings(records))
+	if err != nil {
 		return nil, err
 	}
 
-	record, err := bpr.insertTx(ctx, tx, bookingToRecord(bookingToSave))
+	record, err := bpr.insertTx(ctx, tx, bookingToRecord(booking))
 	if err != nil {
 		return nil, err
 	}
@@ -92,17 +88,6 @@ func (bpr *bookingPersistenceRepository) Save(ctx context.Context, bookingToSave
 	}
 
 	return recordToBooking(record), nil
-}
-
-func (bpr *bookingPersistenceRepository) checkCount(records []*bookingRecord, userID uuid.UUID) int {
-	var count int
-	for _, record := range records {
-		if record.UserID == userID {
-			count++
-		}
-	}
-
-	return count
 }
 
 func (bpr *bookingPersistenceRepository) getBookings(records []*bookingRecord) []*booking.Booking {
@@ -134,26 +119,21 @@ func (bpr *bookingPersistenceRepository) insertTx(ctx context.Context, tx *sql.T
 	return record, nil
 }
 
-func (bpr *bookingPersistenceRepository) getAllTx(ctx context.Context, tx *sql.Tx, offerID uuid.UUID) ([]*bookingRecord, error) {
-	bpr.log.Debug("build the sql list all query", slog.String("offer_id", offerID.String()))
-	listAllQuery, listAllArgs, err := bpr.buildListAllQuery(offerID)
+func (bpr *bookingPersistenceRepository) getListAllPerDay(ctx context.Context, tx *sql.Tx, offerID uuid.UUID, startTime, endTime time.Time) ([]*bookingRecord, error) {
+	bpr.log.Debug("build count query per day")
+	query, args, err := bpr.buildListAllPerDay(offerID, startTime, endTime)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to build list all per day query: %w", err)
 	}
 
-	bpr.log.Debug("getting the list of bookings", slog.String("query", listAllQuery))
-	rows, err := tx.QueryContext(ctx, listAllQuery, listAllArgs...)
+	bpr.log.Debug("exec the list all per day query", slog.String("query", query))
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	records, err := bpr.mapRows(rows)
-	if err != nil {
-		return nil, err
-	}
-
-	return records, nil
+	return bpr.mapRows(rows)
 }
 
 func (bpr *bookingPersistenceRepository) buildInsertQuery(record *bookingRecord) (string, []any, error) {

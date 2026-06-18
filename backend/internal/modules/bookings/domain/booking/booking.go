@@ -10,7 +10,7 @@ import (
 )
 
 type (
-	CreateFunc func(ctx context.Context, bookings []*Booking) error
+	CreateFunc func(ctx context.Context, bookings []*Booking) (*Booking, error)
 	UpdateFunc func(ctx context.Context, booking *Booking) error
 )
 

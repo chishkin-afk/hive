@@ -75,50 +75,67 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 		return nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
 	}
 
-	bookingTime := time.Unix(req.StartTime, 0).UTC()
-	if bookingTime.Compare(time.Now().UTC()) < 0 {
+	bookingStartTime := time.Unix(req.StartTime, 0).UTC()
+	if bookingStartTime.Compare(time.Now().UTC()) < 0 {
 		return nil, errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
 	}
 
-	bookingToSave, err := booking.New(req.OfferID, userID, req.Comment, bookingTime)
+	bookingToSave, err := booking.New(
+		req.OfferID,
+		userID,
+		req.Comment,
+		bookingStartTime,
+	)
 	if err != nil {
 		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
 	}
 
-	savedBooking, err := bs.bookingPersistence.Save(ctx, bookingToSave, func(ctx context.Context, bookings []*booking.Booking) error {
-		_, offer, err := bs.getCoachOffer(ctx, bookingToSave)
-		if err != nil {
-			return err
-		}
+	coach, offer, err := bs.getCoachOffer(ctx, req.OfferID)
+	if err != nil {
+		return nil, err
+	}
 
-		bookingStartTime, bookingEndTime, err := bs.getBookingTime(bookingToSave.StartTime(), offer)
+	if bookingStartTime.Add(
+		time.Duration(offer.SlotDurationMinutes+offer.SlotIntervalMinutes)*time.Minute,
+	).Day() != bookingStartTime.Day() {
+		return nil, errs.ErrInvalidTimeForBooking
+	}
+
+	// Checks for paid until
+	if coach.PaidUntil < bookingStartTime.Unix() {
+		return nil, errs.NewErrorWithKind(errs.ErrUserNotPaid, errs.KindRequest)
+	}
+
+	startDate := time.Date(bookingStartTime.Year(), bookingStartTime.Month(), bookingStartTime.Day(), 0, 0, 0, 0, time.UTC)
+	endDate := startDate.Add(24 * time.Hour)
+
+	savedBooking, err := bs.bookingPersistence.Save(ctx, offer.ID, startDate, endDate, func(ctx context.Context, others []*booking.Booking) (*booking.Booking, error) {
+		bookingStartTimeMinutes, bookingEndTimeMinutes, err := bs.getBookingTime(bookingToSave.StartTime(), offer)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// Checks for overlap bookings
-		for _, other := range bookings {
-			otherStartTime := other.StartTime().Hour()*60 + other.StartTime().Minute()
-			otherEndTime := otherStartTime + int(offer.SlotDurationMinutes) + int(offer.SlotIntervalMinutes)
-
-			if bookingEndTime > otherStartTime &&
-				bookingStartTime < otherEndTime {
-
-				return errs.ErrInvalidTimeForBooking
-			}
+		if bs.hasOverlap(bookingToSave.StartTime(), int(offer.SlotDurationMinutes+offer.SlotIntervalMinutes), others) {
+			return nil, errs.ErrInvalidTimeForBooking
 		}
 
-		schedule, err := bs.scheduleService.GetScheduleByUserID(ctx, offer.AuthorID, uint8(bookingToSave.StartTime().Weekday()))
+		// Checks for existing booking
+		if bs.hasBooking(userID, others) {
+			return nil, booking.ErrTooMuchBookings
+		}
+
+		schedule, err := bs.scheduleService.GetScheduleByUserID(ctx, offer.AuthorID, uint8(bookingStartTime.Weekday()))
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// Checks for schedules
-		if err := bs.checkSchedule(schedule, bookingStartTime, bookingEndTime); err != nil {
-			return err
+		if err := bs.checkSchedule(schedule, bookingStartTimeMinutes, bookingEndTimeMinutes); err != nil {
+			return nil, err
 		}
 
-		return nil
+		return bookingToSave, nil
 	})
 	if err != nil {
 		safeErr, ok := bs.handleRepoError(err)
@@ -140,6 +157,29 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 	}
 
 	return bs.bookingToDTO(savedBooking), nil
+}
+
+func (bs *BookingService) hasOverlap(newStart time.Time, durationMinutes int, existingBookings []*booking.Booking) bool {
+	newEnd := newStart.Add(time.Duration(durationMinutes) * time.Minute)
+
+	for _, existingBooking := range existingBookings {
+		existingEnd := existingBooking.StartTime().Add(time.Duration(durationMinutes) * time.Minute)
+
+		if newStart.Before(existingEnd) && existingBooking.StartTime().Before(newEnd) {
+			return true
+		}
+	}
+	return false
+}
+
+func (bs *BookingService) hasBooking(userID uuid.UUID, existingBookings []*booking.Booking) bool {
+	for _, booking := range existingBookings {
+		if booking.UserID() == userID {
+			return true
+		}
+	}
+
+	return false
 }
 
 // GetByID is a method that allows you to retrieve a record
@@ -252,7 +292,7 @@ func (bs *BookingService) ListByUserID(ctx context.Context, page, limit uint32) 
 	if err != nil {
 		safeErr, ok := bs.handleRepoError(err)
 		if !ok {
-			bs.log.Error("failed to list bookings by offer id",
+			bs.log.Error("failed to list bookings by user id",
 				slog.String("error", err.Error()),
 				slog.String("user_id", userID.String()),
 			)
@@ -322,6 +362,8 @@ func (bs *BookingService) Update(ctx context.Context, req *requests.UpdateBookin
 }
 
 func (bs *BookingService) GetFreeSlots(ctx context.Context, offerID uuid.UUID, date time.Time) (*responses.Slots, error) {
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+
 	offer, err := bs.offerService.GetByID(ctx, offerID)
 	if err != nil {
 		return nil, err
@@ -443,7 +485,10 @@ func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *bookin
 		return err
 	}
 
-	allBookings, err := bs.bookingPersistence.ListAllByOfferID(ctx, booking.OfferID())
+	startDate := time.Date(newStartTime.Year(), newStartTime.Month(), newStartTime.Day(), 0, 0, 0, 0, time.UTC)
+	endDate := startDate.Add(24 * time.Hour)
+
+	allBookings, err := bs.bookingPersistence.ListAllPerTime(ctx, booking.OfferID(), startDate, endDate)
 	if err != nil {
 		safeErr, ok := bs.handleRepoError(err)
 		if !ok {
@@ -458,7 +503,7 @@ func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *bookin
 
 	for _, other := range allBookings {
 		otherStartTime := other.StartTime().Hour()*60 + other.StartTime().Minute()
-		otherEndTime := otherStartTime + int(offer.SlotDurationMinutes)
+		otherEndTime := otherStartTime + int(offer.SlotDurationMinutes+offer.SlotIntervalMinutes)
 
 		if bookingEndTime > otherStartTime &&
 			bookingStartTime < otherEndTime {
@@ -508,9 +553,6 @@ func (bs *BookingService) checkSchedule(schedule *responses.Schedule, bStartTime
 			bStartTime < brEndTime {
 			return errs.ErrInvalidTimeForBooking
 		}
-
-		fmt.Println(brEndTime, brStartTime)
-		fmt.Println(bEndTime, bStartTime)
 	}
 
 	// Checks for start & end times of coach's schedule
@@ -538,8 +580,8 @@ func (bs *BookingService) getBookingTime(startTime time.Time, offer *responses.O
 
 // getCoachOffer is a function that receives coach and offer
 // and validates them, then returns
-func (bs *BookingService) getCoachOffer(ctx context.Context, booking *booking.Booking) (*responses.User, *responses.Offer, error) {
-	offer, err := bs.offerService.GetByID(ctx, booking.OfferID())
+func (bs *BookingService) getCoachOffer(ctx context.Context, offerID uuid.UUID) (*responses.User, *responses.Offer, error) {
+	offer, err := bs.offerService.GetByID(ctx, offerID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -547,11 +589,6 @@ func (bs *BookingService) getCoachOffer(ctx context.Context, booking *booking.Bo
 	coach, err := bs.authService.GetUserByID(ctx, offer.AuthorID)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	// Checks for paid period of coach
-	if coach.PaidUntil < booking.StartTime().Unix() {
-		return nil, nil, errs.ErrUserNotPaid
 	}
 
 	return coach, offer, nil
