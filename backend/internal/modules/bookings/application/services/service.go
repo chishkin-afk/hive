@@ -424,7 +424,7 @@ func (bs *BookingService) listByUserID(ctx context.Context, userID uuid.UUID, pa
 }
 
 func (bs *BookingService) listToDTO(list []*booking.Booking, totalCount int64, page, limit uint32) *responses.Bookings {
-	totalPages := totalCount / int64(limit)
+	totalPages := (totalCount + int64(limit) - 1) / int64(limit)
 	response := responses.Bookings{
 		List:        make([]*responses.Booking, len(list)),
 		HasNextPage: totalPages > int64(page),
@@ -540,8 +540,6 @@ func (bs *BookingService) generateFreeSlots(schedule *responses.Schedule, offer 
 
 	return slots
 }
-
-// -------------
 
 func (bs *BookingService) saveBookingAtomically(
 	ctx context.Context,
