@@ -19,7 +19,8 @@ type UserCacheRepository interface {
 	Get(ctx context.Context, id uuid.UUID) (*User, error)
 	Del(ctx context.Context, id uuid.UUID) error
 	Prepare(ctx context.Context, user *User, generatedPassword string, code int) error
-	GetPrepared(ctx context.Context, code int, email Email) (*User, string, int, error)
+	GetPrepared(ctx context.Context, email Email) (*User, string, int, error)
+	DelPrepared(ctx context.Context, email Email) error
 }
 
 var (

@@ -108,7 +108,7 @@ func (ucr *userCacheRepository) Prepare(ctx context.Context, preparingUser *user
 	return nil
 }
 
-func (ucr *userCacheRepository) GetPrepared(ctx context.Context, code int, email user.Email) (*user.User, string, int, error) {
+func (ucr *userCacheRepository) GetPrepared(ctx context.Context, email user.Email) (*user.User, string, int, error) {
 	ucr.log.Debug("get the prepared user from cache")
 	bytes, err := ucr.cache.Get(ctx, ucr.getPreparedKey(email)).Bytes()
 	if err != nil {
@@ -125,6 +125,19 @@ func (ucr *userCacheRepository) GetPrepared(ctx context.Context, code int, email
 	}
 
 	return preparedToUser(prepared), prepared.GeneratedPassword, prepared.Code, nil
+}
+
+func (ucr *userCacheRepository) DelPrepared(ctx context.Context, email user.Email) error {
+	ucr.log.Debug("delete prepared user from cache")
+	if err := ucr.cache.Del(ctx, ucr.getPreparedKey(email)).Err(); err != nil {
+		if safeErr, ok := ucr.normalizeError(err); ok {
+			return safeErr
+		}
+
+		return fmt.Errorf("failed to delete prepared user from cache: %w", err)
+	}
+
+	return nil
 }
 
 func (ucr *userCacheRepository) normalizeError(err error) (error, bool) {
