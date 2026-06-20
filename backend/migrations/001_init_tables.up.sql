@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS payments_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     payment_id UUID NOT NULL, 
     user_id UUID NOT NULL,
-    amount BIGINT NOT NULL,
+    amount_penny BIGINT NOT NULL,
     is_confirmed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     confirmed_at TIMESTAMPTZ,

@@ -52,6 +52,26 @@ func New(
 	}, nil
 }
 
+func From(
+	id uuid.UUID,
+	paymentID uuid.UUID,
+	userID uuid.UUID,
+	amountPenny uint64,
+	isConfirmed bool,
+	createdAt time.Time,
+	confirmedAt *time.Time,
+) *Payment {
+	return &Payment{
+		id:          id,
+		paymentID:   paymentID,
+		userID:      userID,
+		amountPenny: amountPenny,
+		isConfirmed: isConfirmed,
+		createdAt:   createdAt,
+		confirmedAt: confirmedAt,
+	}
+}
+
 func (p *Payment) Confirm() error {
 	if p.isConfirmed {
 		return ErrAlreadyConfirmed
