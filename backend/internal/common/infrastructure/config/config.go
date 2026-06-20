@@ -17,6 +17,7 @@ type Config struct {
 	Cache         Cache         `yaml:"cache"`
 	Authorization Authorization `yaml:"authorization"`
 	SMTP          SMTP          `yaml:"smtp"`
+	Yookassa      Yookassa      `json:"yookassa"`
 }
 
 type App struct {
@@ -87,6 +88,23 @@ type Authorization struct {
 		PublicKeyPath  string        `yaml:"public_key_path" validate:"required,file"`
 		PrivateKeyPath string        `yaml:"private_key_path" validate:"required,file"`
 	} `yaml:"jwt"`
+}
+
+type Yookassa struct {
+	BaseURL string `yaml:"base_url" validate:"required,url"`
+	Auth    struct {
+		ShopID    string `yaml:"shop_id" validate:"required"`
+		SecretKey string `yaml:"secret_key" validate:"required"`
+	} `yaml:"auth"`
+	Creates struct {
+		Capture      bool   `yaml:"capture"`
+		Currency     string `yaml:"currency" validate:"required,oneof=RUB EUR USD"`
+		Confirmation struct {
+			Type      string `yaml:"type" validate:"required"`
+			ReturnURL string `yaml:"return_url" validate:"required,url"`
+		} `yaml:"confirmation"`
+	} `yaml:"creates"`
+	TrustedIps []string `yaml:"trusted_ips" validate:"required"`
 }
 
 type SMTP struct {

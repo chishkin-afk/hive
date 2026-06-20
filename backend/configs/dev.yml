@@ -52,6 +52,27 @@ authorization:
     private_key_path: ${JWT_PRIVATE_PATH}
     public_key_path: ${JWT_PUBLIC_PATH}
 
+yookassa:
+  base_url: https://api.yookassa.ru
+  auth: 
+    shop_id: ${YOOKASSA_SHOP_ID}
+    secret_key: ${YOOKASSA_SECRET_KEY}
+  creates:
+    capture: true
+    currency: RUB
+    confirmation:
+      type: redirect
+      return_url: http://localhost:8090/
+  trusted_ips:
+  - 185.71.76.0
+  - 77.75.153.78
+  - 185.71.77.0
+  - 77.75.153.0
+  - 77.75.156.11
+  - 77.75.156.35
+  - 77.75.154.128
+  - "2a02:5180::"
+
 smtp:
   host: smtp.yandex.ru
   port: 587

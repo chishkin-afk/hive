@@ -12,4 +12,5 @@ var (
 	ErrInvalidLimit          = errors.New("invalid limit")
 	ErrUserNotPaid           = errors.New("user not paid")
 	ErrInvalidTimeForBooking = errors.New("invalid time for booking")
+	ErrInvalidAmount         = errors.New("invalid amount of payment")
 )
