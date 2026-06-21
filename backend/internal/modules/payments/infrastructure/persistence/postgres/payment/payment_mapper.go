@@ -8,9 +8,9 @@ func paymentToRecord(payment *payment.Payment) *paymentRecord {
 		PaymentID:   payment.PaymentID(),
 		UserID:      payment.UserID(),
 		AmountPenny: payment.AmountPenny(),
-		IsConfirmed: payment.IsConfirmed(),
+		StatusInt:   payment.Status().Value().Int(),
 		CreatedAt:   payment.CreatedAt(),
-		ConfirmedAt: payment.ConfirmedAt(),
+		UpdatedAt:   payment.UpdatedAt(),
 	}
 }
 
@@ -20,8 +20,7 @@ func recordToPayment(record *paymentRecord) *payment.Payment {
 		record.PaymentID,
 		record.UserID,
 		record.AmountPenny,
-		record.IsConfirmed,
-		record.CreatedAt,
-		record.ConfirmedAt,
+		payment.FromStatus(record.StatusInt),
+		record.CreatedAt
 	)
 }

@@ -11,6 +11,7 @@ var (
 	ErrEmptyPaymentID   = errors.New("payment's id is empty")
 	ErrEmptyUserID      = errors.New("user's id is empty")
 	ErrInvalidAmount    = errors.New("invalid amount")
+	ErrAlreadyCancelled = errors.New("payment is already cancelled")
 	ErrAlreadyConfirmed = errors.New("payment is already confirmed")
 )
 
@@ -19,9 +20,9 @@ type Payment struct {
 	paymentID   uuid.UUID
 	userID      uuid.UUID
 	amountPenny uint64
-	isConfirmed bool
+	status      Status
 	createdAt   time.Time
-	confirmedAt *time.Time
+	updatedAt   time.Time
 }
 
 func New(
@@ -47,8 +48,9 @@ func New(
 		paymentID:   paymentID,
 		userID:      userID,
 		amountPenny: amountPenny,
-		isConfirmed: false,
+		status:      NewStatus(StatusPending),
 		createdAt:   now,
+		updatedAt:   now,
 	}, nil
 }
 
@@ -57,29 +59,39 @@ func From(
 	paymentID uuid.UUID,
 	userID uuid.UUID,
 	amountPenny uint64,
-	isConfirmed bool,
+	status Status,
 	createdAt time.Time,
-	confirmedAt *time.Time,
+	updatedAt time.Time,
 ) *Payment {
 	return &Payment{
 		id:          id,
 		paymentID:   paymentID,
 		userID:      userID,
 		amountPenny: amountPenny,
-		isConfirmed: isConfirmed,
+		status:      status,
 		createdAt:   createdAt,
-		confirmedAt: confirmedAt,
+		updatedAt:   updatedAt,
 	}
 }
 
 func (p *Payment) Confirm() error {
-	if p.isConfirmed {
+	if p.status.Value() == StatusConfirmed {
 		return ErrAlreadyConfirmed
 	}
 
-	now := time.Now().UTC()
-	p.isConfirmed = true
-	p.confirmedAt = &now
+	p.status = NewStatus(StatusConfirmed)
+	p.updatedAt = time.Now().UTC()
+
+	return nil
+}
+
+func (p *Payment) Cancel() error {
+	if p.status.Value() == StatusCancelled {
+		return ErrAlreadyCancelled
+	}
+
+	p.status = NewStatus(StatusCancelled)
+	p.updatedAt = time.Now().UTC()
 
 	return nil
 }
@@ -100,14 +112,14 @@ func (p *Payment) AmountPenny() uint64 {
 	return p.amountPenny
 }
 
-func (p *Payment) IsConfirmed() bool {
-	return p.isConfirmed
+func (p *Payment) Status() Status {
+	return p.status
 }
 
 func (p *Payment) CreatedAt() time.Time {
 	return p.createdAt
 }
 
-func (p *Payment) ConfirmedAt() *time.Time {
-	return p.confirmedAt
+func (p *Payment) UpdatedAt() time.Time {
+	return p.updatedAt
 }

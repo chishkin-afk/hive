@@ -11,7 +11,7 @@ type paymentRecord struct {
 	PaymentID   uuid.UUID
 	UserID      uuid.UUID
 	AmountPenny uint64
-	IsConfirmed bool
+	StatusInt   int
 	CreatedAt   time.Time
-	ConfirmedAt *time.Time
+	UpdatedAt   time.Time
 }
