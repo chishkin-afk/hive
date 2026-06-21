@@ -32,8 +32,8 @@ func New(cfg *config.Config, log *slog.Logger, client *http.Client) *yookassaCli
 	}
 }
 
-func (yc *yookassaClient) CreatePayment(ctx context.Context, userID uuid.UUID, paidDays uint64, amountPenny uint64) (*payment.Payment, error) {
-	req, err := yc.buildCreateRequest(ctx, yc.createRequestBody(userID, paidDays, amountPenny))
+func (yc *yookassaClient) CreatePayment(ctx context.Context, userID, rateID uuid.UUID, amountPenny uint64) (*payment.Payment, error) {
+	req, err := yc.buildCreateRequest(ctx, yc.createRequestBody(userID, rateID, amountPenny))
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (yc *yookassaClient) mapResponse(response *CreatePaymentResponse, amount ui
 	)
 }
 
-func (yc *yookassaClient) createRequestBody(userID uuid.UUID, paidDays uint64, amount uint64) *CreatePaymentRequest {
+func (yc *yookassaClient) createRequestBody(userID, rateID uuid.UUID, amount uint64) *CreatePaymentRequest {
 	return &CreatePaymentRequest{
 		Amount: Amount{
 			Value:    fmt.Sprintf("%.2f", float64(amount)/100.0),
@@ -158,8 +158,8 @@ func (yc *yookassaClient) createRequestBody(userID uuid.UUID, paidDays uint64, a
 			ReturnURL: yc.cfg.Yookassa.Creates.Confirmation.ReturnURL,
 		},
 		Metadata: Metadata{
-			UserID:   userID.String(),
-			PaidDays: int(paidDays),
+			UserID: userID.String(),
+			RateID: rateID.String(),
 		},
 		Description: fmt.Sprintf("user:%s", userID.String()),
 	}

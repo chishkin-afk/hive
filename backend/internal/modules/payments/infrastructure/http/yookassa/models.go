@@ -11,8 +11,8 @@ type CreatePaymentRequest struct {
 }
 
 type Metadata struct {
-	UserID   string `json:"user_id"`
-	PaidDays int    `json:"paid_days"`
+	UserID string `json:"user_id"`
+	RateID string `json:"rate_id"`
 }
 
 type Confirmation struct {
