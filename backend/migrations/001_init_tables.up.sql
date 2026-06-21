@@ -79,11 +79,19 @@ CREATE TABLE IF NOT EXISTS payments_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     payment_id UUID NOT NULL, 
     user_id UUID NOT NULL,
-    amount_penny BIGINT NOT NULL,
-    is_confirmed BOOLEAN DEFAULT FALSE,
+    amount_penny BIGINT NOT NULL DEFAULT 0,
+    status_int INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    confirmed_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_payments_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+-- RATES TABLE
+CREATE TABLE IF NOT EXISTS rates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(64) NOT NULL,
+    amount_penny BIGINT NOT NULL DEFAULT 0,
+    paid_days INTEGER DEFAULT 0
 );
 
 -- TRIGGER: ENSURE OFFER ACTIVE (FIXED & IDEMPOTENT)
