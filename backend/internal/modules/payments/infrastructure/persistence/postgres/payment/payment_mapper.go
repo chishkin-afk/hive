@@ -21,6 +21,7 @@ func recordToPayment(record *paymentRecord) *payment.Payment {
 		record.UserID,
 		record.AmountPenny,
 		payment.FromStatus(record.StatusInt),
-		record.CreatedAt
+		record.CreatedAt,
+		record.UpdatedAt,
 	)
 }

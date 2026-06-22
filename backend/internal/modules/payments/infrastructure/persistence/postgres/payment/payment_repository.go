@@ -36,10 +36,10 @@ func (ppr *paymentPersistenceRepository) GetByID(ctx context.Context, paymentID 
 	panic("not impl")
 }
 
-func (ppr *paymentPersistenceRepository) ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*payment.Payment, error) {
+func (ppr *paymentPersistenceRepository) ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*payment.Payment, int64, error) {
 	panic("not impl")
 }
 
-func (ppr *paymentPersistenceRepository) Update(ctx context.Context, paymentID uuid.UUID, updFunc payment.UpdateFunc) (*payment.Payment, error) {
+func (ppr *paymentPersistenceRepository) Update(ctx context.Context, paymentID, userID uuid.UUID, updFunc payment.UpdateFunc) (*payment.Payment, error) {
 	panic("not impl")
 }
