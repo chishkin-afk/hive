@@ -15,6 +15,7 @@ type HandlerFuncs struct {
 	clientService   clientService
 	scheduleService scheduleService
 	bookingService  bookingService
+	paymentService  paymentService
 }
 
 func (h *HandlerFuncs) parsePagination(ctx *gin.Context) (uint32, uint32, error) {

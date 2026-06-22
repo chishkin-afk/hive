@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"net/http"
 	"os"
 
 	redisconnect "github.com/devathh/hive/backend/internal/common/infrastructure/cache/redis"
@@ -26,6 +27,10 @@ import (
 	offerservices "github.com/devathh/hive/backend/internal/modules/offers/application/services"
 	offerredis "github.com/devathh/hive/backend/internal/modules/offers/infrastructure/cache/redis/offer"
 	offerpg "github.com/devathh/hive/backend/internal/modules/offers/infrastructure/persistence/postgres/offer"
+	paymentservices "github.com/devathh/hive/backend/internal/modules/payments/application/services"
+	"github.com/devathh/hive/backend/internal/modules/payments/infrastructure/http/yookassa"
+	paymentpg "github.com/devathh/hive/backend/internal/modules/payments/infrastructure/persistence/postgres/payment"
+	ratepg "github.com/devathh/hive/backend/internal/modules/payments/infrastructure/persistence/postgres/rate"
 	scheduleservices "github.com/devathh/hive/backend/internal/modules/schedules/application/services"
 	scheduleredis "github.com/devathh/hive/backend/internal/modules/schedules/infrastructure/cache/redis/schedule"
 	schedulepg "github.com/devathh/hive/backend/internal/modules/schedules/infrastructure/persistence/postgres/schedule"
@@ -51,6 +56,7 @@ type DIContainer struct {
 	clientService   *clientservices.ClientService
 	scheduleService *scheduleservices.ScheduleService
 	bookingService  *bookingservices.BookingService
+	paymentService  *paymentservices.PaymentService
 
 	smtpClient *smtpinfra.SMTPClient
 }
@@ -145,6 +151,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 			di.ClientService(),
 			di.ScheduleService(),
 			di.BookingService(),
+			di.PaymentService(),
 			middlewares.NewAuthMiddleware(di.JWT(), map[string]bool{
 				"GET:/api/v1/auth/user":                 true,
 				"PATCH:/api/v1/auth/user":               true,
@@ -262,4 +269,18 @@ func (di *DIContainer) BookingService() *bookingservices.BookingService {
 	}
 
 	return di.bookingService
+}
+
+func (di *DIContainer) PaymentService() *paymentservices.PaymentService {
+	if di.paymentService == nil {
+		di.paymentService = paymentservices.New(
+			di.Cfg(),
+			di.Log(),
+			ratepg.New(di.Log(), di.PG()),
+			paymentpg.New(di.Log(), di.PG()),
+			yookassa.New(di.Cfg(), di.Log(), http.DefaultClient),
+		)
+	}
+
+	return di.paymentService
 }

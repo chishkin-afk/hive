@@ -11,6 +11,7 @@ func New(cfg *config.Config,
 	clientService clientService,
 	scheduleService scheduleService,
 	bookingService bookingService,
+	paymentService paymentService,
 	mws ...gin.HandlerFunc) *gin.Engine {
 	router := getRouter(cfg)
 	router.Use(mws...)
@@ -21,6 +22,7 @@ func New(cfg *config.Config,
 		clientService:   clientService,
 		scheduleService: scheduleService,
 		bookingService:  bookingService,
+		paymentService:  paymentService,
 	}
 
 	api := router.Group("/api")
@@ -70,6 +72,15 @@ func New(cfg *config.Config,
 				bookings.GET("/booking/:id", funcs.GetBookingByID())
 				bookings.GET("/bookings", funcs.ListBookings())       // ?limit=&page=&offer_id=?
 				bookings.GET("/slots/:offerID", funcs.GetFreeSlots()) // ?date=2026-06-18
+			}
+
+			payments := v1.Group("/payments")
+			{
+				payments.POST("/payment", funcs.CreatePayment())
+				payments.GET("/payments", funcs.ListPayments()) // ?page=&limit=
+				payments.GET("/payment/:id", funcs.GetPaymentByID())
+				payments.GET("/rates", funcs.ListAllRates())
+				payments.GET("/rate/:id", funcs.GetRateByID())
 			}
 		}
 	}
