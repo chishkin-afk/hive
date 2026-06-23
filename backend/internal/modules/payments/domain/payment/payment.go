@@ -86,11 +86,11 @@ func (p *Payment) Confirm() error {
 }
 
 func (p *Payment) Cancel() error {
-	if p.status.Value() == StatusCancelled {
+	if p.status.Value() == StatusCanceled {
 		return ErrAlreadyCancelled
 	}
 
-	p.status = NewStatus(StatusCancelled)
+	p.status = NewStatus(StatusCanceled)
 	p.updatedAt = time.Now().UTC()
 
 	return nil

@@ -13,6 +13,7 @@ type UpdateFunc func(ctx context.Context, paidUntil time.Time, payment *Payment)
 type PaymentPersistenceRepository interface {
 	Save(ctx context.Context, payment *Payment) (*Payment, error)
 	GetByID(ctx context.Context, paymentID uuid.UUID) (*Payment, error)
+	GetByPaymentID(ctx context.Context, paymentID uuid.UUID) (*Payment, error)
 	ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*Payment, int64, error)
 	Update(ctx context.Context, paymentID, userID uuid.UUID, updFunc UpdateFunc) (*Payment, error)
 }

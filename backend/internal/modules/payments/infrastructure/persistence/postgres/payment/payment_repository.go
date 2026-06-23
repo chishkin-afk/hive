@@ -109,6 +109,38 @@ func (ppr *paymentPersistenceRepository) buildSelectQueryByID(id uuid.UUID) (str
 	).From("payments_history").Where("id = ?", id).ToSql()
 }
 
+func (ppr *paymentPersistenceRepository) GetByPaymentID(ctx context.Context, paymentID uuid.UUID) (*payment.Payment, error) {
+	ppr.log.Debug("build the select query by payment's id", slog.String("payment_id", paymentID.String()))
+	query, args, err := ppr.buildSelectQueryByPaymentID(paymentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build select query: %w", err)
+	}
+
+	ppr.log.Debug("exec the select by id query", slog.String("query", query))
+	record, err := ppr.mapRow(ppr.db.QueryRowContext(ctx, query, args...))
+	if err != nil {
+		if safeErr, ok := ppr.handleError(err); ok {
+			return nil, safeErr
+		}
+
+		return nil, fmt.Errorf("failed to get payment by id from db: %w", err)
+	}
+
+	return recordToPayment(record), nil
+}
+
+func (ppr *paymentPersistenceRepository) buildSelectQueryByPaymentID(id uuid.UUID) (string, []any, error) {
+	return ppr.sqlBuilder.Select(
+		"id",
+		"payment_id",
+		"user_id",
+		"amount_penny",
+		"status_int",
+		"created_at",
+		"updated_at",
+	).From("payments_history").Where("payment_id = ?", id).ToSql()
+}
+
 func (ppr *paymentPersistenceRepository) ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*payment.Payment, int64, error) {
 	ppr.log.Debug("build count query", slog.String("user_id", userID.String()))
 	countQuery, countArgs, err := ppr.buildCountQuery(userID)
@@ -159,7 +191,7 @@ func (ppr *paymentPersistenceRepository) ListByUserID(ctx context.Context, userI
 }
 
 func (ppr *paymentPersistenceRepository) buildCountQuery(userID uuid.UUID) (string, []any, error) {
-	return ppr.sqlBuilder.Select("count(*)").From("payments_history").Where("user_id", userID).ToSql()
+	return ppr.sqlBuilder.Select("count(*)").From("payments_history").Where("user_id = ?", userID).ToSql()
 }
 
 func (ppr *paymentPersistenceRepository) buildListQuery(userID uuid.UUID, page, limit uint32) (string, []any, error) {
@@ -172,7 +204,7 @@ func (ppr *paymentPersistenceRepository) buildListQuery(userID uuid.UUID, page, 
 		"status_int",
 		"created_at",
 		"updated_at",
-	).From("payments_history").Limit(uint64(limit)).Offset(uint64(offset)).Where("user_id = ?", userID).ToSql()
+	).From("payments_history").Limit(uint64(limit)).Offset(uint64(offset)).Where("user_id = ?", userID).OrderBy("created_at DESC").ToSql()
 }
 
 // TODO: refactor all this payment
@@ -288,7 +320,7 @@ func (ppr *paymentPersistenceRepository) buildSelectQueryForUpdate(id uuid.UUID)
 		"status_int",
 		"created_at",
 		"updated_at",
-	).From("payments_history").Where("id = ?", id).Suffix("FOR UPDATE").ToSql()
+	).From("payments_history").Where("payment_id = ?", id).Suffix("FOR UPDATE").ToSql()
 }
 
 func (ppr *paymentPersistenceRepository) buildSelectPaidUntilQuery(userID uuid.UUID) (string, []any, error) {

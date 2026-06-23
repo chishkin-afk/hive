@@ -6,11 +6,24 @@ const (
 	StatusUnknown status = iota
 	StatusPending
 	StatusConfirmed
-	StatusCancelled
+	StatusCanceled
 )
 
 func (s status) Int() int {
 	return int(s)
+}
+
+func (s status) String() string {
+	switch s {
+	case StatusPending:
+		return "pending"
+	case StatusConfirmed:
+		return "confirmed"
+	case StatusCanceled:
+		return "canceled"
+	}
+
+	return "unknown"
 }
 
 type Status struct {
@@ -22,7 +35,7 @@ func (s Status) Value() status {
 }
 
 func NewStatus(status status) Status {
-	if status < StatusUnknown || status > StatusCancelled {
+	if status < StatusUnknown || status > StatusCanceled {
 		status = StatusUnknown
 	}
 
@@ -33,7 +46,7 @@ func NewStatus(status status) Status {
 
 func FromStatus(raw int) Status {
 	status := status(raw)
-	if status < StatusUnknown || status > StatusCancelled {
+	if status < StatusUnknown || status > StatusCanceled {
 		status = StatusUnknown
 	}
 

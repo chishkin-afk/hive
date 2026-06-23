@@ -10,8 +10,13 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	EventSucceeded = "payment.succeeded"
+	EventCanceled  = "payment.canceled"
+)
+
 type paymentService interface {
-	Create(ctx context.Context, req *requests.CreatePayment) (*responses.Payment, error)
+	Create(ctx context.Context, req *requests.CreatePayment) (*responses.CreatedPayment, error)
 	Confirm(ctx context.Context, req *requests.ConfirmPayment) (*responses.Payment, error)
 	Cancel(ctx context.Context, req *requests.CancelPayment) (*responses.Payment, error)
 	ListByUserID(ctx context.Context, page, limit uint32) (*responses.Payments, error)
@@ -44,8 +49,58 @@ func (h *HandlerFuncs) CreatePayment() gin.HandlerFunc {
 
 func (h *HandlerFuncs) YookassaAction() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		panic("not impl")
+		var req requests.ConfirmPaymentYookassa
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		switch req.Event {
+		case EventCanceled:
+			h.cancelPayment(ctx, &requests.CancelPayment{
+				UserID:    req.Object.Metadata.UserID,
+				PaymentID: req.Object.PaymentID,
+			})
+			return
+		case EventSucceeded:
+			h.confirmPayment(ctx, &requests.ConfirmPayment{
+				UserID:    req.Object.Metadata.UserID,
+				PaymentID: req.Object.PaymentID,
+				RateID:    req.Object.Metadata.RateID,
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+			Error: "invalid event",
+		})
 	}
+}
+
+func (h *HandlerFuncs) confirmPayment(ctx *gin.Context, req *requests.ConfirmPayment) {
+	resp, err := h.paymentService.Confirm(ctx.Request.Context(), req)
+	if err != nil {
+		ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+			Error: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, resp)
+}
+
+func (h *HandlerFuncs) cancelPayment(ctx *gin.Context, req *requests.CancelPayment) {
+	resp, err := h.paymentService.Cancel(ctx.Request.Context(), req)
+	if err != nil {
+		ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+			Error: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, resp)
 }
 
 func (h *HandlerFuncs) ListPayments() gin.HandlerFunc {
@@ -72,7 +127,7 @@ func (h *HandlerFuncs) ListPayments() gin.HandlerFunc {
 
 func (h *HandlerFuncs) GetPaymentByID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		id, err := uuid.Parse("id")
+		id, err := uuid.Parse(ctx.Param("id"))
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
 				Error: "invalid id of payment",
@@ -108,7 +163,7 @@ func (h *HandlerFuncs) ListAllRates() gin.HandlerFunc {
 
 func (h *HandlerFuncs) GetRateByID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		id, err := uuid.Parse("id")
+		id, err := uuid.Parse(ctx.Param("id"))
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
 				Error: "invalid id of rate",

@@ -17,7 +17,7 @@ import (
 )
 
 type YookassaClient interface {
-	CreatePayment(ctx context.Context, userID, rateID uuid.UUID, amountPenny uint64) (*payment.Payment, error)
+	CreatePayment(ctx context.Context, userID, rateID uuid.UUID, amountPenny uint64) (*payment.Payment, string, error)
 	GetStatus(ctx context.Context, paymentID uuid.UUID) (string, error)
 }
 
@@ -47,7 +47,7 @@ func New(
 
 // Create creates an unconfirmed payment in the system (in the pending status)
 // and waits for it to be confirmed by the cash register
-func (ps *PaymentService) Create(ctx context.Context, req *requests.CreatePayment) (*responses.Payment, error) {
+func (ps *PaymentService) Create(ctx context.Context, req *requests.CreatePayment) (*responses.CreatedPayment, error) {
 	userID, err := ps.getUserID(ctx)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (ps *PaymentService) Create(ctx context.Context, req *requests.CreatePaymen
 		return nil, err
 	}
 
-	yookassaPayment, err := ps.createPayment(ctx, userID, rate)
+	yookassaPayment, url, err := ps.createPayment(ctx, userID, rate)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,14 @@ func (ps *PaymentService) Create(ctx context.Context, req *requests.CreatePaymen
 		return nil, err
 	}
 
-	return ps.paymentToDTO(savedPayment), nil
+	return ps.createdPaymentToDTO(savedPayment, url), nil
+}
+
+func (ps *PaymentService) createdPaymentToDTO(payment *payment.Payment, url string) *responses.CreatedPayment {
+	return &responses.CreatedPayment{
+		Payment: ps.paymentToDTO(payment),
+		URL:     url,
+	}
 }
 
 // Confirm changes the status of an existing transaction
@@ -255,7 +262,7 @@ func (ps *PaymentService) listPaymentsFromPersistence(ctx context.Context, userI
 
 func (ps *PaymentService) cancelPayment(ctx context.Context, req *requests.CancelPayment) (*payment.Payment, error) {
 	updFunc := func(ctx context.Context, paidUntil time.Time, payment *payment.Payment) (time.Time, error) {
-		status, err := ps.getYookassaStatus(ctx, payment.ID())
+		status, err := ps.getYookassaStatus(ctx, payment.PaymentID())
 		if err != nil {
 			return time.Time{}, err
 		}
@@ -276,7 +283,7 @@ func (ps *PaymentService) cancelPayment(ctx context.Context, req *requests.Cance
 
 func (ps *PaymentService) confirmPayment(ctx context.Context, req *requests.ConfirmPayment) (*payment.Payment, error) {
 	updFunc := func(ctx context.Context, paidUntil time.Time, payment *payment.Payment) (time.Time, error) {
-		status, err := ps.getYookassaStatus(ctx, payment.ID())
+		status, err := ps.getYookassaStatus(ctx, payment.PaymentID())
 		if err != nil {
 			return time.Time{}, err
 		}
@@ -335,12 +342,14 @@ func (ps *PaymentService) getYookassaStatus(ctx context.Context, paymentID uuid.
 
 func (ps *PaymentService) paymentToDTO(payment *payment.Payment) *responses.Payment {
 	return &responses.Payment{
-		ID:          payment.ID(),
-		PaymentID:   payment.PaymentID(),
-		UserID:      payment.UserID(),
-		AmountPenny: payment.AmountPenny(),
-		CreatedAt:   payment.CreatedAt().Unix(),
-		UpdatedAt:   payment.UpdatedAt().Unix(),
+		ID:           payment.ID(),
+		PaymentID:    payment.PaymentID(),
+		UserID:       payment.UserID(),
+		AmountPenny:  payment.AmountPenny(),
+		StatusString: payment.Status().Value().String(),
+		StatusInt:    payment.Status().Value().Int(),
+		CreatedAt:    payment.CreatedAt().Unix(),
+		UpdatedAt:    payment.UpdatedAt().Unix(),
 	}
 }
 
@@ -358,8 +367,8 @@ func (ps *PaymentService) storePaymentPersistence(ctx context.Context, payment *
 	return savedPayment, nil
 }
 
-func (ps *PaymentService) createPayment(ctx context.Context, userID uuid.UUID, rate *rate.Rate) (*payment.Payment, error) {
-	payment, err := ps.yookassaClient.CreatePayment(ctx, userID, rate.ID(), rate.AmountPenny())
+func (ps *PaymentService) createPayment(ctx context.Context, userID uuid.UUID, rate *rate.Rate) (*payment.Payment, string, error) {
+	payment, url, err := ps.yookassaClient.CreatePayment(ctx, userID, rate.ID(), rate.AmountPenny())
 	if err != nil {
 		ps.log.Error("failed to create payment on yookassa",
 			slog.String("error", err.Error()),
@@ -367,14 +376,14 @@ func (ps *PaymentService) createPayment(ctx context.Context, userID uuid.UUID, r
 			slog.String("user_id", userID.String()),
 		)
 
-		return nil, ps.handleRepoError(err)
+		return nil, "", ps.handleRepoError(err)
 	}
 
-	return payment, nil
+	return payment, url, nil
 }
 
 func (ps *PaymentService) getRateFromPersistence(ctx context.Context, rateID uuid.UUID) (*rate.Rate, error) {
-	rate, err := ps.getRateFromPersistence(ctx, rateID)
+	rate, err := ps.ratePersistence.GetByID(ctx, rateID)
 	if err != nil {
 		ps.log.Error("failed to get rate from persistence",
 			slog.String("error", err.Error()),

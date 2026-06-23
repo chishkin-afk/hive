@@ -32,22 +32,22 @@ func New(cfg *config.Config, log *slog.Logger, client *http.Client) *yookassaCli
 	}
 }
 
-func (yc *yookassaClient) CreatePayment(ctx context.Context, userID, rateID uuid.UUID, amountPenny uint64) (*payment.Payment, error) {
+func (yc *yookassaClient) CreatePayment(ctx context.Context, userID, rateID uuid.UUID, amountPenny uint64) (*payment.Payment, string, error) {
 	req, err := yc.buildCreateRequest(ctx, yc.createRequestBody(userID, rateID, amountPenny))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	yc.log.Debug("do http request to create payment", slog.String("user_id", userID.String()))
 	resp, err := yc.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to do request: %w", err)
+		return nil, "", fmt.Errorf("failed to do request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	response, err := yc.parseCreateResponse(resp)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	return yc.mapResponse(response, amountPenny, userID)
@@ -138,12 +138,17 @@ func (yc *yookassaClient) buildCreateRequest(ctx context.Context, raw *CreatePay
 	return req, nil
 }
 
-func (yc *yookassaClient) mapResponse(response *CreatePaymentResponse, amount uint64, userID uuid.UUID) (*payment.Payment, error) {
-	return payment.New(
+func (yc *yookassaClient) mapResponse(response *CreatePaymentResponse, amount uint64, userID uuid.UUID) (*payment.Payment, string, error) {
+	payment, err := payment.New(
 		response.ID,
 		userID,
 		amount,
 	)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return payment, response.Confirmation.ConfirmationURL, nil
 }
 
 func (yc *yookassaClient) createRequestBody(userID, rateID uuid.UUID, amount uint64) *CreatePaymentRequest {

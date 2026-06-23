@@ -85,7 +85,7 @@ func preparedToUser(prepared *preparedUserRecord) *user.User {
 		prepared.User.Lastname,
 		user.Email(prepared.User.ConfirmedEmail),
 		user.PhoneNumber(prepared.User.PhoneNumber),
-		"",
+		user.PasswordHash(prepared.User.PasswordHash),
 		prepared.User.PaidUntil,
 		prepared.User.OnVacation,
 		prepared.User.TgChatID,

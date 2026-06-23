@@ -109,10 +109,10 @@ func (rpr *ratePersistenceRepository) mapRows(rows *sql.Rows) ([]*rateRecord, er
 	for rows.Next() {
 		var record rateRecord
 		if err := rows.Scan(
-			record.ID,
-			record.Name,
-			record.AmountPenny,
-			record.PaidDays,
+			&record.ID,
+			&record.Name,
+			&record.AmountPenny,
+			&record.PaidDays,
 		); err != nil {
 			return nil, err
 		}
@@ -130,10 +130,10 @@ func (rpr *ratePersistenceRepository) mapRows(rows *sql.Rows) ([]*rateRecord, er
 func (rpr *ratePersistenceRepository) mapRow(row *sql.Row) (*rateRecord, error) {
 	var record rateRecord
 	if err := row.Scan(
-		record.ID,
-		record.Name,
-		record.AmountPenny,
-		record.PaidDays,
+		&record.ID,
+		&record.Name,
+		&record.AmountPenny,
+		&record.PaidDays,
 	); err != nil {
 		return nil, err
 	}
