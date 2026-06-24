@@ -87,12 +87,7 @@ func (rpr *ratePersistenceRepository) ListAll(ctx context.Context) ([]*rate.Rate
 		return nil, fmt.Errorf("failed to map rows: %w", err)
 	}
 
-	rates := make([]*rate.Rate, len(records))
-	for i, record := range records {
-		rates[i] = recordToRate(record)
-	}
-
-	return rates, nil
+	return recordsToRates(records), nil
 }
 
 func (rpr *ratePersistenceRepository) buildListQuery() (string, []any, error) {

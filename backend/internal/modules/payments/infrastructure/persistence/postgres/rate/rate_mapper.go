@@ -10,3 +10,12 @@ func recordToRate(record *rateRecord) *rate.Rate {
 		record.PaidDays,
 	)
 }
+
+func recordsToRates(records []*rateRecord) []*rate.Rate {
+	rates := make([]*rate.Rate, len(records))
+	for i, record := range records {
+		rates[i] = recordToRate(record)
+	}
+
+	return rates
+}
