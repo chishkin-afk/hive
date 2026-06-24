@@ -12,18 +12,23 @@ import (
 
 type Config struct {
 	App           App           `yaml:"app"`
+	Service       Service       `taml:"service"`
 	Server        Server        `yaml:"server"`
 	Persistence   Persistence   `yaml:"persistence"`
 	Cache         Cache         `yaml:"cache"`
 	Authorization Authorization `yaml:"authorization"`
 	SMTP          SMTP          `yaml:"smtp"`
-	Yookassa      Yookassa      `json:"yookassa"`
+	Yookassa      Yookassa      `yaml:"yookassa"`
 }
 
 type App struct {
 	Name    string `yaml:"name" validate:"required"`
 	Version string `yaml:"version" validate:"required,semver"`
 	Env     string `yaml:"env" validate:"required,oneof=dev staging prod"`
+}
+
+type Service struct {
+	TrialPeriod int `yaml:"trial_period_days" validate:"required,gte=1"`
 }
 
 type Server struct {
@@ -33,8 +38,8 @@ type Server struct {
 		// if enable is true
 		TLS struct {
 			Enable         bool   `yaml:"enable"`
-			ServerCertPath string `yaml:"server_cert_path" validate:"required,omitempty"`
-			ServerKeyPath  string `yaml:"server_key_path" validate:"required,omitempty"`
+			ServerCertPath string `yaml:"server_cert_path" validate:"omitempty"`
+			ServerKeyPath  string `yaml:"server_key_path" validate:"omitempty"`
 		} `yaml:"tls"`
 	} `yaml:"http"`
 	Conns struct {

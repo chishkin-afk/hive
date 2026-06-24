@@ -3,6 +3,9 @@ app:
   version: 0.0.2
   env: ${APP_ENV}
 
+service:
+  trial_period_days: 14
+
 server:
   http:
     addr: localhost:8090

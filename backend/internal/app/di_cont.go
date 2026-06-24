@@ -170,6 +170,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 				"POST:/api/v1/payments/payment":         true,
 				"GET:/api/v1/payments/payments":         true,
 				"GET:/api/v1/payments/payment/:id":      true,
+				"PATCH:/api/v1/payments/take-trial":     true,
 			}),
 		)
 	}

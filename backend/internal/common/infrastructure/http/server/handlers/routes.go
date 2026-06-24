@@ -82,6 +82,7 @@ func New(cfg *config.Config,
 				payments.GET("/rates", funcs.ListAllRates())
 				payments.GET("/rate/:id", funcs.GetRateByID())
 				payments.POST("/yookassa", funcs.YookassaAction())
+				payments.PATCH("/take-trial", funcs.TakeTrial())
 			}
 		}
 	}

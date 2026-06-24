@@ -163,6 +163,37 @@ func (ps *PaymentService) GetRateByID(ctx context.Context, id uuid.UUID) (*respo
 	return ps.rateToDTO(rate), nil
 }
 
+// TakeTrial is a method that add trial days to user (if trial used is false)
+func (ps *PaymentService) TakeTrial(ctx context.Context) error {
+	userID, err := ps.getUserID(ctx)
+	if err != nil {
+		return err
+	}
+
+	return ps.takeTrial(ctx, userID)
+}
+
+func (ps *PaymentService) takeTrial(ctx context.Context, userID uuid.UUID) error {
+	updFunc := func(ctx context.Context, paidUntil time.Time, trialUsed bool) (time.Time, error) {
+		if trialUsed {
+			return time.Time{}, payment.ErrTrialAlreadyUsed
+		}
+
+		return ps.payUntil(ctx, paidUntil, uint32(ps.cfg.Service.TrialPeriod)), nil
+	}
+
+	if err := ps.paymentPersistence.TakeTrial(ctx, userID, updFunc); err != nil {
+		ps.log.Error("failed to take trial",
+			slog.String("error", err.Error()),
+			slog.String("user_id", userID.String()),
+		)
+
+		return ps.handleRepoError(err)
+	}
+
+	return nil
+}
+
 func (ps *PaymentService) ratesToDTO(rates []*rate.Rate) *responses.Rates {
 	response := responses.Rates{
 		List: make([]*responses.Rate, len(rates)),
@@ -422,6 +453,10 @@ func (ps *PaymentService) handleRepoError(err error) error {
 	case errors.Is(err, rate.ErrRateNotFound),
 		errors.Is(err, payment.ErrPaymentNotFound):
 		return errs.NewErrorWithKind(err, errs.KindNotFound)
+	case errors.Is(err, payment.ErrTrialAlreadyUsed),
+		errors.Is(err, payment.ErrAlreadyCancelled),
+		errors.Is(err, payment.ErrAlreadyConfirmed):
+		return errs.NewErrorWithKind(err, errs.KindConflict)
 	}
 
 	return errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)

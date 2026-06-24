@@ -23,6 +23,7 @@ type paymentService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*responses.Payment, error)
 	ListAllRates(ctx context.Context) (*responses.Rates, error)
 	GetRateByID(ctx context.Context, id uuid.UUID) (*responses.Rate, error)
+	TakeTrial(ctx context.Context) error
 }
 
 func (h *HandlerFuncs) CreatePayment() gin.HandlerFunc {
@@ -180,5 +181,18 @@ func (h *HandlerFuncs) GetRateByID() gin.HandlerFunc {
 		}
 
 		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *HandlerFuncs) TakeTrial() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		if err := h.paymentService.TakeTrial(ctx.Request.Context()); err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.Status(http.StatusNoContent)
 	}
 }
