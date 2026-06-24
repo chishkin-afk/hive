@@ -25,6 +25,7 @@ func toRecord(domain *user.User) (*userRecord, error) {
 		OnVacation:     domain.OnVacation(),
 		TgChatID:       domain.TgChatID(),
 		Notification:   bytes,
+		TrialUsed:      domain.TrialUsed(),
 		CreatedAt:      domain.CreatedAt(),
 		UpdatedAt:      domain.UpdatedAt(),
 	}, nil
@@ -47,6 +48,7 @@ func toDomain(record *userRecord) (*user.User, error) {
 		record.OnVacation,
 		record.TgChatID,
 		user.NewNotification(notification.TelegramEnable),
+		record.TrialUsed,
 		record.CreatedAt,
 		record.UpdatedAt,
 	), nil

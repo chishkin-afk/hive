@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     on_vacation BOOLEAN NOT NULL DEFAULT FALSE,
     tg_chat_id BIGINT,
     notification JSONB NOT NULL DEFAULT '{}'::jsonb,
+    trial_used BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

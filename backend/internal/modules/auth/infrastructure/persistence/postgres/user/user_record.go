@@ -17,6 +17,7 @@ type userRecord struct {
 	OnVacation     bool
 	TgChatID       int64
 	Notification   []byte
+	TrialUsed      bool
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

@@ -18,6 +18,7 @@ type User struct {
 	OnVacation   bool         `json:"on_vacation"`
 	TgChatID     int64        `json:"tg_chat_id"`
 	Notification Notification `json:"notification"`
+	TrialUsed    bool         `json:"trial_used"`
 	CreatedAt    int64        `json:"created_at"`
 	UpdatedAt    int64        `json:"updated_at"`
 }

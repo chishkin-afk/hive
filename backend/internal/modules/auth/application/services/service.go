@@ -272,6 +272,7 @@ func (as *AuthService) userToDTO(user *user.User) *responses.User {
 		Notification: responses.Notification{
 			TelegramEnable: user.Notification().IsTelegramEnable(),
 		},
+		TrialUsed: user.TrialUsed(),
 		CreatedAt: user.CreatedAt().Unix(),
 		UpdatedAt: user.UpdatedAt().Unix(),
 	}

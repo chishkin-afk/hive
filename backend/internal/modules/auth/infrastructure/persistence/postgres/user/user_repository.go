@@ -155,6 +155,7 @@ func (upr *userPersistenceRepository) mapRow(row *sql.Row) (*userRecord, error) 
 		&record.OnVacation,
 		&record.TgChatID,
 		&record.Notification,
+		&record.TrialUsed,
 		&record.CreatedAt,
 		&record.UpdatedAt,
 	); err != nil {
@@ -217,6 +218,7 @@ func (upr *userPersistenceRepository) buildSelectQuery() squirrel.SelectBuilder 
 		"on_vacation",
 		"tg_chat_id",
 		"notification",
+		"trial_used",
 		"created_at",
 		"updated_at",
 	).From("users")
@@ -234,6 +236,7 @@ func (upr *userPersistenceRepository) buildInsertQuery(record *userRecord) (stri
 		"on_vacation",
 		"tg_chat_id",
 		"notification",
+		"trial_used",
 		"created_at",
 		"updated_at",
 	).Values(
@@ -247,6 +250,7 @@ func (upr *userPersistenceRepository) buildInsertQuery(record *userRecord) (stri
 		record.OnVacation,
 		record.TgChatID,
 		record.Notification,
+		record.TrialUsed,
 		record.CreatedAt,
 		record.UpdatedAt,
 	).ToSql()

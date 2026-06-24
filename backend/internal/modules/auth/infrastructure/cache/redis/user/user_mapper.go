@@ -19,6 +19,7 @@ func domainToRecord(domain *user.User) ([]byte, error) {
 		Notification: notification{
 			TelegramEnable: domain.Notification().IsTelegramEnable(),
 		},
+		TrialUsed: domain.TrialUsed(),
 		CreatedAt: domain.CreatedAt(),
 		UpdatedAt: domain.UpdatedAt(),
 	})
@@ -41,6 +42,7 @@ func recordToDomain(bytes []byte) (*user.User, error) {
 		record.OnVacation,
 		record.TgChatID,
 		user.NewNotification(record.Notification.TelegramEnable),
+		record.TrialUsed,
 		record.CreatedAt,
 		record.UpdatedAt,
 	), nil
@@ -61,6 +63,7 @@ func domainToPreparedBytes(domain *user.User, generatedPassword string, code int
 			Notification: notification{
 				TelegramEnable: domain.Notification().IsTelegramEnable(),
 			},
+			TrialUsed: domain.TrialUsed(),
 			CreatedAt: domain.CreatedAt(),
 			UpdatedAt: domain.UpdatedAt(),
 		},
@@ -90,6 +93,7 @@ func preparedToUser(prepared *preparedUserRecord) *user.User {
 		prepared.User.OnVacation,
 		prepared.User.TgChatID,
 		user.NewNotification(prepared.User.Notification.TelegramEnable),
+		prepared.User.TrialUsed,
 		prepared.User.CreatedAt,
 		prepared.User.UpdatedAt,
 	)

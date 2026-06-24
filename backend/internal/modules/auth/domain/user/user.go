@@ -35,6 +35,7 @@ type User struct {
 	onVacation     bool
 	tgChatID       int64 // by default 0
 	notification   Notification
+	trialUsed      bool
 	createdAt      time.Time
 	updatedAt      time.Time
 }
@@ -85,6 +86,7 @@ func New(
 		onVacation:     false,
 		tgChatID:       0,
 		notification:   NewNotification(false),
+		trialUsed:      false,
 		createdAt:      now,
 		updatedAt:      now,
 	}, nil
@@ -100,6 +102,7 @@ func From(
 	onVacation bool,
 	tgChatID int64,
 	notification Notification,
+	trialUsed bool,
 	createdAt, updatedAt time.Time,
 ) *User {
 	return &User{
@@ -113,6 +116,7 @@ func From(
 		onVacation:     onVacation,
 		tgChatID:       tgChatID,
 		notification:   notification,
+		trialUsed:      trialUsed,
 		createdAt:      createdAt,
 		updatedAt:      updatedAt,
 	}
@@ -268,6 +272,10 @@ func (u *User) TgChatID() int64 {
 
 func (u *User) Notification() Notification {
 	return u.notification
+}
+
+func (u *User) TrialUsed() bool {
+	return u.trialUsed
 }
 
 func (u *User) CreatedAt() time.Time {

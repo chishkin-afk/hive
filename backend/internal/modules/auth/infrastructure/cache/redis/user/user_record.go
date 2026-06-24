@@ -17,6 +17,7 @@ type userRecord struct {
 	OnVacation     bool         `json:"on_vacation"`
 	TgChatID       int64        `json:"tg_chat_id"`
 	Notification   notification `json:"notification"`
+	TrialUsed      bool         `json:"trial_used"`
 	CreatedAt      time.Time    `json:"created_at"`
 	UpdatedAt      time.Time    `json:"updated_at"`
 }
