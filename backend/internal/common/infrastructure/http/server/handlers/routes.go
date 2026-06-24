@@ -29,7 +29,6 @@ func New(cfg *config.Config,
 	{
 		v1 := api.Group("/v1")
 		{
-			// TODO: add method to fill tg chat's id
 			auth := v1.Group("/auth")
 			{
 				auth.POST("/prepare", funcs.Prepare())

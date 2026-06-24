@@ -2,7 +2,7 @@ package responses
 
 import "github.com/google/uuid"
 
-type CreatedPayment struct {
+type UnconfirmedPayment struct {
 	Payment *Payment `json:"payment"`
 	URL     string   `json:"url"`
 }

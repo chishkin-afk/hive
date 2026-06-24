@@ -25,3 +25,12 @@ func recordToPayment(record *paymentRecord) *payment.Payment {
 		record.UpdatedAt,
 	)
 }
+
+func recordsToPayments(records []*paymentRecord) []*payment.Payment {
+	payments := make([]*payment.Payment, len(records))
+	for i, record := range records {
+		payments[i] = recordToPayment(record)
+	}
+
+	return payments
+}

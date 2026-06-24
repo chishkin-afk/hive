@@ -16,7 +16,7 @@ const (
 )
 
 type paymentService interface {
-	Create(ctx context.Context, req *requests.CreatePayment) (*responses.CreatedPayment, error)
+	Create(ctx context.Context, req *requests.CreatePayment) (*responses.UnconfirmedPayment, error)
 	Confirm(ctx context.Context, req *requests.ConfirmPayment) (*responses.Payment, error)
 	Cancel(ctx context.Context, req *requests.CancelPayment) (*responses.Payment, error)
 	ListByUserID(ctx context.Context, page, limit uint32) (*responses.Payments, error)
