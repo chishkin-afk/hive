@@ -30,3 +30,7 @@ type UpdateUser struct {
 type UpdateNotification struct {
 	TelegramEnable bool `json:"telegram_enable"`
 }
+
+type UpdateTgChatID struct {
+	TgChatID int64 `json:"tg_chat_id"`
+}

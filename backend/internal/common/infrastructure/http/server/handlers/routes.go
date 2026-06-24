@@ -36,6 +36,7 @@ func New(cfg *config.Config,
 				auth.POST("/confirm", funcs.Confirm())
 				auth.POST("/login", funcs.Login())
 				auth.PATCH("/user", funcs.UpdateUser())
+				auth.PATCH("/tg", funcs.UpdateTGChatID())
 				auth.GET("/user", funcs.GetSelfUser())
 			}
 

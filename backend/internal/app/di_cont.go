@@ -155,6 +155,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 			middlewares.NewAuthMiddleware(di.JWT(), map[string]bool{
 				"GET:/api/v1/auth/user":                 true,
 				"PATCH:/api/v1/auth/user":               true,
+				"PATCH:/api/v1/auth/tg":                 true,
 				"POST:/api/v1/offers/offer":             true,
 				"PATCH:/api/v1/offers/offer":            true,
 				"DELETE:/api/v1/offers/offer/:id":       true,

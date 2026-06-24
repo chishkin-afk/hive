@@ -195,6 +195,41 @@ func (as *AuthService) GetUserByID(ctx context.Context, userID uuid.UUID) (*resp
 	return as.userToDTO(user), nil
 }
 
+func (as *AuthService) UpdateTGChatID(ctx context.Context, req *requests.UpdateTgChatID) (*responses.User, error) {
+	userID, err := as.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	updUser, err := as.getUserFromPersistence(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.applyChangeTG(updUser, req.TgChatID); err != nil {
+		return nil, err
+	}
+
+	updatedUser, err := as.updateUserStore(ctx, updUser)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.clearUserCache(ctx, updatedUser.ID()); err != nil {
+		as.log.Warn("failed to clear user's cache", slog.String("error", err.Error()))
+	}
+
+	return as.userToDTO(updatedUser), nil
+}
+
+func (as *AuthService) applyChangeTG(user *user.User, tgChatID int64) error {
+	if err := user.ChangeTgChatID(tgChatID); err != nil {
+		return errs.NewErrorWithKind(err, errs.KindRequest)
+	}
+
+	return nil
+}
+
 func (as *AuthService) ensureEmailIsNew(ctx context.Context, rawEmail string) (user.Email, error) {
 	email, err := as.validateEmail(rawEmail)
 	if err != nil {
