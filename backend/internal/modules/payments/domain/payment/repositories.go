@@ -22,6 +22,12 @@ type PaymentPersistenceRepository interface {
 	TakeTrial(ctx context.Context, userID uuid.UUID, updFunc TakeTrialFunc) error
 }
 
+type PaymentCacheRepository interface {
+	SavePayment(ctx context.Context, payment *Payment) error
+	DeletePayment(ctx context.Context, id uuid.UUID) error
+	GetPayment(ctx context.Context, id uuid.UUID) (*Payment, error)
+}
+
 var (
 	ErrPaymentNotFound     = errors.New("payment not found")
 	ErrPaymentNotSucceeded = errors.New("payment isn't succeeded")

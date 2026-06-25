@@ -97,5 +97,5 @@ func getRouter(cfg *config.Config) *gin.Engine {
 		return router
 	}
 
-	return gin.New()
+	return gin.Default()
 }

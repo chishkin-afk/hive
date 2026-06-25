@@ -31,6 +31,7 @@ type PaymentService struct {
 	log                *slog.Logger
 	ratePersistence    rate.RatePersistenceRepository
 	paymentPersistence payment.PaymentPersistenceRepository
+	paymentCache       payment.PaymentCacheRepository
 	yookassaClient     YookassaClient
 }
 
@@ -39,6 +40,7 @@ func New(
 	log *slog.Logger,
 	ratePersistence rate.RatePersistenceRepository,
 	paymentPersistence payment.PaymentPersistenceRepository,
+	paymentCache payment.PaymentCacheRepository,
 	yookassaClient YookassaClient,
 ) *PaymentService {
 	return &PaymentService{
@@ -46,6 +48,7 @@ func New(
 		log:                log,
 		ratePersistence:    ratePersistence,
 		paymentPersistence: paymentPersistence,
+		paymentCache:       paymentCache,
 		yookassaClient:     yookassaClient,
 	}
 }
@@ -84,6 +87,13 @@ func (ps *PaymentService) Confirm(ctx context.Context, req *requests.ConfirmPaym
 		return nil, err
 	}
 
+	if err := ps.clearPaymentCache(ctx, updatedPayment.ID()); err != nil {
+		ps.log.Warn("failed to clear payment cache",
+			slog.String("error", err.Error()),
+			slog.String("payment_id", updatedPayment.ID().String()),
+		)
+	}
+
 	return ps.paymentToDTO(updatedPayment), nil
 }
 
@@ -92,6 +102,13 @@ func (ps *PaymentService) Cancel(ctx context.Context, req *requests.CancelPaymen
 	updatedPayment, err := ps.cancelPayment(ctx, req)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := ps.clearPaymentCache(ctx, updatedPayment.ID()); err != nil {
+		ps.log.Warn("failed to clear payment cache",
+			slog.String("error", err.Error()),
+			slog.String("payment_id", updatedPayment.ID().String()),
+		)
 	}
 
 	return ps.paymentToDTO(updatedPayment), nil
@@ -117,13 +134,20 @@ func (ps *PaymentService) ListByUserID(ctx context.Context, page, limit uint32) 
 	return ps.listToDTO(list, totalCount, page, limit), nil
 }
 
-// TODO: add cache
 // GetByID returns a specific transaction by its id.
 // It also checks for user authorship
 func (ps *PaymentService) GetByID(ctx context.Context, id uuid.UUID) (*responses.Payment, error) {
 	userID, err := ps.getUserID(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	if cachedPayment, ok := ps.getPaymentFromCache(ctx, id); ok {
+		if err := ps.checkReadRights(userID, cachedPayment); err != nil {
+			return nil, err
+		}
+
+		return ps.paymentToDTO(cachedPayment), nil
 	}
 
 	payment, err := ps.getPaymentFromPersistence(ctx, id)
@@ -135,7 +159,18 @@ func (ps *PaymentService) GetByID(ctx context.Context, id uuid.UUID) (*responses
 		return nil, err
 	}
 
+	if err := ps.storePaymentCache(ctx, payment); err != nil {
+		ps.log.Warn("failed to store payment into cache",
+			slog.String("error", err.Error()),
+			slog.String("payment_id", payment.ID().String()),
+		)
+	}
+
 	return ps.paymentToDTO(payment), nil
+}
+
+func (ps *PaymentService) storePaymentCache(ctx context.Context, payment *payment.Payment) error {
+	return ps.paymentCache.SavePayment(ctx, payment)
 }
 
 // TODO: add cache
@@ -340,6 +375,30 @@ func (ps *PaymentService) listToDTO(list []*payment.Payment, totalCount int64, p
 	}
 
 	return &response
+}
+
+func (ps *PaymentService) getPaymentFromCache(ctx context.Context, id uuid.UUID) (*payment.Payment, bool) {
+	cachedPayment, err := ps.paymentCache.GetPayment(ctx, id)
+	if err != nil {
+		if !errors.Is(err, payment.ErrPaymentNotFound) {
+			ps.log.Warn("failed to get payment from cache",
+				slog.String("error", err.Error()),
+				slog.String("payment_id", id.String()),
+			)
+		}
+
+		return nil, false
+	}
+
+	ps.log.Debug("payment has been taken from cache",
+		slog.String("payment_id", id.String()),
+	)
+
+	return cachedPayment, true
+}
+
+func (ps *PaymentService) clearPaymentCache(ctx context.Context, id uuid.UUID) error {
+	return ps.paymentCache.DeletePayment(ctx, id)
 }
 
 func (ps *PaymentService) getPaymentFromPersistence(ctx context.Context, id uuid.UUID) (*payment.Payment, error) {
