@@ -288,6 +288,7 @@ func (di *DIContainer) PaymentService() *paymentservices.PaymentService {
 			paymentpg.New(di.Log(), di.PG()),
 			paymentredis.New(di.Cfg(), di.Log(), di.Redis()),
 			yookassa.New(di.Cfg(), di.Log(), http.DefaultClient),
+			di.AuthService(),
 		)
 	}
 

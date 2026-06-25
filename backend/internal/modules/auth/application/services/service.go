@@ -222,6 +222,19 @@ func (as *AuthService) UpdateTGChatID(ctx context.Context, req *requests.UpdateT
 	return as.userToDTO(updatedUser), nil
 }
 
+func (as *AuthService) ClearUserCache(ctx context.Context, userID uuid.UUID) error {
+	if err := as.clearUserCache(ctx, userID); err != nil {
+		as.log.Error("failed to clear user's cache",
+			slog.String("error", err.Error()),
+			slog.String("user_id", userID.String()),
+		)
+
+		return as.handleRepoError(err)
+	}
+
+	return nil
+}
+
 func (as *AuthService) applyChangeTG(user *user.User, tgChatID int64) error {
 	if err := user.ChangeTgChatID(tgChatID); err != nil {
 		return errs.NewErrorWithKind(err, errs.KindRequest)

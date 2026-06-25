@@ -21,6 +21,10 @@ const (
 	statusCanceled  = "canceled"
 )
 
+type authService interface {
+	ClearUserCache(ctx context.Context, userID uuid.UUID) error
+}
+
 type YookassaClient interface {
 	CreatePayment(ctx context.Context, userID, rateID uuid.UUID, amountPenny uint64) (*payment.Payment, string, error)
 	GetStatus(ctx context.Context, paymentID uuid.UUID) (string, error)
@@ -34,6 +38,7 @@ type PaymentService struct {
 	paymentPersistence payment.PaymentPersistenceRepository
 	paymentCache       payment.PaymentCacheRepository
 	yookassaClient     YookassaClient
+	authService        authService
 }
 
 func New(
@@ -44,6 +49,7 @@ func New(
 	paymentPersistence payment.PaymentPersistenceRepository,
 	paymentCache payment.PaymentCacheRepository,
 	yookassaClient YookassaClient,
+	authService authService,
 ) *PaymentService {
 	return &PaymentService{
 		cfg:                cfg,
@@ -53,6 +59,7 @@ func New(
 		paymentPersistence: paymentPersistence,
 		paymentCache:       paymentCache,
 		yookassaClient:     yookassaClient,
+		authService:        authService,
 	}
 }
 
@@ -97,6 +104,13 @@ func (ps *PaymentService) Confirm(ctx context.Context, req *requests.ConfirmPaym
 		)
 	}
 
+	if err := ps.authService.ClearUserCache(ctx, updatedPayment.UserID()); err != nil {
+		ps.log.Warn("failed to clear user's cache after payment",
+			slog.String("error", err.Error()),
+			slog.String("user_id", updatedPayment.UserID().String()),
+		)
+	}
+
 	return ps.paymentToDTO(updatedPayment), nil
 }
 
@@ -111,6 +125,13 @@ func (ps *PaymentService) Cancel(ctx context.Context, req *requests.CancelPaymen
 		ps.log.Warn("failed to clear payment cache",
 			slog.String("error", err.Error()),
 			slog.String("payment_id", updatedPayment.ID().String()),
+		)
+	}
+
+	if err := ps.authService.ClearUserCache(ctx, updatedPayment.UserID()); err != nil {
+		ps.log.Warn("failed to clear user's cache after payment",
+			slog.String("error", err.Error()),
+			slog.String("user_id", updatedPayment.UserID().String()),
 		)
 	}
 
@@ -219,6 +240,13 @@ func (ps *PaymentService) TakeTrial(ctx context.Context) error {
 	userID, err := ps.getUserID(ctx)
 	if err != nil {
 		return err
+	}
+
+	if err := ps.authService.ClearUserCache(ctx, userID); err != nil {
+		ps.log.Warn("failed to clear user's cache after payment",
+			slog.String("error", err.Error()),
+			slog.String("user_id", userID.String()),
+		)
 	}
 
 	return ps.takeTrial(ctx, userID)
