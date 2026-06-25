@@ -41,6 +41,7 @@ cache:
   schedules_ttl: 5m
   booking_ttl: 5m
   payment_ttl: 5m
+  rate_ttl: 1m
   preparing_ttl: 5m
   redis:
     host: ${REDIS_HOST}

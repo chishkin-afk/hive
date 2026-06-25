@@ -29,6 +29,7 @@ import (
 	offerpg "github.com/devathh/hive/backend/internal/modules/offers/infrastructure/persistence/postgres/offer"
 	paymentservices "github.com/devathh/hive/backend/internal/modules/payments/application/services"
 	paymentredis "github.com/devathh/hive/backend/internal/modules/payments/infrastructure/cache/redis/payment"
+	rateredis "github.com/devathh/hive/backend/internal/modules/payments/infrastructure/cache/redis/rate"
 	"github.com/devathh/hive/backend/internal/modules/payments/infrastructure/http/yookassa"
 	paymentpg "github.com/devathh/hive/backend/internal/modules/payments/infrastructure/persistence/postgres/payment"
 	ratepg "github.com/devathh/hive/backend/internal/modules/payments/infrastructure/persistence/postgres/rate"
@@ -283,6 +284,7 @@ func (di *DIContainer) PaymentService() *paymentservices.PaymentService {
 			di.Cfg(),
 			di.Log(),
 			ratepg.New(di.Log(), di.PG()),
+			rateredis.New(di.Cfg(), di.Log(), di.Redis()),
 			paymentpg.New(di.Log(), di.PG()),
 			paymentredis.New(di.Cfg(), di.Log(), di.Redis()),
 			yookassa.New(di.Cfg(), di.Log(), http.DefaultClient),

@@ -30,6 +30,7 @@ type PaymentService struct {
 	cfg                *config.Config
 	log                *slog.Logger
 	ratePersistence    rate.RatePersistenceRepository
+	rateCache          rate.RateCacheRepository
 	paymentPersistence payment.PaymentPersistenceRepository
 	paymentCache       payment.PaymentCacheRepository
 	yookassaClient     YookassaClient
@@ -39,6 +40,7 @@ func New(
 	cfg *config.Config,
 	log *slog.Logger,
 	ratePersistence rate.RatePersistenceRepository,
+	rateCache rate.RateCacheRepository,
 	paymentPersistence payment.PaymentPersistenceRepository,
 	paymentCache payment.PaymentCacheRepository,
 	yookassaClient YookassaClient,
@@ -47,6 +49,7 @@ func New(
 		cfg:                cfg,
 		log:                log,
 		ratePersistence:    ratePersistence,
+		rateCache:          rateCache,
 		paymentPersistence: paymentPersistence,
 		paymentCache:       paymentCache,
 		yookassaClient:     yookassaClient,
@@ -169,28 +172,43 @@ func (ps *PaymentService) GetByID(ctx context.Context, id uuid.UUID) (*responses
 	return ps.paymentToDTO(payment), nil
 }
 
-func (ps *PaymentService) storePaymentCache(ctx context.Context, payment *payment.Payment) error {
-	return ps.paymentCache.SavePayment(ctx, payment)
-}
-
-// TODO: add cache
 // ListAllRates is a method that returns a list of all rates to the user.
 // Tries to get them from the cache or the database
 func (ps *PaymentService) ListAllRates(ctx context.Context) (*responses.Rates, error) {
+	if cachedList, ok := ps.listRatesFromCache(ctx); ok {
+		return ps.ratesToDTO(cachedList), nil
+	}
+
 	rates, err := ps.listAllRates(ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	if err := ps.storeRatesCache(ctx, rates); err != nil {
+		ps.log.Warn("failed to store rates cache",
+			slog.String("error", err.Error()),
+		)
+	}
+
 	return ps.ratesToDTO(rates), nil
 }
 
-// TODO: add cache
 // GetRateByID method that returns a specific rate by id
 func (ps *PaymentService) GetRateByID(ctx context.Context, id uuid.UUID) (*responses.Rate, error) {
+	if cachedRate, ok := ps.getRateFromCache(ctx, id); ok {
+		return ps.rateToDTO(cachedRate), nil
+	}
+
 	rate, err := ps.getRateFromPersistence(ctx, id)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := ps.storeRateCache(ctx, rate); err != nil {
+		ps.log.Warn("failed to store rate cache",
+			slog.String("error", err.Error()),
+			slog.String("rate_id", rate.ID().String()),
+		)
 	}
 
 	return ps.rateToDTO(rate), nil
@@ -377,6 +395,10 @@ func (ps *PaymentService) listToDTO(list []*payment.Payment, totalCount int64, p
 	return &response
 }
 
+func (ps *PaymentService) storePaymentCache(ctx context.Context, payment *payment.Payment) error {
+	return ps.paymentCache.SavePayment(ctx, payment)
+}
+
 func (ps *PaymentService) getPaymentFromCache(ctx context.Context, id uuid.UUID) (*payment.Payment, bool) {
 	cachedPayment, err := ps.paymentCache.GetPayment(ctx, id)
 	if err != nil {
@@ -454,6 +476,53 @@ func (ps *PaymentService) rateToDTO(rate *rate.Rate) *responses.Rate {
 		AmountPenny: rate.AmountPenny(),
 		PaidDays:    rate.PaidDays(),
 	}
+}
+
+func (ps *PaymentService) storeRatesCache(ctx context.Context, rates []*rate.Rate) error {
+	return ps.rateCache.SaveRates(ctx, rates)
+}
+
+func (ps *PaymentService) listRatesFromCache(ctx context.Context) ([]*rate.Rate, bool) {
+	cachedList, err := ps.rateCache.ListRates(ctx)
+	if err != nil {
+		if !errors.Is(err, rate.ErrRateNotFound) {
+			ps.log.Warn("failed to get a list of rates from cache",
+				slog.String("error", err.Error()),
+			)
+		}
+
+		return nil, false
+	}
+
+	ps.log.Debug("rates has been taken from cache",
+		slog.Int("len", len(cachedList)),
+	)
+
+	return cachedList, true
+}
+
+func (ps *PaymentService) storeRateCache(ctx context.Context, rate *rate.Rate) error {
+	return ps.rateCache.SaveRate(ctx, rate)
+}
+
+func (ps *PaymentService) getRateFromCache(ctx context.Context, id uuid.UUID) (*rate.Rate, bool) {
+	cachedRate, err := ps.rateCache.GetRate(ctx, id)
+	if err != nil {
+		if !errors.Is(err, rate.ErrRateNotFound) {
+			ps.log.Warn("failed to get rate from cache by id",
+				slog.String("rate_id", id.String()),
+				slog.String("error", err.Error()),
+			)
+		}
+
+		return nil, false
+	}
+
+	ps.log.Debug("rate has been taken from cache",
+		slog.String("rate_id", id.String()),
+	)
+
+	return cachedRate, true
 }
 
 func (ps *PaymentService) takeTrial(ctx context.Context, userID uuid.UUID) error {
