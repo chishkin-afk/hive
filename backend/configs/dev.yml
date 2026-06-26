@@ -6,6 +6,11 @@ app:
 service:
   trial_period_days: 14
 
+middlewares:
+  rate_limit:
+    window: 1m
+    limit: 100
+
 server:
   http:
     addr: localhost:8090

@@ -12,7 +12,8 @@ import (
 
 type Config struct {
 	App           App           `yaml:"app"`
-	Service       Service       `taml:"service"`
+	Service       Service       `yaml:"service"`
+	Middlewares   Middlewares   `yaml:"middlewares"`
 	Server        Server        `yaml:"server"`
 	Persistence   Persistence   `yaml:"persistence"`
 	Cache         Cache         `yaml:"cache"`
@@ -122,6 +123,13 @@ type SMTP struct {
 	Msg      struct {
 		Subject string `yaml:"subject" validate:"required"`
 	} `yaml:"msg" validate:"required"`
+}
+
+type Middlewares struct {
+	RateLimit struct {
+		Window time.Duration `yaml:"window" validate:"required,min=1m"`
+		Limit  int           `yaml:"limit" validate:"required,gte=1"`
+	} `yaml:"rate_limit"`
 }
 
 // .env must be loaded

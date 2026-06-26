@@ -146,6 +146,11 @@ func (di *DIContainer) Server() *server.Server {
 
 func (di *DIContainer) Handler() *gin.Engine {
 	if di.handler == nil {
+		store := middlewares.NewInMemoryStore(
+			di.Cfg().Middlewares.RateLimit.Limit,
+			di.Cfg().Middlewares.RateLimit.Window,
+		)
+
 		di.handler = handlers.New(
 			di.Cfg(),
 			di.AuthService(),
@@ -175,6 +180,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 				"GET:/api/v1/payments/payment/:id":      true,
 				"PATCH:/api/v1/payments/take-trial":     true,
 			}),
+			middlewares.RateLimit(store),
 		)
 	}
 
