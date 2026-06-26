@@ -14,4 +14,6 @@ var (
 	ErrInvalidTimeForBooking = errors.New("invalid time for booking")
 	ErrInvalidAmount         = errors.New("invalid amount of payment")
 	ErrInvalidPaymentStatus  = errors.New("invalid status of payment")
+	ErrInvalidFingerprint    = errors.New("invalid fingerprint")
+	ErrTooMuchRegistrations  = errors.New("too much registrations")
 )

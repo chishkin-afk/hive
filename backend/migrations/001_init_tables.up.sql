@@ -95,6 +95,16 @@ CREATE TABLE IF NOT EXISTS rates (
     paid_days INTEGER DEFAULT 0
 );
 
+-- REGISTRATIONS TABLE
+CREATE TABLE IF NOT EXISTS registrations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    fingerprint VARCHAR(128) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
 -- TRIGGER: ENSURE OFFER ACTIVE (FIXED & IDEMPOTENT)
 DROP TRIGGER IF EXISTS trg_ensure_offer_active_clients ON clients;
 DROP TRIGGER IF EXISTS trg_ensure_offer_active_bookings ON bookings;

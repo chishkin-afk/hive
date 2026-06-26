@@ -4,7 +4,8 @@ app:
   env: ${APP_ENV}
 
 service:
-  trial_period_days: 14
+  trial_period_days: 7
+  max_registrations: 2
 
 middlewares:
   rate_limit:

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
-	"github.com/devathh/hive/backend/internal/common/auth"
+	contextvalue "github.com/devathh/hive/backend/internal/common/context"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -39,7 +39,7 @@ func NewAuthMiddleware(jm jwtManager, authRequire map[string]bool) gin.HandlerFu
 			return
 		}
 
-		ctxValue := context.WithValue(ctx.Request.Context(), auth.KeyUserID, userID)
+		ctxValue := context.WithValue(ctx.Request.Context(), contextvalue.KeyUserID, userID)
 		ctx.Request = ctx.Request.WithContext(ctxValue)
 
 		ctx.Next()

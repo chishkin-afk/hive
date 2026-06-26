@@ -9,7 +9,7 @@ import (
 
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
-	"github.com/devathh/hive/backend/internal/common/auth"
+	contextvalue "github.com/devathh/hive/backend/internal/common/context"
 	"github.com/devathh/hive/backend/internal/common/infrastructure/config"
 	"github.com/devathh/hive/backend/internal/modules/bookings/domain/booking"
 	"github.com/devathh/hive/backend/pkg/errs"
@@ -231,7 +231,7 @@ func (bs *BookingService) GetFreeSlots(ctx context.Context, offerID uuid.UUID, d
 }
 
 func (bs *BookingService) getUserID(ctx context.Context) (uuid.UUID, error) {
-	raw := ctx.Value(auth.KeyUserID)
+	raw := ctx.Value(contextvalue.KeyUserID)
 	if raw == nil {
 		return uuid.Nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
 	}

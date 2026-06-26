@@ -17,6 +17,7 @@ import (
 	smtpinfra "github.com/devathh/hive/backend/internal/common/infrastructure/smtp"
 	authservices "github.com/devathh/hive/backend/internal/modules/auth/application/services"
 	userredis "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/cache/redis/user"
+	registrationpg "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/persistence/postgres/registration"
 	userpg "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/persistence/postgres/user"
 	bookingservices "github.com/devathh/hive/backend/internal/modules/bookings/application/services"
 	bookingredis "github.com/devathh/hive/backend/internal/modules/bookings/infrastructure/cache/redis/booking"
@@ -181,6 +182,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 				"PATCH:/api/v1/payments/take-trial":     true,
 			}),
 			middlewares.RateLimit(store),
+			middlewares.NewFingerprint(),
 		)
 	}
 
@@ -212,6 +214,7 @@ func (di *DIContainer) SMTP() *smtpinfra.SMTPClient {
 func (di *DIContainer) AuthService() *authservices.AuthService {
 	if di.authService == nil {
 		di.authService = authservices.New(
+			di.Cfg(),
 			di.Log(),
 			userpg.New(
 				di.Log(),
@@ -222,6 +225,7 @@ func (di *DIContainer) AuthService() *authservices.AuthService {
 				di.Log(),
 				di.Redis(),
 			),
+			registrationpg.New(di.Log(), di.PG()),
 			di.JWT(),
 			di.SMTP(),
 		)

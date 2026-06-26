@@ -29,7 +29,8 @@ type App struct {
 }
 
 type Service struct {
-	TrialPeriod int `yaml:"trial_period_days" validate:"required,gte=1"`
+	TrialPeriod      int `yaml:"trial_period_days" validate:"required,gte=1"`
+	MaxRegistrations int `yaml:"max_registrations" validate:"required,gte=1"`
 }
 
 type Server struct {

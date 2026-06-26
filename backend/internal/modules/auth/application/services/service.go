@@ -10,7 +10,9 @@ import (
 
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
-	"github.com/devathh/hive/backend/internal/common/auth"
+	contextvalue "github.com/devathh/hive/backend/internal/common/context"
+	"github.com/devathh/hive/backend/internal/common/infrastructure/config"
+	"github.com/devathh/hive/backend/internal/modules/auth/domain/registration"
 	"github.com/devathh/hive/backend/internal/modules/auth/domain/user"
 	"github.com/devathh/hive/backend/pkg/errs"
 	"github.com/google/uuid"
@@ -27,26 +29,32 @@ type SMTPClient interface {
 }
 
 type AuthService struct {
-	log             *slog.Logger
-	userPersistence user.UserPersistenceRepository
-	userCache       user.UserCacheRepository
-	jwt             JWTManager
-	smtpClient      SMTPClient
+	cfg                     *config.Config
+	log                     *slog.Logger
+	userPersistence         user.UserPersistenceRepository
+	userCache               user.UserCacheRepository
+	registrationPersistence registration.RegistrationPersistenceRepository
+	jwt                     JWTManager
+	smtpClient              SMTPClient
 }
 
 func New(
+	cfg *config.Config,
 	log *slog.Logger,
 	userPersistence user.UserPersistenceRepository,
 	userCache user.UserCacheRepository,
+	registrationPersistence registration.RegistrationPersistenceRepository,
 	jwt JWTManager,
 	smtpClient SMTPClient,
 ) *AuthService {
 	return &AuthService{
-		log:             log,
-		userPersistence: userPersistence,
-		userCache:       userCache,
-		jwt:             jwt,
-		smtpClient:      smtpClient,
+		cfg:                     cfg,
+		log:                     log,
+		userPersistence:         userPersistence,
+		userCache:               userCache,
+		registrationPersistence: registrationPersistence,
+		jwt:                     jwt,
+		smtpClient:              smtpClient,
 	}
 }
 
@@ -87,6 +95,15 @@ func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (
 // Confirm is a method that finding prepared user in cache
 // and save his into db, also generate the jwt token
 func (as *AuthService) Confirm(ctx context.Context, req *requests.ConfirmUser) (*responses.Token, error) {
+	fp, err := as.getFingerprint(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.checkFingerprint(ctx, fp); err != nil {
+		return nil, err
+	}
+
 	email, err := as.validateEmail(req.Email)
 	if err != nil {
 		return nil, err
@@ -103,7 +120,15 @@ func (as *AuthService) Confirm(ctx context.Context, req *requests.ConfirmUser) (
 	}
 
 	if err := as.clearPreparedCache(ctx, savedUser.ConfirmedEmail()); err != nil {
-		as.log.Warn("failed to clear prepared user's cache", slog.String("error", err.Error()))
+		as.log.Warn("failed to clear prepared user's cache",
+			slog.String("error", err.Error()),
+		)
+	}
+
+	if err := as.saveFingerprint(ctx, fp, savedUser.ID()); err != nil {
+		as.log.Warn("failed to save fingerprint",
+			slog.String("error", err.Error()),
+		)
 	}
 
 	return as.generateToken(savedUser.ID())
@@ -374,6 +399,55 @@ func (as *AuthService) clearPreparedCache(ctx context.Context, email user.Email)
 	return as.userCache.DelPrepared(ctx, email)
 }
 
+func (as *AuthService) saveFingerprint(ctx context.Context, fp string, userID uuid.UUID) error {
+	registration, err := registration.New(userID, fp)
+	if err != nil {
+		return err
+	}
+
+	if _, err := as.registrationPersistence.Save(ctx, registration); err != nil {
+		as.log.Error("failed to save registration into db",
+			slog.String("error", err.Error()),
+			slog.String("fingerprint", fp),
+		)
+
+		return as.handleRepoError(err)
+	}
+
+	return nil
+}
+
+func (as *AuthService) checkFingerprint(ctx context.Context, fp string) error {
+	count, err := as.registrationPersistence.Count(ctx, fp)
+	if err != nil {
+		as.log.Error("failed to get count of registrations by fp",
+			slog.String("fingerprint", fp),
+			slog.String("error", err.Error()),
+		)
+
+		return as.handleRepoError(err)
+	}
+
+	if count >= int64(as.cfg.Service.MaxRegistrations) {
+		return errs.NewErrorWithKind(errs.ErrTooMuchRegistrations, errs.KindConflict)
+	}
+
+	return nil
+}
+
+func (as *AuthService) getFingerprint(ctx context.Context) (string, error) {
+	raw := ctx.Value(contextvalue.KeyFingerprint)
+	if raw == nil {
+		return "", errs.NewErrorWithKind(errs.ErrInvalidFingerprint, errs.KindPermissionDenied)
+	}
+
+	if fingerprint, ok := raw.(string); ok {
+		return fingerprint, nil
+	}
+
+	return "", errs.NewErrorWithKind(errs.ErrInvalidFingerprint, errs.KindPermissionDenied)
+}
+
 func (as *AuthService) generateToken(userID uuid.UUID) (*responses.Token, error) {
 	token, err := as.jwt.Generate(userID)
 	if err != nil {
@@ -405,7 +479,7 @@ func (as *AuthService) authenticateUser(ctx context.Context, email user.Email, p
 }
 
 func (as *AuthService) getUserID(ctx context.Context) (uuid.UUID, error) {
-	raw := ctx.Value(auth.KeyUserID)
+	raw := ctx.Value(contextvalue.KeyUserID)
 	if raw == nil {
 		return uuid.Nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
 	}

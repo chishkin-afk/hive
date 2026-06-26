@@ -8,7 +8,7 @@ import (
 
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
-	"github.com/devathh/hive/backend/internal/common/auth"
+	contextvalue "github.com/devathh/hive/backend/internal/common/context"
 	"github.com/devathh/hive/backend/internal/common/infrastructure/config"
 	"github.com/devathh/hive/backend/internal/modules/schedules/domain/schedule"
 	"github.com/devathh/hive/backend/pkg/errs"
@@ -150,7 +150,7 @@ func (s *ScheduleService) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s *ScheduleService) getUserID(ctx context.Context) (uuid.UUID, error) {
-	raw := ctx.Value(auth.KeyUserID)
+	raw := ctx.Value(contextvalue.KeyUserID)
 	if raw == nil {
 		return uuid.Nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindRequest)
 	}

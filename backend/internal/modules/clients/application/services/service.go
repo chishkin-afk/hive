@@ -7,7 +7,7 @@ import (
 
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
-	"github.com/devathh/hive/backend/internal/common/auth"
+	contextvalue "github.com/devathh/hive/backend/internal/common/context"
 	"github.com/devathh/hive/backend/internal/modules/clients/domain/client"
 	"github.com/devathh/hive/backend/pkg/errs"
 	"github.com/google/uuid"
@@ -107,7 +107,7 @@ func (cs *ClientService) ListByUserID(ctx context.Context, page, limit uint32) (
 }
 
 func (cs *ClientService) getUserID(ctx context.Context) (uuid.UUID, error) {
-	raw := ctx.Value(auth.KeyUserID)
+	raw := ctx.Value(contextvalue.KeyUserID)
 	if raw == nil {
 		return uuid.Nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
 	}
