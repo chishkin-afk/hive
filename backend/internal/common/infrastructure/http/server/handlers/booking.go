@@ -20,6 +20,21 @@ type bookingService interface {
 	Update(ctx context.Context, req *requests.UpdateBooking) (*responses.Booking, error)
 }
 
+// @Summary      Creates the booking
+// @Description  Creates the booking but before it validates the place of booking
+// @Tags         booking
+// @Accept       json
+// @Produce      json
+// @Param        request body requests.CreateBooking true "data for creating"
+// @Success      201  {object}  responses.Booking
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /bookings/booking [post]
 func (h *HandlerFuncs) CreateBooking() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req *requests.CreateBooking
@@ -42,6 +57,21 @@ func (h *HandlerFuncs) CreateBooking() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Returns the booking
+// @Description  Returns the booking by its id
+// @Tags         booking
+// @Accept       json
+// @Produce      json
+// @Param id path string true "UUID of booking" format(uuid)
+// @Success      200  {object}  responses.Booking
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /bookings/booking/{id} [get]
 func (h *HandlerFuncs) GetBookingByID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id, err := uuid.Parse(ctx.Param("id"))
@@ -64,6 +94,23 @@ func (h *HandlerFuncs) GetBookingByID() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Returns the list of bookings
+// @Description  Returns the list of booking by offer's id or user's id
+// @Tags         booking
+// @Accept       json
+// @Produce      json
+// @Param        offer_id query string false "UUID of offer" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
+// @Param        page     query int    false "page" default(1)
+// @Param        limit    query int    false "limit" default(100)
+// @Success      200  {object}  responses.Bookings
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /bookings/bookings [get]
 func (h *HandlerFuncs) ListBookings() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		page, limit, err := h.parsePagination(ctx)
@@ -116,6 +163,21 @@ func (h *HandlerFuncs) listBookingsByOfferID(ctx *gin.Context, offerID uuid.UUID
 	ctx.JSON(http.StatusOK, resp)
 }
 
+// @Summary      Updates the fields of booking
+// @Description  Updates the fields of booking by its id with check rights by jwt token
+// @Tags         booking
+// @Accept       json
+// @Produce      json
+// @Param        request body requests.UpdateBooking true "data for updating"
+// @Success      200  {array}  responses.Booking
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /bookings/booking [patch]
 func (h *HandlerFuncs) UpdateBooking() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req *requests.UpdateBooking
@@ -138,6 +200,21 @@ func (h *HandlerFuncs) UpdateBooking() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Returns the list of free slots
+// @Description  Returns the list of free slots
+// @Tags         booking
+// @Accept       json
+// @Produce      json
+// @Param        offerID path string true "UUID of offer" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
+// @Param        date query string true "date of booking" format(date)
+// @Success      200  {object}  responses.Slots
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Router       /bookings/slots/{offerID} [get]
 func (h *HandlerFuncs) GetFreeSlots() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		rawDate, err := time.Parse(time.DateOnly, ctx.Query("date"))

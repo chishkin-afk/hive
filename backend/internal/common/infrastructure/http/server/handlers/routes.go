@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	_ "github.com/devathh/hive/backend/docs"
 	"github.com/devathh/hive/backend/internal/common/infrastructure/config"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func New(cfg *config.Config,
@@ -45,15 +48,15 @@ func New(cfg *config.Config,
 				offers.PATCH("/offer", funcs.UpdateOffer())
 				offers.DELETE("/offer/:id", funcs.DeleteOffer())
 				offers.GET("/offer/:id", funcs.GetOfferByID())
-				offers.GET("/offers/:authorID", funcs.ListOffersByAuthorID()) // ?limit=&page=
+				offers.GET("/user/:authorID", funcs.ListOffersByAuthorID()) // ?limit=&page=
 			}
 
 			clients := v1.Group("/clients")
 			{
 				clients.POST("/client", funcs.UpsertClient())
 				clients.GET("/client/:id", funcs.GetClientByID())
-				clients.GET("/clients/offer/:id", funcs.ListClientsByOfferID()) // ?limit=&page=
-				clients.GET("/clients/user", funcs.ListClientsByUserID())
+				clients.GET("/offer/:id", funcs.ListClientsByOfferID()) // ?limit=&page=
+				clients.GET("/user", funcs.ListClientsByUserID())       // ?limit=&page=
 			}
 
 			schedules := v1.Group("/schedules")
@@ -61,7 +64,7 @@ func New(cfg *config.Config,
 				schedules.POST("/schedule", funcs.CreateSchedule())
 				schedules.PATCH("/schedule", funcs.UpdateSchedule())
 				schedules.GET("/schedule/:userID/d/:dayOfWeek", funcs.GetScheduleByUserID())
-				schedules.GET("/schedules/user/:userID", funcs.GetSchedulesByUserID())
+				schedules.GET("/user/:userID", funcs.GetSchedulesByUserID())
 				schedules.DELETE("/schedule/:id", funcs.DeleteSchedule())
 			}
 
@@ -77,13 +80,15 @@ func New(cfg *config.Config,
 			payments := v1.Group("/payments")
 			{
 				payments.POST("/payment", funcs.CreatePayment())
-				payments.GET("/payments", funcs.ListPayments()) // ?page=&limit=
+				payments.GET("/user", funcs.ListPayments()) // ?page=&limit=
 				payments.GET("/payment/:id", funcs.GetPaymentByID())
 				payments.GET("/rates", funcs.ListAllRates())
 				payments.GET("/rate/:id", funcs.GetRateByID())
 				payments.POST("/yookassa", funcs.YookassaAction())
 				payments.PATCH("/take-trial", funcs.TakeTrial())
 			}
+
+			v1.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 		}
 	}
 

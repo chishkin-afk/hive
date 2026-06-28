@@ -17,6 +17,21 @@ type clientService interface {
 	ListByUserID(ctx context.Context, page, limit uint32) (*responses.Clients, error)
 }
 
+// @Summary      Upsert the client
+// @Description Create or update the client by user's id
+// @Tags         client
+// @Accept       json
+// @Produce      json
+// @Param        request body requests.UpsertClient true "data for upserting"
+// @Success      200  {object}  responses.Client
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /clients/client [post]
 func (h *HandlerFuncs) UpsertClient() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req requests.UpsertClient
@@ -39,6 +54,21 @@ func (h *HandlerFuncs) UpsertClient() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Returns the client by his id
+// @Description  Returns the client by his id
+// @Tags         client
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "UUID of client" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
+// @Success      200  {object}   responses.Client
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /clients/client/{id} [get]
 func (h *HandlerFuncs) GetClientByID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id, err := uuid.Parse(ctx.Param("id"))
@@ -61,6 +91,23 @@ func (h *HandlerFuncs) GetClientByID() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Returns a list of clients
+// @Description  Returns a list of clients by offer's id
+// @Tags         client
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "UUID of offer" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
+// @Param        page     query int    false "page" default(1)
+// @Param        limit    query int    false "limit" default(100)
+// @Success      200  {object}   responses.Clients
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /clients/offer/{id} [get]
 func (h *HandlerFuncs) ListClientsByOfferID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		offerID, err := uuid.Parse(ctx.Param("id"))
@@ -91,6 +138,22 @@ func (h *HandlerFuncs) ListClientsByOfferID() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Returns a list of clients
+// @Description  Returns a list of clients by jwt token of user
+// @Tags         client
+// @Accept       json
+// @Produce      json
+// @Param        page     query int    false "page" default(1)
+// @Param        limit    query int    false "limit" default(100)
+// @Success      200  {object}   responses.Clients
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /clients/user [get]
 func (h *HandlerFuncs) ListClientsByUserID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		page, limit, err := h.parsePagination(ctx)

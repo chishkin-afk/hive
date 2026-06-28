@@ -18,6 +18,21 @@ type offerService interface {
 	ListByAuthorID(ctx context.Context, id uuid.UUID, page, limit uint32) (*responses.Offers, error)
 }
 
+// @Summary      Create the offer
+// @Description  Create the offer
+// @Tags         offer
+// @Accept       json
+// @Produce      json
+// @Param        request body requests.CreateOffer true "data for creating"
+// @Success      201  {object}  	responses.Offer
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /offers/offer [post]
 func (h *HandlerFuncs) CreateOffer() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req requests.CreateOffer
@@ -40,6 +55,21 @@ func (h *HandlerFuncs) CreateOffer() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Update the offer
+// @Description  Update the fields of offer by its id
+// @Tags         offer
+// @Accept       json
+// @Produce      json
+// @Param        request body requests.UpdateOffer true "data for updating"
+// @Success      200  {object}  	responses.Offer
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /offers/offer [patch]
 func (h *HandlerFuncs) UpdateOffer() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req requests.UpdateOffer
@@ -62,6 +92,21 @@ func (h *HandlerFuncs) UpdateOffer() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Delete the offer
+// @Description  Delete the offer by its id
+// @Tags         offer
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "UUID of offer" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
+// @Success      200  {object}  	responses.Offer
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /offers/offer/{id} [delete]
 func (h *HandlerFuncs) DeleteOffer() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id, err := uuid.Parse(ctx.Param("id"))
@@ -83,6 +128,21 @@ func (h *HandlerFuncs) DeleteOffer() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Get the offer
+// @Description  Get the offer by its id
+// @Tags         offer
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "UUID of offer" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
+// @Success      200  {object}  	responses.Offer
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /offers/offer/{id} [get]
 func (h *HandlerFuncs) GetOfferByID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id, err := uuid.Parse(ctx.Param("id"))
@@ -105,6 +165,23 @@ func (h *HandlerFuncs) GetOfferByID() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Get list of the offers
+// @Description  Get list of the offers by author's id
+// @Tags         offer
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "UUID of offer" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
+// @Param        page     query int    false "page" default(1)
+// @Param        limit    query int    false "limit" default(100)
+// @Success      200  {object}  	responses.Offers
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /offers/user/{authorID} [get]
 func (h *HandlerFuncs) ListOffersByAuthorID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authorID, err := uuid.Parse(ctx.Param("authorID"))

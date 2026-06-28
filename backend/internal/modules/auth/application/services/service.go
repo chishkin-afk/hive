@@ -61,6 +61,15 @@ func New(
 // Prepare is a method that prepare user
 // to further confirmation
 func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (*responses.User, error) {
+	fp, err := as.getFingerprint(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.checkFingerprint(ctx, fp); err != nil {
+		return nil, err
+	}
+
 	email, err := as.ensureEmailIsNew(ctx, req.Email)
 	if err != nil {
 		return nil, err
@@ -97,10 +106,6 @@ func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (
 func (as *AuthService) Confirm(ctx context.Context, req *requests.ConfirmUser) (*responses.Token, error) {
 	fp, err := as.getFingerprint(ctx)
 	if err != nil {
-		return nil, err
-	}
-
-	if err := as.checkFingerprint(ctx, fp); err != nil {
 		return nil, err
 	}
 

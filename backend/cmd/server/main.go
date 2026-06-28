@@ -12,6 +12,21 @@ import (
 	"github.com/devathh/hive/backend/internal/app"
 )
 
+// @title           HIVE API
+// @version         1.0
+// @description     HIVE API is a backend server for the hive crm that allows you to record customers, process them, and interact with offers
+
+// @host      localhost:8090
+// @BasePath  /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter "<your JWT token>"
+
+// @externalDocs.description  OpenAPI
+// @externalDocs.url          https://swagger.io/resources/open-api/
+
 func main() {
 	var di app.DIContainer
 	di.Log().Info("di container was loaded")

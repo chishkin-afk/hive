@@ -26,6 +26,21 @@ type paymentService interface {
 	TakeTrial(ctx context.Context) error
 }
 
+// @Summary      Create the payment
+// @Description  Create the unconfirmed payment in db
+// @Tags         payment
+// @Accept       json
+// @Produce      json
+// @Param        request body requests.CreatePayment true "data for creating"
+// @Success      201  {object} 	responses.UnconfirmedPayment
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /payments/payment [post]
 func (h *HandlerFuncs) CreatePayment() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req requests.CreatePayment
@@ -104,6 +119,22 @@ func (h *HandlerFuncs) cancelPayment(ctx *gin.Context, req *requests.CancelPayme
 	ctx.JSON(http.StatusOK, resp)
 }
 
+// @Summary      Returns the list of payments
+// @Description  Returns the list of payments by user's id
+// @Tags         payment
+// @Accept       json
+// @Produce      json
+// @Param        page     query int    false "page" default(1)
+// @Param        limit    query int    false "limit" default(100)
+// @Success      200  {object} 	responses.Payments
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /payments/user [get]
 func (h *HandlerFuncs) ListPayments() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		page, limit, err := h.parsePagination(ctx)
@@ -126,6 +157,21 @@ func (h *HandlerFuncs) ListPayments() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Returns the list of payments
+// @Description  Returns the list of payments by user's id
+// @Tags         payment
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "UUID of payment" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
+// @Success      200  {object} 	responses.Payment
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /payments/payment/{id} [get]
 func (h *HandlerFuncs) GetPaymentByID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id, err := uuid.Parse(ctx.Param("id"))
@@ -148,6 +194,20 @@ func (h *HandlerFuncs) GetPaymentByID() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Returns the list of rates
+// @Description  Returns the list of rates
+// @Tags         payment
+// @Accept       json
+// @Produce      json
+// @Success      200  {object} 	responses.Rates
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /payments/rates [get]
 func (h *HandlerFuncs) ListAllRates() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		resp, err := h.paymentService.ListAllRates(ctx.Request.Context())
@@ -162,6 +222,21 @@ func (h *HandlerFuncs) ListAllRates() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Returns the rate
+// @Description  Returns the rate by its id
+// @Tags         payment
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "UUID of rate" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
+// @Success      200  {object} 	responses.Rate
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /payments/rate/{id} [get]
 func (h *HandlerFuncs) GetRateByID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id, err := uuid.Parse(ctx.Param("id"))
@@ -184,6 +259,20 @@ func (h *HandlerFuncs) GetRateByID() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Take trial days
+// @Description  Add trial days to user by jwt token
+// @Tags         payment
+// @Accept       json
+// @Produce      json
+// @Success      204
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /payments/take-trial [post]
 func (h *HandlerFuncs) TakeTrial() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if err := h.paymentService.TakeTrial(ctx.Request.Context()); err != nil {
