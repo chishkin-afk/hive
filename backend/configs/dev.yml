@@ -14,7 +14,7 @@ middlewares:
 
 server:
   http:
-    addr: localhost:8090
+    addr: ${HTTP_ADDR}
     tls:
       enable: false 
       server_cert_path: ./certs/server.crt
