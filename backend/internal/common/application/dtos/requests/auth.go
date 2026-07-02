@@ -1,5 +1,7 @@
 package requests
 
+import "github.com/google/uuid"
+
 type PrepareUser struct {
 	Firstname   string `json:"firstname"`
 	Lastname    string `json:"lastname"` // can be empty
@@ -33,4 +35,9 @@ type UpdateNotification struct {
 
 type UpdateTgChatID struct {
 	TgChatID int64 `json:"tg_chat_id"`
+}
+
+type BindTG struct {
+	BindingID uuid.UUID `json:"binding_id"`
+	TgChatID  int64     `json:"tg_chat_id"`
 }

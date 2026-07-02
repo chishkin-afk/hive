@@ -16,6 +16,7 @@ import (
 	postgresconnect "github.com/devathh/hive/backend/internal/common/infrastructure/persistence/postgres"
 	smtpinfra "github.com/devathh/hive/backend/internal/common/infrastructure/smtp"
 	authservices "github.com/devathh/hive/backend/internal/modules/auth/application/services"
+	tgbindingredis "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/cache/redis/tgbinding"
 	userredis "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/cache/redis/user"
 	registrationpg "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/persistence/postgres/registration"
 	userpg "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/persistence/postgres/user"
@@ -162,6 +163,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 			di.PaymentService(),
 			middlewares.NewAuthMiddleware(di.JWT(), map[string]bool{
 				"GET:/api/v1/auth/user":                 true,
+				"GET:/api/v1/auth/tgbinding":            true,
 				"PATCH:/api/v1/auth/user":               true,
 				"PATCH:/api/v1/auth/tg":                 true,
 				"POST:/api/v1/offers/offer":             true,
@@ -226,6 +228,11 @@ func (di *DIContainer) AuthService() *authservices.AuthService {
 				di.Redis(),
 			),
 			registrationpg.New(di.Log(), di.PG()),
+			tgbindingredis.New(
+				di.Cfg(),
+				di.Log(),
+				di.Redis(),
+			),
 			di.JWT(),
 			di.SMTP(),
 		)

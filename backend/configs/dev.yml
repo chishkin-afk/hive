@@ -6,7 +6,7 @@ app:
 service:
   trial_period_days: 7
   max_registrations: 2
-  tg_bot_url: https://t.me/where_my_friends_bot
+  tg_bot_url: https://t.me/hiveeeeeeeeeeeebot
 
 middlewares:
   rate_limit:

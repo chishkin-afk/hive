@@ -13,6 +13,7 @@ import (
 	contextvalue "github.com/devathh/hive/backend/internal/common/context"
 	"github.com/devathh/hive/backend/internal/common/infrastructure/config"
 	"github.com/devathh/hive/backend/internal/modules/auth/domain/registration"
+	"github.com/devathh/hive/backend/internal/modules/auth/domain/tgbinding"
 	"github.com/devathh/hive/backend/internal/modules/auth/domain/user"
 	"github.com/devathh/hive/backend/pkg/errs"
 	"github.com/google/uuid"
@@ -34,6 +35,7 @@ type AuthService struct {
 	userPersistence         user.UserPersistenceRepository
 	userCache               user.UserCacheRepository
 	registrationPersistence registration.RegistrationPersistenceRepository
+	tgBindingCache          tgbinding.TgBindingCacheRepository
 	jwt                     JWTManager
 	smtpClient              SMTPClient
 }
@@ -44,6 +46,7 @@ func New(
 	userPersistence user.UserPersistenceRepository,
 	userCache user.UserCacheRepository,
 	registrationPersistence registration.RegistrationPersistenceRepository,
+	tgBindingCache tgbinding.TgBindingCacheRepository,
 	jwt JWTManager,
 	smtpClient SMTPClient,
 ) *AuthService {
@@ -53,6 +56,7 @@ func New(
 		userPersistence:         userPersistence,
 		userCache:               userCache,
 		registrationPersistence: registrationPersistence,
+		tgBindingCache:          tgBindingCache,
 		jwt:                     jwt,
 		smtpClient:              smtpClient,
 	}
@@ -252,6 +256,120 @@ func (as *AuthService) GetUserByID(ctx context.Context, userID uuid.UUID) (*resp
 // 	return as.userToDTO(updatedUser), nil
 // }
 
+func (as *AuthService) GetTgBindingURL(ctx context.Context) (*responses.TgBinding, error) {
+	userID, err := as.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tgBinding, err := as.createTgBinding(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.storeBindingCache(ctx, tgBinding); err != nil {
+		return nil, err
+	}
+
+	return as.bindingToDTO(tgBinding), nil
+}
+
+func (as *AuthService) BindTG(ctx context.Context, req *requests.BindTG) (*responses.User, error) {
+	tgBinding, err := as.getBindingFromCache(ctx, req.BindingID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.clearTgBindingCache(ctx, tgBinding.ID()); err != nil {
+		return nil, err
+	}
+
+	updUser, err := as.getUserFromPersistence(ctx, tgBinding.UserID())
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.applyChangeTG(updUser, req.TgChatID); err != nil {
+		return nil, err
+	}
+
+	updatedUser, err := as.updateUserStore(ctx, updUser)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.clearUserCache(ctx, updatedUser.ID()); err != nil {
+		as.log.Warn("failed to clear user's cache", slog.String("error", err.Error()))
+	}
+
+	return as.userToDTO(updatedUser), nil
+}
+
+func (as *AuthService) clearTgBindingCache(ctx context.Context, bindingID uuid.UUID) error {
+	if err := as.tgBindingCache.Delete(ctx, bindingID); err != nil {
+		as.log.Error("failed to clear tg binding's cache",
+			slog.String("error", err.Error()),
+			slog.String("binding_id", bindingID.String()),
+		)
+
+		return as.handleRepoError(err)
+	}
+	return nil
+}
+
+func (as *AuthService) getBindingFromCache(ctx context.Context, bindingID uuid.UUID) (*tgbinding.TgBinding, error) {
+	tgBinding, err := as.tgBindingCache.GetByID(ctx, bindingID)
+	if err != nil {
+		as.log.Error("failed to get binding from cache",
+			slog.String("error", err.Error()),
+			slog.String("binding_id", bindingID.String()),
+		)
+
+		return nil, as.handleRepoError(err)
+	}
+
+	return tgBinding, nil
+}
+
+func (as *AuthService) bindingToDTO(tgBinding *tgbinding.TgBinding) *responses.TgBinding {
+	return &responses.TgBinding{
+		ID:        tgBinding.ID(),
+		UserID:    tgBinding.UserID(),
+		BotURL:    tgBinding.BotURL().String(),
+		CreatedAt: tgBinding.CreatedAt().Unix(),
+	}
+}
+
+func (as *AuthService) storeBindingCache(ctx context.Context, tgBinding *tgbinding.TgBinding) error {
+	if err := as.tgBindingCache.Save(ctx, tgBinding); err != nil {
+		as.log.Error("failed to save tg binding's cache",
+			slog.String("binding_id", tgBinding.ID().String()),
+			slog.String("error", err.Error()),
+		)
+
+		return as.handleRepoError(err)
+	}
+
+	return nil
+}
+
+func (as *AuthService) createTgBinding(userID uuid.UUID) (*tgbinding.TgBinding, error) {
+	binding, err := tgbinding.New(
+		userID,
+		as.cfg.Service.TgBotURL,
+	)
+	if err != nil {
+		as.log.Error("failed to create tg binding",
+			slog.String("error", err.Error()),
+			slog.String("user_id", userID.String()),
+		)
+
+		return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
+	}
+
+	return binding, nil
+}
+
 func (as *AuthService) ClearUserCache(ctx context.Context, userID uuid.UUID) error {
 	if err := as.clearUserCache(ctx, userID); err != nil {
 		as.log.Error("failed to clear user's cache",
@@ -265,13 +383,13 @@ func (as *AuthService) ClearUserCache(ctx context.Context, userID uuid.UUID) err
 	return nil
 }
 
-// func (as *AuthService) applyChangeTG(user *user.User, tgChatID int64) error {
-// 	if err := user.ChangeTgChatID(tgChatID); err != nil {
-// 		return errs.NewErrorWithKind(err, errs.KindRequest)
-// 	}
+func (as *AuthService) applyChangeTG(user *user.User, tgChatID int64) error {
+	if err := user.ChangeTgChatID(tgChatID); err != nil {
+		return errs.NewErrorWithKind(err, errs.KindRequest)
+	}
 
-// 	return nil
-// }
+	return nil
+}
 
 func (as *AuthService) ensureEmailIsNew(ctx context.Context, rawEmail string) (user.Email, error) {
 	email, err := as.validateEmail(rawEmail)
@@ -636,7 +754,8 @@ func (as *AuthService) handleRepoError(err error) error {
 	case errors.Is(err, context.DeadlineExceeded),
 		errors.Is(err, context.Canceled):
 		return errs.NewErrorWithKind(err, errs.KindTimeout)
-	case errors.Is(err, user.ErrUserNotFound):
+	case errors.Is(err, user.ErrUserNotFound),
+		errors.Is(err, tgbinding.ErrTgBindingNotFound):
 		return errs.NewErrorWithKind(err, errs.KindNotFound)
 	case errors.Is(err, user.ErrUserAlreadyExists):
 		return errs.NewErrorWithKind(err, errs.KindConflict)

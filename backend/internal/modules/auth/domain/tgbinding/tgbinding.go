@@ -20,18 +20,20 @@ type TgBinding struct {
 
 func New(
 	userID uuid.UUID,
-	botURL BotURL,
+	rawBotURL string,
 ) (*TgBinding, error) {
 	if userID == uuid.Nil {
 		return nil, ErrEmptyUserID
 	}
 
-	if err := botURL.Validate(); err != nil {
+	bindingID := uuid.New()
+	botURL, err := NewBotURL(rawBotURL, bindingID)
+	if err != nil {
 		return nil, err
 	}
 
 	return &TgBinding{
-		id:        uuid.New(),
+		id:        bindingID,
 		userID:    userID,
 		botURL:    botURL,
 		createdAt: time.Now().UTC(),

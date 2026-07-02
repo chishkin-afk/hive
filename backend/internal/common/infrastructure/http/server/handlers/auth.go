@@ -15,6 +15,8 @@ type authService interface {
 	Login(ctx context.Context, req *requests.Login) (*responses.Token, error)
 	Update(ctx context.Context, req *requests.UpdateUser) (*responses.User, error)
 	GetSelfUser(ctx context.Context) (*responses.User, error)
+	GetTgBindingURL(ctx context.Context) (*responses.TgBinding, error)
+	BindTG(ctx context.Context, req *requests.BindTG) (*responses.User, error)
 }
 
 // @Summary      Prepare the user
@@ -173,6 +175,68 @@ func (h *HandlerFuncs) UpdateUser() gin.HandlerFunc {
 func (h *HandlerFuncs) GetSelfUser() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		resp, err := h.authService.GetSelfUser(ctx.Request.Context())
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Summary      Get the self tg's binding url by jwt token
+// @Description  Returns the tg's binding url to bot
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  responses.TgBinding
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /auth/tgbinding [get]
+func (h *HandlerFuncs) GetTgBindingURL() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		resp, err := h.authService.GetTgBindingURL(ctx.Request.Context())
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Summary      Update the telegram's fields of user
+// @Description  Update the telegram's fields of user
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  responses.User
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /auth/tgbinding [post]
+func (h *HandlerFuncs) BindTG() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req requests.BindTG
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		resp, err := h.authService.BindTG(ctx.Request.Context(), &req)
 		if err != nil {
 			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
 				Error: err.Error(),

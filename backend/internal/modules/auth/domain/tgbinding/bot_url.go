@@ -3,7 +3,8 @@ package tgbinding
 import (
 	"errors"
 	"net/url"
-	"strings"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -12,24 +13,19 @@ var (
 
 type BotURL string
 
-func (burl BotURL) Validate() error {
-	if burl == "" {
-		return ErrInvalidBotURL
-	}
+func (burl BotURL) String() string {
+	return string(burl)
+}
 
-	parsedURL, err := url.Parse(string(burl))
+func NewBotURL(rawURL string, bindingID uuid.UUID) (BotURL, error) {
+	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
-		return ErrInvalidBotURL
+		return "", ErrInvalidBotURL
 	}
 
 	queries := parsedURL.Query()
-	if strings.TrimSpace(queries.Get("start")) == "" {
-		return ErrInvalidBotURL
-	}
+	queries.Add("start", bindingID.String())
 
-	return nil
-}
-
-func (burl BotURL) String() string {
-	return string(burl)
+	parsedURL.RawQuery = queries.Encode()
+	return BotURL(parsedURL.String()), nil
 }

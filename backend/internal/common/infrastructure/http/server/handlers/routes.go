@@ -39,6 +39,8 @@ func New(cfg *config.Config,
 				auth.POST("/login", funcs.Login())
 				auth.PATCH("/user", funcs.UpdateUser())
 				auth.GET("/user", funcs.GetSelfUser())
+				auth.GET("/tgbinding", funcs.GetTgBindingURL())
+				auth.POST("/tgbinding", funcs.BindTG())
 			}
 
 			offers := v1.Group("/offers")

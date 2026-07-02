@@ -26,3 +26,10 @@ type User struct {
 type Notification struct {
 	TelegramEnable bool `json:"telegram_enable"`
 }
+
+type TgBinding struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	BotURL    string    `json:"bot_url"`
+	CreatedAt int64     `json:"created_at"`
+}
