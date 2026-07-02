@@ -29,8 +29,9 @@ type App struct {
 }
 
 type Service struct {
-	TrialPeriod      int `yaml:"trial_period_days" validate:"required,gte=1"`
-	MaxRegistrations int `yaml:"max_registrations" validate:"required,gte=1"`
+	TrialPeriod      int    `yaml:"trial_period_days" validate:"required,gte=1"`
+	MaxRegistrations int    `yaml:"max_registrations" validate:"required,gte=1"`
+	TgBotURL         string `yaml:"tg_bot_url" validate:"required,url"`
 }
 
 type Server struct {
@@ -80,6 +81,7 @@ type Cache struct {
 	PaymentTTL   time.Duration `yaml:"payment_ttl" validate:"required,min=1m"`
 	RateTTL      time.Duration `yaml:"rate_ttl" validate:"required,min=1m"`
 	PreparingTTL time.Duration `yaml:"preparing_ttl" validate:"required,min=1m"`
+	TgBindingTTL time.Duration `yaml:"tg_binding_ttl" validate:"required,min=1m"`
 	Redis        struct {
 		Host string `yaml:"host" validate:"required,hostname"`
 		Port int    `yaml:"port" validate:"required,gte=1,lte=65535"`

@@ -6,6 +6,7 @@ app:
 service:
   trial_period_days: 7
   max_registrations: 2
+  tg_bot_url: https://t.me/where_my_friends_bot
 
 middlewares:
   rate_limit:
@@ -49,6 +50,7 @@ cache:
   payment_ttl: 5m
   rate_ttl: 1m
   preparing_ttl: 5m
+  tg_binding_ttl: 5m
   redis:
     host: ${REDIS_HOST}
     port: ${REDIS_PORT}
