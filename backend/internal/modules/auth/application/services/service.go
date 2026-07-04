@@ -34,6 +34,7 @@ type AuthService struct {
 	log                     *slog.Logger
 	userPersistence         user.UserPersistenceRepository
 	userCache               user.UserCacheRepository
+	preparedCache           user.PreparedCacheRepository
 	registrationPersistence registration.RegistrationPersistenceRepository
 	tgBindingCache          tgbinding.TgBindingCacheRepository
 	jwt                     JWTManager
@@ -45,6 +46,7 @@ func New(
 	log *slog.Logger,
 	userPersistence user.UserPersistenceRepository,
 	userCache user.UserCacheRepository,
+	preparedCache user.PreparedCacheRepository,
 	registrationPersistence registration.RegistrationPersistenceRepository,
 	tgBindingCache tgbinding.TgBindingCacheRepository,
 	jwt JWTManager,
@@ -55,6 +57,7 @@ func New(
 		log:                     log,
 		userPersistence:         userPersistence,
 		userCache:               userCache,
+		preparedCache:           preparedCache,
 		registrationPersistence: registrationPersistence,
 		tgBindingCache:          tgBindingCache,
 		jwt:                     jwt,
@@ -434,7 +437,7 @@ func (as *AuthService) storePreparedUserCache(ctx context.Context, user *user.Us
 		return 0, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
 	}
 
-	if err := as.userCache.Prepare(ctx, user, generated, code); err != nil {
+	if err := as.preparedCache.Prepare(ctx, user, generated, code); err != nil {
 		as.log.Error("failed to set prepared user into cache",
 			slog.String("user_id", user.ID().String()),
 			slog.String("error", err.Error()),
@@ -484,7 +487,7 @@ func (as *AuthService) validateEmail(raw string) (user.Email, error) {
 }
 
 func (as *AuthService) resolvePreparedUser(ctx context.Context, requestedCode int, email user.Email) (*user.User, error) {
-	preparedUser, generatedPassword, code, err := as.userCache.GetPrepared(ctx, email)
+	preparedUser, generatedPassword, code, err := as.preparedCache.GetPrepared(ctx, email)
 	if err != nil {
 		as.log.Warn("trying to confirm unexisted user", slog.String("error", err.Error()))
 		return nil, errs.NewErrorWithKind(errs.ErrInvalidCode, errs.KindRequest)
@@ -519,7 +522,7 @@ func (as *AuthService) storePreparedUserDB(ctx context.Context, user *user.User)
 }
 
 func (as *AuthService) clearPreparedCache(ctx context.Context, email user.Email) error {
-	return as.userCache.DelPrepared(ctx, email)
+	return as.preparedCache.DelPrepared(ctx, email)
 }
 
 func (as *AuthService) saveFingerprint(ctx context.Context, fp string, userID uuid.UUID) error {

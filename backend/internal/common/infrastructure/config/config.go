@@ -29,9 +29,10 @@ type App struct {
 }
 
 type Service struct {
-	TrialPeriod      int    `yaml:"trial_period_days" validate:"required,gte=1"`
-	MaxRegistrations int    `yaml:"max_registrations" validate:"required,gte=1"`
-	TgBotURL         string `yaml:"tg_bot_url" validate:"required,url"`
+	TrialPeriod      int           `yaml:"trial_period_days" validate:"required,gte=1"`
+	MaxRegistrations int           `yaml:"max_registrations" validate:"required,gte=1"`
+	SendingDuration  time.Duration `yaml:"sending_duration" validate:"required,gte=1"`
+	TgBotURL         string        `yaml:"tg_bot_url" validate:"required,url"`
 }
 
 type Server struct {

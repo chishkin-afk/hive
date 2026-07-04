@@ -16,6 +16,7 @@ import (
 	postgresconnect "github.com/devathh/hive/backend/internal/common/infrastructure/persistence/postgres"
 	smtpinfra "github.com/devathh/hive/backend/internal/common/infrastructure/smtp"
 	authservices "github.com/devathh/hive/backend/internal/modules/auth/application/services"
+	preparedredis "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/cache/redis/prepared"
 	tgbindingredis "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/cache/redis/tgbinding"
 	userredis "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/cache/redis/user"
 	registrationpg "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/persistence/postgres/registration"
@@ -223,6 +224,11 @@ func (di *DIContainer) AuthService() *authservices.AuthService {
 				di.PG(),
 			),
 			userredis.New(
+				di.Cfg(),
+				di.Log(),
+				di.Redis(),
+			),
+			preparedredis.New(
 				di.Cfg(),
 				di.Log(),
 				di.Redis(),

@@ -6,6 +6,7 @@ app:
 service:
   trial_period_days: 7
   max_registrations: 2
+  sending_duration: 1m
   tg_bot_url: https://t.me/hiveeeeeeeeeeeebot
 
 middlewares:
