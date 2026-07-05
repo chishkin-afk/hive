@@ -36,6 +36,7 @@ func New(cfg *config.Config,
 			{
 				auth.POST("/prepare", funcs.Prepare())
 				auth.POST("/confirm", funcs.Confirm())
+				auth.POST("/resend", funcs.ResendCode())
 				auth.POST("/login", funcs.Login())
 				auth.PATCH("/user", funcs.UpdateUser())
 				auth.GET("/user", funcs.GetSelfUser())

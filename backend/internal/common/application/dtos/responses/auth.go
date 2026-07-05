@@ -33,3 +33,7 @@ type TgBinding struct {
 	BotURL    string    `json:"bot_url"`
 	CreatedAt int64     `json:"created_at"`
 }
+
+type CodeResent struct {
+	NextSendAt int64 `json:"next_send_at"` // UNIX
+}

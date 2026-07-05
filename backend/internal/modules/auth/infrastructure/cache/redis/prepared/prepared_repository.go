@@ -93,6 +93,44 @@ func (ucr *preparedCacheRepository) DelPrepared(ctx context.Context, email user.
 	return nil
 }
 
+func (ucr *preparedCacheRepository) SaveLastSend(ctx context.Context, email user.Email, at time.Time) error {
+	ucr.log.Debug("new send saving into cache")
+	bytes, err := lastSendToBytes(at)
+	if err != nil {
+		return fmt.Errorf("failed to converting last time into bytes: %w", err)
+	}
+
+	ucr.log.Debug("saving last send into cache")
+	if err := ucr.cache.Set(ctx, ucr.getLastSendKey(email), bytes, ucr.cfg.Service.SendingDuration).Err(); err != nil {
+		if safeErr, ok := ucr.normalizeError(err); ok {
+			return safeErr
+		}
+
+		return fmt.Errorf("failed to save last send: %w", err)
+	}
+
+	return nil
+}
+
+func (ucr *preparedCacheRepository) GetLastSend(ctx context.Context, email user.Email) (time.Time, error) {
+	ucr.log.Debug("getting last send")
+	bytes, err := ucr.cache.Get(ctx, ucr.getLastSendKey(email)).Bytes()
+	if err != nil {
+		if safeErr, ok := ucr.normalizeError(err); ok {
+			return time.Time{}, safeErr
+		}
+
+		return time.Time{}, fmt.Errorf("failed to get last send: %w", err)
+	}
+
+	record, err := bytesToLastSendRecord(bytes)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to convert last send bytes: %w", err)
+	}
+
+	return record.At, nil
+}
+
 func (ucr *preparedCacheRepository) normalizeError(err error) (error, bool) {
 	switch {
 	case errors.Is(err, context.DeadlineExceeded),
@@ -108,4 +146,9 @@ func (ucr *preparedCacheRepository) normalizeError(err error) (error, bool) {
 func (ucr *preparedCacheRepository) getPreparedKey(email user.Email) string {
 	hash := sha256.Sum256([]byte(email.String()))
 	return fmt.Sprintf("prepared:%s", hex.EncodeToString(hash[:]))
+}
+
+func (ucr *preparedCacheRepository) getLastSendKey(email user.Email) string {
+	hash := sha256.Sum256([]byte(email.String()))
+	return fmt.Sprintf("last_send:%s", hex.EncodeToString(hash[:]))
 }

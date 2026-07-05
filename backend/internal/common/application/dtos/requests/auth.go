@@ -41,3 +41,7 @@ type BindTG struct {
 	BindingID uuid.UUID `json:"binding_id"`
 	TgChatID  int64     `json:"tg_chat_id"`
 }
+
+type ResendCode struct {
+	Email string `json:"email"`
+}

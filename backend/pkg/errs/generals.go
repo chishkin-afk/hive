@@ -16,4 +16,5 @@ var (
 	ErrInvalidPaymentStatus  = errors.New("invalid status of payment")
 	ErrInvalidFingerprint    = errors.New("invalid fingerprint")
 	ErrTooMuchRegistrations  = errors.New("too much registrations")
+	ErrTooMuchResents        = errors.New("too much resents")
 )

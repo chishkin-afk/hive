@@ -11,6 +11,7 @@ import (
 
 type authService interface {
 	Prepare(ctx context.Context, req *requests.PrepareUser) (*responses.User, error)
+	ResendCode(ctx context.Context, req *requests.ResendCode) (*responses.CodeResent, error)
 	Confirm(ctx context.Context, req *requests.ConfirmUser) (*responses.Token, error)
 	Login(ctx context.Context, req *requests.Login) (*responses.Token, error)
 	Update(ctx context.Context, req *requests.UpdateUser) (*responses.User, error)
@@ -245,5 +246,27 @@ func (h *HandlerFuncs) BindTG() gin.HandlerFunc {
 		}
 
 		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+func (h *HandlerFuncs) ResendCode() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req requests.ResendCode
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		resp, err := h.authService.ResendCode(ctx.Request.Context(), &req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusAccepted, resp)
 	}
 }

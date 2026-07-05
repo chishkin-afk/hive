@@ -31,3 +31,7 @@ type preparedUserRecord struct {
 	Code              int        `json:"code"`
 	GeneratedPassword string     `json:"generated_password,omitempty"`
 }
+
+type LastSend struct {
+	At time.Time `json:"at"`
+}

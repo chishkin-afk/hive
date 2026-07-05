@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
@@ -97,15 +98,34 @@ func (as *AuthService) Prepare(ctx context.Context, req *requests.PrepareUser) (
 		return nil, err
 	}
 
-	if err := as.sendConfirmationCode(ctx, email, code); err != nil {
-		if err := as.clearPreparedCache(ctx, email); err != nil {
-			as.log.Error("failed to clear prepared cache", slog.String("error", err.Error()))
-		}
+	go as.sendConfirmationCode(context.Background(), user.ConfirmedEmail(), code)
+	return as.userToDTO(user), nil
+}
 
+func (as *AuthService) ResendCode(ctx context.Context, req *requests.ResendCode) (*responses.CodeResent, error) {
+	email, err := as.validateEmail(req.Email)
+	if err != nil {
 		return nil, err
 	}
 
-	return as.userToDTO(user), nil
+	preparedUser, code, err := as.getPreparedUser(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.checkLastSendTime(ctx, preparedUser.ConfirmedEmail()); err != nil {
+		return nil, err
+	}
+
+	newSendTime := time.Now().UTC()
+	if err := as.storeLastSendTime(ctx, newSendTime, preparedUser.ConfirmedEmail()); err != nil {
+		return nil, err
+	}
+
+	go as.sendConfirmationCode(context.Background(), email, code)
+	return &responses.CodeResent{
+		NextSendAt: newSendTime.Unix(),
+	}, nil
 }
 
 // Confirm is a method that finding prepared user in cache
@@ -232,33 +252,6 @@ func (as *AuthService) GetUserByID(ctx context.Context, userID uuid.UUID) (*resp
 	return as.userToDTO(user), nil
 }
 
-// func (as *AuthService) UpdateTGChatID(ctx context.Context, req *requests.UpdateTgChatID) (*responses.User, error) {
-// 	userID, err := as.getUserID(ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	updUser, err := as.getUserFromPersistence(ctx, userID)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	if err := as.applyChangeTG(updUser, req.TgChatID); err != nil {
-// 		return nil, err
-// 	}
-
-// 	updatedUser, err := as.updateUserStore(ctx, updUser)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	if err := as.clearUserCache(ctx, updatedUser.ID()); err != nil {
-// 		as.log.Warn("failed to clear user's cache", slog.String("error", err.Error()))
-// 	}
-
-// 	return as.userToDTO(updatedUser), nil
-// }
-
 func (as *AuthService) GetTgBindingURL(ctx context.Context) (*responses.TgBinding, error) {
 	userID, err := as.getUserID(ctx)
 	if err != nil {
@@ -306,6 +299,41 @@ func (as *AuthService) BindTG(ctx context.Context, req *requests.BindTG) (*respo
 	}
 
 	return as.userToDTO(updatedUser), nil
+}
+
+func (as *AuthService) storeLastSendTime(ctx context.Context, at time.Time, email user.Email) error {
+	if err := as.preparedCache.SaveLastSend(ctx, email, at); err != nil {
+		as.log.Error("failed to store last send time",
+			slog.String("error", err.Error()),
+		)
+
+		return as.handleRepoError(err)
+	}
+
+	return nil
+}
+
+func (as *AuthService) checkLastSendTime(ctx context.Context, email user.Email) error {
+	lastSendAt, err := as.preparedCache.GetLastSend(ctx, email)
+	if err != nil {
+		if errors.Is(err, user.ErrUserNotFound) {
+			return nil
+		}
+
+		as.log.Error("failed to get last send time",
+			slog.String("error", err.Error()),
+		)
+
+		return errs.NewErrorWithKind(errs.ErrTooMuchResents, errs.KindConflict)
+	}
+
+	now := time.Now().UTC()
+	duration := now.Sub(lastSendAt)
+	if duration < as.cfg.Service.SendingDuration {
+		return errs.NewErrorWithKind(errs.ErrTooMuchResents, errs.KindConflict)
+	}
+
+	return nil
 }
 
 func (as *AuthService) clearTgBindingCache(ctx context.Context, bindingID uuid.UUID) error {
@@ -449,13 +477,13 @@ func (as *AuthService) storePreparedUserCache(ctx context.Context, user *user.Us
 	return code, nil
 }
 
-func (as *AuthService) sendConfirmationCode(ctx context.Context, email user.Email, code int) error {
-	if err := as.sendCode(ctx, email, code); err != nil {
-		as.log.Error("failed to send code to user", slog.String("error", err.Error()))
-		return errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
-	}
+func (as *AuthService) sendConfirmationCode(ctx context.Context, email user.Email, code int) {
+	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
-	return nil
+	if err := as.sendCode(ctxTimeout, email, code); err != nil {
+		as.log.Error("failed to send code to user", slog.String("error", err.Error()))
+	}
 }
 
 func (as *AuthService) userToDTO(user *user.User) *responses.User {
@@ -484,6 +512,16 @@ func (as *AuthService) validateEmail(raw string) (user.Email, error) {
 	}
 
 	return email, nil
+}
+
+func (as *AuthService) getPreparedUser(ctx context.Context, email user.Email) (*user.User, int, error) {
+	preparedUser, _, code, err := as.preparedCache.GetPrepared(ctx, email)
+	if err != nil {
+		as.log.Warn("trying to get unexisted prepared user", slog.String("error", err.Error()))
+		return nil, 0, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
+	}
+
+	return preparedUser, code, nil
 }
 
 func (as *AuthService) resolvePreparedUser(ctx context.Context, requestedCode int, email user.Email) (*user.User, error) {

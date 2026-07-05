@@ -2,6 +2,7 @@ package preparedredis
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/devathh/hive/backend/internal/modules/auth/domain/user"
 )
@@ -55,4 +56,19 @@ func preparedToUser(prepared *preparedUserRecord) *user.User {
 		prepared.User.CreatedAt,
 		prepared.User.UpdatedAt,
 	)
+}
+
+func lastSendToBytes(at time.Time) ([]byte, error) {
+	return json.Marshal(LastSend{
+		At: at,
+	})
+}
+
+func bytesToLastSendRecord(bytes []byte) (*LastSend, error) {
+	var record LastSend
+	if err := json.Unmarshal(bytes, &record); err != nil {
+		return nil, err
+	}
+
+	return &record, nil
 }
