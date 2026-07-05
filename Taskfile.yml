@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: [ ./backend/.env ]
+
 # global env variables
 env:
   BACKEND_CMD_PATH: ./cmd/server/main.go
@@ -7,9 +9,8 @@ env:
 # set the validation params
 vars:
   ALLOWED_ENVS: [dev, staging, prod]
-
-# load all the .env's files
-dotenv: [ backend/.env ]
+  JWT_PRIVATE_PATH: ./keys/jwtRS256.key
+  JWT_PUBLIC_PATH: ./keys/jwtRS256.key.pub
 
 # main tasks
 tasks:
@@ -26,15 +27,20 @@ tasks:
       - go test ./...
     cmds:
       - go run $BACKEND_CMD_PATH
+  
   # generate jwt keys on backend
   jwt-keys:
-    requires:
-      vars:
-        - name: JWT_PUBLIC_PATH
-        - name: JWT_PRIVATE_PATH
     dir: ./backend
+    preconditions:
+      - mkdir -p ./keys/
     cmds:
-      - openssl genrsa -out $JWT_PRIVATE_PATH 2048
-      - openssl rsa -in $JWT_PRIVATE_PATH -pubout -out $JWT_PUBLIC_PATH
-
+      - openssl genrsa -out {{.JWT_PRIVATE_PATH}} 2048
+      - openssl rsa -in {{.JWT_PRIVATE_PATH}} -pubout -out {{.JWT_PUBLIC_PATH}}
   
+  # quick start the backend
+  qstart:
+    dir: .
+    cmds:
+      - cp -n ./backend/.env.example ./backend/.env || true
+      - task: jwt-keys
+      - docker-compose --env-file ./backend/.env up -d
