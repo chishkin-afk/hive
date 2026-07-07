@@ -5,6 +5,7 @@ import "errors"
 var (
 	ErrInternalServer        = errors.New("internal server error")
 	ErrInvalidCode           = errors.New("invalid code")
+	ErrInvalidExternalCode   = errors.New("invalid external code")
 	ErrInvalidCredentials    = errors.New("invalid credentials")
 	ErrInvalidToken          = errors.New("invalid token")
 	ErrNotEnoughRights       = errors.New("not enough rights")

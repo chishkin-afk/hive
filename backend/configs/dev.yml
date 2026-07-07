@@ -87,6 +87,9 @@ yookassa:
   - 77.75.154.128
   - "2a02:5180::"
 
+engage:
+  base_url: http://localhost:8041
+
 smtp:
   host: smtp.yandex.ru
   port: 587

@@ -18,8 +18,9 @@ type Config struct {
 	Persistence   Persistence   `yaml:"persistence"`
 	Cache         Cache         `yaml:"cache"`
 	Authorization Authorization `yaml:"authorization"`
-	SMTP          SMTP          `yaml:"smtp"`
 	Yookassa      Yookassa      `yaml:"yookassa"`
+	Engage        Engage        `yaml:"engage"`
+	SMTP          SMTP          `yaml:"smtp"`
 }
 
 type App struct {
@@ -117,6 +118,10 @@ type Yookassa struct {
 		} `yaml:"confirmation"`
 	} `yaml:"creates"`
 	TrustedIps []string `yaml:"trusted_ips" validate:"required"`
+}
+
+type Engage struct {
+	BaseURL string `yaml:"base_url" validate:"required,url"`
 }
 
 type SMTP struct {
