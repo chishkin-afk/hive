@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
@@ -15,6 +16,10 @@ import (
 	"github.com/devathh/hive/backend/pkg/errs"
 	"github.com/google/uuid"
 )
+
+type engageClient interface {
+	SendMessage(ctx context.Context, chatID int64, msg string) error
+}
 
 type scheduleService interface {
 	GetScheduleByUserID(ctx context.Context, userID uuid.UUID, dayOfWeek uint8) (*responses.Schedule, error)
@@ -42,6 +47,7 @@ type BookingService struct {
 	clientService   clientService
 	authService     authService
 	offerService    offerService
+	engageClient    engageClient
 }
 
 func New(
@@ -53,6 +59,7 @@ func New(
 	clientService clientService,
 	authService authService,
 	offerService offerService,
+	engageClient engageClient,
 ) *BookingService {
 	return &BookingService{
 		cfg:                cfg,
@@ -63,6 +70,7 @@ func New(
 		clientService:      clientService,
 		authService:        authService,
 		offerService:       offerService,
+		engageClient:       engageClient,
 	}
 }
 
@@ -103,6 +111,7 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 		bs.log.Error("failed to upsert client", slog.String("error", err.Error()))
 	}
 
+	go bs.notifyCoachNewBooking(context.Background(), coach, offer.Title, bookingStartTime)
 	return bs.bookingToDTO(savedBooking), nil
 }
 
@@ -228,6 +237,120 @@ func (bs *BookingService) GetFreeSlots(ctx context.Context, offerID uuid.UUID, d
 		bs.generateFreeSlots(schedule, offer, bookings),
 		date,
 	), nil
+}
+
+func (bs *BookingService) notifyCoachDeleteBooking(ctx context.Context, offerID uuid.UUID, startTime time.Time) {
+	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	coach, offer, err := bs.getCoachAndOffer(ctxTimeout, offerID)
+	if err != nil {
+		bs.log.Error("failed to get coach",
+			slog.String("error", err.Error()),
+		)
+
+		return
+	}
+
+	startTime, zone := bs.convertDate(startTime)
+	msg := fmt.Sprintf(bs.cfg.Engage.Msgs.DeleteBooking,
+		offer.Title,
+		startTime.Day(),
+		startTime.Month().String(),
+		startTime.Hour(),
+		startTime.Minute(),
+		zone,
+	)
+
+	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
+		bs.log.Error("failed to notify coach",
+			slog.String("error", err.Error()),
+			slog.String("coach_id", coach.ID.String()),
+		)
+	}
+}
+
+func (bs *BookingService) notifyCoachUpdateBooking(ctx context.Context, coachID uuid.UUID, title string, newTime, oldTime time.Time) {
+	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	coach, err := bs.authService.GetUserByID(ctxTimeout, coachID)
+	if err != nil {
+		bs.log.Error("failed to get coach by id",
+			slog.String("coach_id", coachID.String()),
+		)
+
+		return
+	}
+
+	newTime, newZone := bs.convertDate(newTime)
+	oldTime, oldZone := bs.convertDate(oldTime)
+
+	msg := fmt.Sprintf(bs.cfg.Engage.Msgs.UpdateBooking,
+		title,
+		oldTime.Day(),
+		oldTime.Month().String(),
+		oldTime.Hour(),
+		oldTime.Minute(),
+		oldZone,
+		newTime.Day(),
+		newTime.Month().String(),
+		newTime.Hour(),
+		newTime.Minute(),
+		newZone,
+	)
+
+	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
+		bs.log.Error("failed to notify coach",
+			slog.String("error", err.Error()),
+			slog.String("coach_id", coach.ID.String()),
+		)
+	}
+}
+
+func (bs *BookingService) notifyCoachNewBooking(ctx context.Context, coach *responses.User, title string, startTime time.Time) {
+	startTime, zone := bs.convertDate(startTime)
+	msg := fmt.Sprintf(bs.cfg.Engage.Msgs.NewBooking,
+		title,
+		startTime.Day(),
+		startTime.Month().String(),
+		startTime.Hour(),
+		startTime.Minute(),
+		zone,
+	)
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
+		bs.log.Error("failed to notify coach",
+			slog.String("error", err.Error()),
+			slog.String("coach_id", coach.ID.String()),
+		)
+	}
+}
+
+func (bs *BookingService) convertDate(t time.Time) (time.Time, string) {
+	moscowLocation, err := time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		return t, "UTC"
+	}
+
+	return t.In(moscowLocation), "MSK"
+}
+
+func (bs *BookingService) notifyCoach(ctx context.Context, coach *responses.User, msg string) error {
+	msg = strings.TrimSpace(msg)
+	if msg == "" {
+		return errs.ErrEmptyMsg
+	}
+
+	if !coach.Notification.TelegramEnable {
+		bs.log.Debug("coach's telegram is disabled", slog.String("coach_id", coach.ID.String()))
+		return nil
+	}
+
+	return bs.engageClient.SendMessage(ctx, coach.TgChatID, msg)
 }
 
 func (bs *BookingService) getUserID(ctx context.Context) (uuid.UUID, error) {
@@ -657,6 +780,8 @@ func (bs *BookingService) applyChanges(ctx context.Context, booking *booking.Boo
 			if err := booking.Cancel(); err != nil {
 				return errs.NewErrorWithKind(err, errs.KindRequest)
 			}
+
+			go bs.notifyCoachDeleteBooking(context.Background(), booking.OfferID(), booking.StartTime())
 		}
 	}
 	if req.StartTime != nil {
@@ -703,6 +828,14 @@ func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *bookin
 	if err := bs.checkSchedule(schedule, bookingStartTime, bookingEndTime); err != nil {
 		return err
 	}
+
+	go bs.notifyCoachUpdateBooking(
+		context.Background(),
+		offer.AuthorID,
+		offer.Title,
+		newStartTime,
+		booking.StartTime(),
+	)
 
 	return booking.ChangeStartTime(newStartTime)
 }

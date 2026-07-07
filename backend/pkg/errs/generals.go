@@ -6,6 +6,7 @@ var (
 	ErrInternalServer        = errors.New("internal server error")
 	ErrInvalidCode           = errors.New("invalid code")
 	ErrInvalidExternalCode   = errors.New("invalid external code")
+	ErrEmptyMsg              = errors.New("empty msg for sending")
 	ErrInvalidCredentials    = errors.New("invalid credentials")
 	ErrInvalidToken          = errors.New("invalid token")
 	ErrNotEnoughRights       = errors.New("not enough rights")

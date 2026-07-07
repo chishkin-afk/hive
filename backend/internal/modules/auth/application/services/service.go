@@ -690,8 +690,8 @@ func (as *AuthService) applyUserChanges(updUser *user.User, req *requests.Update
 			return errs.NewErrorWithKind(err, errs.KindRequest)
 		}
 	}
-	if req.Notification != nil {
-		if err := updUser.ChangeNotification(user.NewNotification(req.Notification.TelegramEnable)); err != nil {
+	if req.Notification.TelegramEnable != nil {
+		if err := updUser.ChangeNotification(user.NewNotification(*req.Notification.TelegramEnable)); err != nil {
 			return errs.NewErrorWithKind(err, errs.KindRequest)
 		}
 	}

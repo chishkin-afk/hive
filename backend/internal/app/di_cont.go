@@ -23,6 +23,7 @@ import (
 	userpg "github.com/devathh/hive/backend/internal/modules/auth/infrastructure/persistence/postgres/user"
 	bookingservices "github.com/devathh/hive/backend/internal/modules/bookings/application/services"
 	bookingredis "github.com/devathh/hive/backend/internal/modules/bookings/infrastructure/cache/redis/booking"
+	engagehttp "github.com/devathh/hive/backend/internal/modules/bookings/infrastructure/http/engage"
 	bookingpg "github.com/devathh/hive/backend/internal/modules/bookings/infrastructure/persistence/postgres/booking"
 	clientservices "github.com/devathh/hive/backend/internal/modules/clients/application/services"
 	clientredis "github.com/devathh/hive/backend/internal/modules/clients/infrastructure/cache/redis/client"
@@ -295,6 +296,11 @@ func (di *DIContainer) BookingService() *bookingservices.BookingService {
 			di.ClientService(),
 			di.AuthService(),
 			di.OfferService(),
+			engagehttp.New(
+				di.Cfg(),
+				di.Log(),
+				http.DefaultClient,
+			),
 		)
 	}
 
