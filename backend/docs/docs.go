@@ -35,7 +35,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.ConfirmUser"
+                            "$ref": "#/definitions/requests.ConfirmUser"
                         }
                     }
                 ],
@@ -43,31 +43,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Token"
+                            "$ref": "#/definitions/responses.Token"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -93,7 +93,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.Login"
+                            "$ref": "#/definitions/requests.Login"
                         }
                     }
                 ],
@@ -101,37 +101,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Token"
+                            "$ref": "#/definitions/responses.Token"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -157,7 +157,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.PrepareUser"
+                            "$ref": "#/definitions/requests.PrepareUser"
                         }
                     }
                 ],
@@ -165,44 +165,44 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.User"
+                            "$ref": "#/definitions/responses.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
             }
         },
-        "/auth/tg": {
-            "patch": {
+        "/auth/tgbinding": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Applies the change to user by his id from jwt token",
+                "description": "Returns the tg's binding url to bot",
                 "consumes": [
                     "application/json"
                 ],
@@ -212,59 +212,98 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Update the field of user's telegram chat id",
-                "parameters": [
-                    {
-                        "description": "data for updating",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpdateTgChatID"
-                        }
-                    }
-                ],
+                "summary": "Get the self tg's binding url by jwt token",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.User"
+                            "$ref": "#/definitions/responses.TgBinding"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
-                        }
-                    },
-                    "408": {
-                        "description": "Request Timeout",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update the telegram's fields of user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Update the telegram's fields of user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/responses.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrMsg"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrMsg"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrMsg"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrMsg"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -292,37 +331,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.User"
+                            "$ref": "#/definitions/responses.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -351,7 +390,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpdateUser"
+                            "$ref": "#/definitions/requests.UpdateUser"
                         }
                     }
                 ],
@@ -359,43 +398,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.User"
+                            "$ref": "#/definitions/responses.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -426,7 +465,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.CreateBooking"
+                            "$ref": "#/definitions/requests.CreateBooking"
                         }
                     }
                 ],
@@ -434,43 +473,43 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Booking"
+                            "$ref": "#/definitions/responses.Booking"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -499,7 +538,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpdateBooking"
+                            "$ref": "#/definitions/requests.UpdateBooking"
                         }
                     }
                 ],
@@ -509,44 +548,44 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Booking"
+                                "$ref": "#/definitions/responses.Booking"
                             }
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -584,43 +623,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Booking"
+                            "$ref": "#/definitions/responses.Booking"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -672,43 +711,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Bookings"
+                            "$ref": "#/definitions/responses.Bookings"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -750,43 +789,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Slots"
+                            "$ref": "#/definitions/responses.Slots"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -817,7 +856,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpsertClient"
+                            "$ref": "#/definitions/requests.UpsertClient"
                         }
                     }
                 ],
@@ -825,43 +864,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Client"
+                            "$ref": "#/definitions/responses.Client"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -900,43 +939,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Client"
+                            "$ref": "#/definitions/responses.Client"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -989,43 +1028,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Clients"
+                            "$ref": "#/definitions/responses.Clients"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1069,43 +1108,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Clients"
+                            "$ref": "#/definitions/responses.Clients"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1136,7 +1175,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.CreateOffer"
+                            "$ref": "#/definitions/requests.CreateOffer"
                         }
                     }
                 ],
@@ -1144,43 +1183,43 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Offer"
+                            "$ref": "#/definitions/responses.Offer"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1209,7 +1248,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpdateOffer"
+                            "$ref": "#/definitions/requests.UpdateOffer"
                         }
                     }
                 ],
@@ -1217,43 +1256,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Offer"
+                            "$ref": "#/definitions/responses.Offer"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1292,43 +1331,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Offer"
+                            "$ref": "#/definitions/responses.Offer"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1365,43 +1404,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Offer"
+                            "$ref": "#/definitions/responses.Offer"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1454,43 +1493,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Offers"
+                            "$ref": "#/definitions/responses.Offers"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1521,7 +1560,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.CreatePayment"
+                            "$ref": "#/definitions/requests.CreatePayment"
                         }
                     }
                 ],
@@ -1529,43 +1568,43 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.UnconfirmedPayment"
+                            "$ref": "#/definitions/responses.UnconfirmedPayment"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1604,43 +1643,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Payment"
+                            "$ref": "#/definitions/responses.Payment"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1679,43 +1718,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Rate"
+                            "$ref": "#/definitions/responses.Rate"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1743,43 +1782,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Rates"
+                            "$ref": "#/definitions/responses.Rates"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1810,37 +1849,37 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1884,43 +1923,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Payments"
+                            "$ref": "#/definitions/responses.Payments"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -1951,7 +1990,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.CreateSchedule"
+                            "$ref": "#/definitions/requests.CreateSchedule"
                         }
                     }
                 ],
@@ -1959,43 +1998,43 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Schedule"
+                            "$ref": "#/definitions/responses.Schedule"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -2024,7 +2063,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpdateSchedule"
+                            "$ref": "#/definitions/requests.UpdateSchedule"
                         }
                     }
                 ],
@@ -2032,43 +2071,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Schedule"
+                            "$ref": "#/definitions/responses.Schedule"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -2107,43 +2146,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Schedule"
+                            "$ref": "#/definitions/responses.Schedule"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -2189,43 +2228,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Schedule"
+                            "$ref": "#/definitions/responses.Schedule"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -2264,43 +2303,43 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Schedule"
+                            "$ref": "#/definitions/responses.Schedule"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "408": {
                         "description": "Request Timeout",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg"
+                            "$ref": "#/definitions/responses.ErrMsg"
                         }
                     }
                 }
@@ -2308,18 +2347,18 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.Break": {
+        "requests.Break": {
             "type": "object",
             "properties": {
                 "end_time": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.DayTime"
+                    "$ref": "#/definitions/requests.DayTime"
                 },
                 "start_time": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.DayTime"
+                    "$ref": "#/definitions/requests.DayTime"
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.ConfirmUser": {
+        "requests.ConfirmUser": {
             "type": "object",
             "properties": {
                 "code": {
@@ -2330,7 +2369,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.CreateBooking": {
+        "requests.CreateBooking": {
             "type": "object",
             "properties": {
                 "comment": {
@@ -2345,7 +2384,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.CreateOffer": {
+        "requests.CreateOffer": {
             "type": "object",
             "properties": {
                 "description": {
@@ -2365,7 +2404,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.CreatePayment": {
+        "requests.CreatePayment": {
             "type": "object",
             "properties": {
                 "rate_id": {
@@ -2373,27 +2412,27 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.CreateSchedule": {
+        "requests.CreateSchedule": {
             "type": "object",
             "properties": {
                 "breaks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.Break"
+                        "$ref": "#/definitions/requests.Break"
                     }
                 },
                 "day_of_week": {
                     "type": "integer"
                 },
                 "end_time": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.DayTime"
+                    "$ref": "#/definitions/requests.DayTime"
                 },
                 "start_time": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.DayTime"
+                    "$ref": "#/definitions/requests.DayTime"
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.DayTime": {
+        "requests.DayTime": {
             "type": "object",
             "properties": {
                 "hour": {
@@ -2404,7 +2443,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.Login": {
+        "requests.Login": {
             "type": "object",
             "properties": {
                 "email": {
@@ -2415,7 +2454,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.PrepareUser": {
+        "requests.PrepareUser": {
             "type": "object",
             "properties": {
                 "email": {
@@ -2438,7 +2477,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpdateBooking": {
+        "requests.UpdateBooking": {
             "type": "object",
             "properties": {
                 "booking_id": {
@@ -2456,7 +2495,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpdateNotification": {
+        "requests.UpdateNotification": {
             "type": "object",
             "properties": {
                 "telegram_enable": {
@@ -2464,7 +2503,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpdateOffer": {
+        "requests.UpdateOffer": {
             "type": "object",
             "properties": {
                 "description": {
@@ -2490,38 +2529,30 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpdateSchedule": {
+        "requests.UpdateSchedule": {
             "type": "object",
             "properties": {
                 "breaks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.Break"
+                        "$ref": "#/definitions/requests.Break"
                     }
                 },
                 "do_update_breaks": {
                     "type": "boolean"
                 },
                 "end_time": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.DayTime"
+                    "$ref": "#/definitions/requests.DayTime"
                 },
                 "schedule_id": {
                     "type": "string"
                 },
                 "start_time": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.DayTime"
+                    "$ref": "#/definitions/requests.DayTime"
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpdateTgChatID": {
-            "type": "object",
-            "properties": {
-                "tg_chat_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpdateUser": {
+        "requests.UpdateUser": {
             "type": "object",
             "properties": {
                 "firstname": {
@@ -2531,7 +2562,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "notification": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpdateNotification"
+                    "$ref": "#/definitions/requests.UpdateNotification"
                 },
                 "on_vacation": {
                     "type": "boolean"
@@ -2544,7 +2575,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_requests.UpsertClient": {
+        "requests.UpsertClient": {
             "type": "object",
             "properties": {
                 "offer_id": {
@@ -2552,7 +2583,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Booking": {
+        "responses.Booking": {
             "type": "object",
             "properties": {
                 "comment": {
@@ -2581,7 +2612,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Bookings": {
+        "responses.Bookings": {
             "type": "object",
             "properties": {
                 "has_next_page": {
@@ -2593,7 +2624,7 @@ const docTemplate = `{
                 "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Booking"
+                        "$ref": "#/definitions/responses.Booking"
                     }
                 },
                 "total_pages": {
@@ -2601,18 +2632,18 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Break": {
+        "responses.Break": {
             "type": "object",
             "properties": {
                 "end_time": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.DayTime"
+                    "$ref": "#/definitions/responses.DayTime"
                 },
                 "start_time": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.DayTime"
+                    "$ref": "#/definitions/responses.DayTime"
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Client": {
+        "responses.Client": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2635,7 +2666,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Clients": {
+        "responses.Clients": {
             "type": "object",
             "properties": {
                 "has_next_page": {
@@ -2647,7 +2678,7 @@ const docTemplate = `{
                 "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Client"
+                        "$ref": "#/definitions/responses.Client"
                     }
                 },
                 "total_pages": {
@@ -2655,7 +2686,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.DayTime": {
+        "responses.DayTime": {
             "type": "object",
             "properties": {
                 "hour": {
@@ -2666,7 +2697,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.ErrMsg": {
+        "responses.ErrMsg": {
             "type": "object",
             "properties": {
                 "error": {
@@ -2674,7 +2705,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Notification": {
+        "responses.Notification": {
             "type": "object",
             "properties": {
                 "telegram_enable": {
@@ -2682,7 +2713,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Offer": {
+        "responses.Offer": {
             "type": "object",
             "properties": {
                 "author_id": {
@@ -2717,7 +2748,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Offers": {
+        "responses.Offers": {
             "type": "object",
             "properties": {
                 "has_next_page": {
@@ -2729,7 +2760,7 @@ const docTemplate = `{
                 "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Offer"
+                        "$ref": "#/definitions/responses.Offer"
                     }
                 },
                 "total_pages": {
@@ -2737,7 +2768,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Payment": {
+        "responses.Payment": {
             "type": "object",
             "properties": {
                 "amount_penny": {
@@ -2766,7 +2797,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Payments": {
+        "responses.Payments": {
             "type": "object",
             "properties": {
                 "has_next_page": {
@@ -2778,7 +2809,7 @@ const docTemplate = `{
                 "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Payment"
+                        "$ref": "#/definitions/responses.Payment"
                     }
                 },
                 "total_pages": {
@@ -2786,7 +2817,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Rate": {
+        "responses.Rate": {
             "type": "object",
             "properties": {
                 "amount_penny": {
@@ -2803,44 +2834,44 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Rates": {
+        "responses.Rates": {
             "type": "object",
             "properties": {
                 "rate": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Rate"
+                        "$ref": "#/definitions/responses.Rate"
                     }
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Schedule": {
+        "responses.Schedule": {
             "type": "object",
             "properties": {
                 "breaks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Break"
+                        "$ref": "#/definitions/responses.Break"
                     }
                 },
                 "day_of_week": {
                     "type": "integer"
                 },
                 "end_time": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.DayTime"
+                    "$ref": "#/definitions/responses.DayTime"
                 },
                 "id": {
                     "type": "string"
                 },
                 "start_time": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.DayTime"
+                    "$ref": "#/definitions/responses.DayTime"
                 },
                 "user_id": {
                     "type": "string"
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Slots": {
+        "responses.Slots": {
             "type": "object",
             "properties": {
                 "date": {
@@ -2849,12 +2880,29 @@ const docTemplate = `{
                 "times": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.DayTime"
+                        "$ref": "#/definitions/responses.DayTime"
                     }
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.Token": {
+        "responses.TgBinding": {
+            "type": "object",
+            "properties": {
+                "bot_url": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "responses.Token": {
             "type": "object",
             "properties": {
                 "token": {
@@ -2862,18 +2910,18 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.UnconfirmedPayment": {
+        "responses.UnconfirmedPayment": {
             "type": "object",
             "properties": {
                 "payment": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Payment"
+                    "$ref": "#/definitions/responses.Payment"
                 },
                 "url": {
                     "type": "string"
                 }
             }
         },
-        "github_com_devathh_hive_backend_internal_common_application_dtos_responses.User": {
+        "responses.User": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2892,7 +2940,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "notification": {
-                    "$ref": "#/definitions/github_com_devathh_hive_backend_internal_common_application_dtos_responses.Notification"
+                    "$ref": "#/definitions/responses.Notification"
                 },
                 "on_vacation": {
                     "type": "boolean"

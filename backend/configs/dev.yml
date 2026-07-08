@@ -89,10 +89,6 @@ yookassa:
 
 engage:
   base_url: http://localhost:8041
-  msgs:
-    new_booking: "К вам записались на %s на %d %s %d:%d %s"
-    update_booking: "Запись на %s была перенесена с %d %s %d:%d %s на %d %s %d:%d %s"
-    delete_booking: "Запись на %s на %d %s %d:%d %s была отменена"
 
 smtp:
   host: smtp.yandex.ru

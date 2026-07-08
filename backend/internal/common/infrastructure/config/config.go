@@ -122,11 +122,6 @@ type Yookassa struct {
 
 type Engage struct {
 	BaseURL string `yaml:"base_url" validate:"required,url"`
-	Msgs    struct {
-		NewBooking    string `yaml:"new_booking" validate:"required"`
-		UpdateBooking string `yaml:"update_booking" validate:"required"`
-		DeleteBooking string `yaml:"delete_booking" validate:"required"`
-	} `yaml:"msgs"`
 }
 
 type SMTP struct {

@@ -17,6 +17,37 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	NewBooking = `
+📅 Новая запись:
+
+Услуга: %s
+Дата: %d %s
+Время: %d:%d %s
+
+ID: %s
+`
+	UpdateBooking = `
+📍 Запись была перенесена:
+
+Услуга: %s
+Старое время: %d %s %d:%d %s
+Новая время: %d %s %d:%d %s
+
+ID: %s
+`
+
+	DeleteBooking = `
+🗑 Запись была удалена:
+
+Услуга: %s
+Дата: %d %s
+Время: %d:%d %s
+
+ID: %s
+`
+)
+
 type engageClient interface {
 	SendMessage(ctx context.Context, chatID int64, msg string) error
 }
@@ -111,7 +142,7 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 		bs.log.Error("failed to upsert client", slog.String("error", err.Error()))
 	}
 
-	go bs.notifyCoachNewBooking(context.Background(), coach, offer.Title, bookingStartTime)
+	go bs.notifyCoachNewBooking(context.Background(), coach, offer.Title, bookingStartTime, savedBooking.ID())
 	return bs.bookingToDTO(savedBooking), nil
 }
 
@@ -239,7 +270,7 @@ func (bs *BookingService) GetFreeSlots(ctx context.Context, offerID uuid.UUID, d
 	), nil
 }
 
-func (bs *BookingService) notifyCoachDeleteBooking(ctx context.Context, offerID uuid.UUID, startTime time.Time) {
+func (bs *BookingService) notifyCoachDeleteBooking(ctx context.Context, offerID uuid.UUID, startTime time.Time, id uuid.UUID) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -253,13 +284,14 @@ func (bs *BookingService) notifyCoachDeleteBooking(ctx context.Context, offerID 
 	}
 
 	startTime, zone := bs.convertDate(startTime)
-	msg := fmt.Sprintf(bs.cfg.Engage.Msgs.DeleteBooking,
+	msg := fmt.Sprintf(DeleteBooking,
 		offer.Title,
 		startTime.Day(),
-		startTime.Month().String(),
+		bs.getMonthRU(startTime.Month().String()),
 		startTime.Hour(),
 		startTime.Minute(),
 		zone,
+		id.String(),
 	)
 
 	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
@@ -270,7 +302,7 @@ func (bs *BookingService) notifyCoachDeleteBooking(ctx context.Context, offerID 
 	}
 }
 
-func (bs *BookingService) notifyCoachUpdateBooking(ctx context.Context, coachID uuid.UUID, title string, newTime, oldTime time.Time) {
+func (bs *BookingService) notifyCoachUpdateBooking(ctx context.Context, coachID uuid.UUID, title string, newTime, oldTime time.Time, id uuid.UUID) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -286,18 +318,19 @@ func (bs *BookingService) notifyCoachUpdateBooking(ctx context.Context, coachID 
 	newTime, newZone := bs.convertDate(newTime)
 	oldTime, oldZone := bs.convertDate(oldTime)
 
-	msg := fmt.Sprintf(bs.cfg.Engage.Msgs.UpdateBooking,
+	msg := fmt.Sprintf(UpdateBooking,
 		title,
 		oldTime.Day(),
-		oldTime.Month().String(),
+		bs.getMonthRU(oldTime.Month().String()),
 		oldTime.Hour(),
 		oldTime.Minute(),
 		oldZone,
 		newTime.Day(),
-		newTime.Month().String(),
+		bs.getMonthRU(newTime.Month().String()),
 		newTime.Hour(),
 		newTime.Minute(),
 		newZone,
+		id.String(),
 	)
 
 	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
@@ -308,15 +341,16 @@ func (bs *BookingService) notifyCoachUpdateBooking(ctx context.Context, coachID 
 	}
 }
 
-func (bs *BookingService) notifyCoachNewBooking(ctx context.Context, coach *responses.User, title string, startTime time.Time) {
+func (bs *BookingService) notifyCoachNewBooking(ctx context.Context, coach *responses.User, title string, startTime time.Time, id uuid.UUID) {
 	startTime, zone := bs.convertDate(startTime)
-	msg := fmt.Sprintf(bs.cfg.Engage.Msgs.NewBooking,
+	msg := fmt.Sprintf(NewBooking,
 		title,
 		startTime.Day(),
-		startTime.Month().String(),
+		bs.getMonthRU(startTime.Month().String()),
 		startTime.Hour(),
 		startTime.Minute(),
 		zone,
+		id.String(),
 	)
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -781,7 +815,7 @@ func (bs *BookingService) applyChanges(ctx context.Context, booking *booking.Boo
 				return errs.NewErrorWithKind(err, errs.KindRequest)
 			}
 
-			go bs.notifyCoachDeleteBooking(context.Background(), booking.OfferID(), booking.StartTime())
+			go bs.notifyCoachDeleteBooking(context.Background(), booking.OfferID(), booking.StartTime(), booking.ID())
 		}
 	}
 	if req.StartTime != nil {
@@ -835,6 +869,7 @@ func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *bookin
 		offer.Title,
 		newStartTime,
 		booking.StartTime(),
+		booking.ID(),
 	)
 
 	return booking.ChangeStartTime(newStartTime)
@@ -876,6 +911,37 @@ func (bs *BookingService) getBookingTime(startTime time.Time, offer *responses.O
 	}
 
 	return bookingStartTime, bookingEndTime, nil
+}
+
+func (bs *BookingService) getMonthRU(month string) string {
+	switch month {
+	case "January":
+		return "Января"
+	case "February":
+		return "Февраля"
+	case "March":
+		return "Марта"
+	case "April":
+		return "Апреля"
+	case "May":
+		return "Мая"
+	case "June":
+		return "Июня"
+	case "July":
+		return "Июля"
+	case "August":
+		return "Августа"
+	case "September":
+		return "Сентября"
+	case "October":
+		return "Октября"
+	case "November":
+		return "Ноября"
+	case "December":
+		return "Декабря"
+	}
+
+	return month
 }
 
 func (bs *BookingService) handleRepoError(err error) error {

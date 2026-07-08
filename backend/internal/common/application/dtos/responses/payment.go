@@ -33,5 +33,5 @@ type Rate struct {
 }
 
 type Rates struct {
-	List []*Rate `json:"rate"`
+	List []*Rate `json:"list"`
 }
