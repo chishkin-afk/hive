@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
@@ -15,37 +14,6 @@ import (
 	"github.com/devathh/hive/backend/internal/modules/bookings/domain/booking"
 	"github.com/devathh/hive/backend/pkg/errs"
 	"github.com/google/uuid"
-)
-
-const (
-	NewBooking = `
-📅 Новая запись:
-
-Услуга: %s
-Дата: %d %s
-Время: %d:%d %s
-
-ID: %s
-`
-	UpdateBooking = `
-📍 Запись была перенесена:
-
-Услуга: %s
-Старое время: %d %s %d:%d %s
-Новая время: %d %s %d:%d %s
-
-ID: %s
-`
-
-	DeleteBooking = `
-🗑 Запись была удалена:
-
-Услуга: %s
-Дата: %d %s
-Время: %d:%d %s
-
-ID: %s
-`
 )
 
 type engageClient interface {
@@ -143,7 +111,11 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 		bs.log.Error("failed to upsert client", slog.String("error", err.Error()))
 	}
 
-	go bs.notifyCoachNewBooking(context.Background(), coach, offer.Title, bookingStartTime, savedBooking.ID())
+	go bs.notifyHolders(context.Background(), savedBooking, bs.bookingCreatedMsg(&baseInfo{
+		title: offer.Title,
+		id:    savedBooking.ID(),
+	}, savedBooking.StartTime()))
+
 	return bs.bookingToDTO(savedBooking), nil
 }
 
@@ -301,11 +273,28 @@ func (bs *BookingService) lookupUsers(ctx context.Context, bookings []*booking.B
 	return resp, nil
 }
 
-func (bs *BookingService) notifyCoachDeleteBooking(ctx context.Context, offerID uuid.UUID, startTime time.Time, id uuid.UUID) {
+func (bs *BookingService) notifyHolders(ctx context.Context, booking *booking.Booking, msg string) {
 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	coach, offer, err := bs.getCoachAndOffer(ctxTimeout, offerID)
+	client, err := bs.authService.GetUserByID(ctx, booking.UserID())
+	if err == nil {
+		if err = bs.notifyUser(ctx, client, msg); err != nil {
+			bs.log.Error("failed to notify client",
+				slog.String("error", err.Error()),
+			)
+		}
+
+		bs.log.Debug("client was be notified",
+			slog.String("client_id", client.ID.String()),
+		)
+	} else {
+		bs.log.Error("failed to get client",
+			slog.String("error", err.Error()),
+		)
+	}
+
+	coach, _, err := bs.getCoachAndOffer(ctxTimeout, booking.OfferID())
 	if err != nil {
 		bs.log.Error("failed to get coach",
 			slog.String("error", err.Error()),
@@ -314,86 +303,110 @@ func (bs *BookingService) notifyCoachDeleteBooking(ctx context.Context, offerID 
 		return
 	}
 
-	startTime, zone := bs.convertDate(startTime)
-	msg := fmt.Sprintf(DeleteBooking,
-		offer.Title,
-		startTime.Day(),
-		bs.getMonthRU(startTime.Month().String()),
-		startTime.Hour(),
-		startTime.Minute(),
-		zone,
-		id.String(),
-	)
-
-	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
-		bs.log.Error("failed to notify coach",
-			slog.String("error", err.Error()),
-			slog.String("coach_id", coach.ID.String()),
-		)
-	}
-}
-
-func (bs *BookingService) notifyCoachUpdateBooking(ctx context.Context, coachID uuid.UUID, title string, newTime, oldTime time.Time, id uuid.UUID) {
-	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	coach, err := bs.authService.GetUserByID(ctxTimeout, coachID)
-	if err != nil {
-		bs.log.Error("failed to get coach by id",
-			slog.String("coach_id", coachID.String()),
-		)
-
+	if coach.ID == client.ID {
 		return
 	}
 
-	newTime, newZone := bs.convertDate(newTime)
-	oldTime, oldZone := bs.convertDate(oldTime)
-
-	msg := fmt.Sprintf(UpdateBooking,
-		title,
-		oldTime.Day(),
-		bs.getMonthRU(oldTime.Month().String()),
-		oldTime.Hour(),
-		oldTime.Minute(),
-		oldZone,
-		newTime.Day(),
-		bs.getMonthRU(newTime.Month().String()),
-		newTime.Hour(),
-		newTime.Minute(),
-		newZone,
-		id.String(),
-	)
-
-	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
+	if err := bs.notifyUser(ctx, coach, msg); err != nil {
 		bs.log.Error("failed to notify coach",
 			slog.String("error", err.Error()),
-			slog.String("coach_id", coach.ID.String()),
 		)
 	}
 }
 
-func (bs *BookingService) notifyCoachNewBooking(ctx context.Context, coach *responses.User, title string, startTime time.Time, id uuid.UUID) {
-	startTime, zone := bs.convertDate(startTime)
-	msg := fmt.Sprintf(NewBooking,
-		title,
-		startTime.Day(),
-		bs.getMonthRU(startTime.Month().String()),
-		startTime.Hour(),
-		startTime.Minute(),
-		zone,
-		id.String(),
-	)
+// func (bs *BookingService) notifyCoachDeleteBooking(ctx context.Context, offerID uuid.UUID, startTime time.Time, id uuid.UUID) {
+// 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+// 	defer cancel()
 
-	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+// 	coach, offer, err := bs.getCoachAndOffer(ctxTimeout, offerID)
+// 	if err != nil {
+// 		bs.log.Error("failed to get coach",
+// 			slog.String("error", err.Error()),
+// 		)
 
-	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
-		bs.log.Error("failed to notify coach",
-			slog.String("error", err.Error()),
-			slog.String("coach_id", coach.ID.String()),
-		)
-	}
-}
+// 		return
+// 	}
+
+// 	startTime, zone := bs.convertDate(startTime)
+// 	msg := fmt.Sprintf(DeleteBooking,
+// 		offer.Title,
+// 		startTime.Day(),
+// 		bs.getMonthRU(startTime.Month().String()),
+// 		startTime.Hour(),
+// 		startTime.Minute(),
+// 		zone,
+// 		id.String(),
+// 	)
+
+// 	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
+// 		bs.log.Error("failed to notify coach",
+// 			slog.String("error", err.Error()),
+// 			slog.String("coach_id", coach.ID.String()),
+// 		)
+// 	}
+// }
+
+// func (bs *BookingService) notifyCoachUpdateBooking(ctx context.Context, coachID uuid.UUID, title string, newTime, oldTime time.Time, id uuid.UUID) {
+// 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+// 	defer cancel()
+
+// 	coach, err := bs.authService.GetUserByID(ctxTimeout, coachID)
+// 	if err != nil {
+// 		bs.log.Error("failed to get coach by id",
+// 			slog.String("coach_id", coachID.String()),
+// 		)
+
+// 		return
+// 	}
+
+// 	newTime, newZone := bs.convertDate(newTime)
+// 	oldTime, oldZone := bs.convertDate(oldTime)
+
+// 	msg := fmt.Sprintf(UpdateBooking,
+// 		title,
+// 		oldTime.Day(),
+// 		bs.getMonthRU(oldTime.Month().String()),
+// 		oldTime.Hour(),
+// 		oldTime.Minute(),
+// 		oldZone,
+// 		newTime.Day(),
+// 		bs.getMonthRU(newTime.Month().String()),
+// 		newTime.Hour(),
+// 		newTime.Minute(),
+// 		newZone,
+// 		id.String(),
+// 	)
+
+// 	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
+// 		bs.log.Error("failed to notify coach",
+// 			slog.String("error", err.Error()),
+// 			slog.String("coach_id", coach.ID.String()),
+// 		)
+// 	}
+// }
+
+// func (bs *BookingService) notifyCoachNewBooking(ctx context.Context, coach *responses.User, title string, startTime time.Time, id uuid.UUID) {
+// 	startTime, zone := bs.convertDate(startTime)
+// 	msg := fmt.Sprintf(NewBooking,
+// 		title,
+// 		startTime.Day(),
+// 		bs.getMonthRU(startTime.Month().String()),
+// 		startTime.Hour(),
+// 		startTime.Minute(),
+// 		zone,
+// 		id.String(),
+// 	)
+
+// 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+// 	defer cancel()
+
+// 	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
+// 		bs.log.Error("failed to notify coach",
+// 			slog.String("error", err.Error()),
+// 			slog.String("coach_id", coach.ID.String()),
+// 		)
+// 	}
+// }
 
 func (bs *BookingService) convertDate(t time.Time) (time.Time, string) {
 	moscowLocation, err := time.LoadLocation("Europe/Moscow")
@@ -402,20 +415,6 @@ func (bs *BookingService) convertDate(t time.Time) (time.Time, string) {
 	}
 
 	return t.In(moscowLocation), "MSK"
-}
-
-func (bs *BookingService) notifyCoach(ctx context.Context, coach *responses.User, msg string) error {
-	msg = strings.TrimSpace(msg)
-	if msg == "" {
-		return errs.ErrEmptyMsg
-	}
-
-	if !coach.Notification.TelegramEnable {
-		bs.log.Debug("coach's telegram is disabled", slog.String("coach_id", coach.ID.String()))
-		return nil
-	}
-
-	return bs.engageClient.SendMessage(ctx, coach.TgChatID, msg)
 }
 
 func (bs *BookingService) getUserID(ctx context.Context) (uuid.UUID, error) {
@@ -865,7 +864,11 @@ func (bs *BookingService) applyChanges(ctx context.Context, booking *booking.Boo
 				return errs.NewErrorWithKind(err, errs.KindRequest)
 			}
 
-			go bs.notifyCoachDeleteBooking(context.Background(), booking.OfferID(), booking.StartTime(), booking.ID())
+			go bs.notifyHolders(
+				context.Background(),
+				booking,
+				bs.getBookingCanceledMsg(context.Background(), booking),
+			)
 		}
 	}
 	if req.StartTime != nil {
@@ -873,6 +876,25 @@ func (bs *BookingService) applyChanges(ctx context.Context, booking *booking.Boo
 	}
 
 	return nil
+}
+
+func (bs *BookingService) getBookingCanceledMsg(ctx context.Context, booking *booking.Booking) string {
+	ctxTimeout, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	offer, err := bs.offerService.GetByID(ctxTimeout, booking.OfferID())
+	if err != nil {
+		bs.log.Error("failed to get title of offer",
+			slog.String("error", err.Error()),
+		)
+
+		return ""
+	}
+
+	return bs.bookingCanceledMsg(&baseInfo{
+		title: offer.Title,
+		id:    booking.ID(),
+	}, booking.StartTime())
 }
 
 func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *booking.Booking, newStartTime time.Time) error {
@@ -913,14 +935,14 @@ func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *bookin
 		return err
 	}
 
-	go bs.notifyCoachUpdateBooking(
-		context.Background(),
-		offer.AuthorID,
-		offer.Title,
+	go bs.notifyHolders(context.Background(), booking, bs.bookingUpdatedMsg(
+		&baseInfo{
+			title: offer.Title,
+			id:    booking.ID(),
+		},
 		newStartTime,
 		booking.StartTime(),
-		booking.ID(),
-	)
+	))
 
 	return booking.ChangeStartTime(newStartTime)
 }
