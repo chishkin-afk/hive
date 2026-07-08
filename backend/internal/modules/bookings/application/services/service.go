@@ -62,6 +62,7 @@ type clientService interface {
 
 type authService interface {
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*responses.User, error)
+	Lookup(ctx context.Context, req *requests.Lookup) (*responses.LookupUsers, error)
 }
 
 type offerService interface {
@@ -200,7 +201,12 @@ func (bs *BookingService) ListByOfferID(ctx context.Context, offerID uuid.UUID, 
 		return nil, err
 	}
 
-	return bs.listToDTO(list, totalCount, page, limit), nil
+	users, err := bs.lookupUsers(ctx, list)
+	if err != nil {
+		return nil, err
+	}
+
+	return bs.listToDTO(list, users, totalCount, page, limit), nil
 }
 
 // ListByUserID method that returns a list of all bookings
@@ -220,7 +226,12 @@ func (bs *BookingService) ListByUserID(ctx context.Context, page, limit uint32) 
 		return nil, err
 	}
 
-	return bs.listToDTO(list, totalCount, page, limit), nil
+	users, err := bs.lookupUsers(ctx, list)
+	if err != nil {
+		return nil, err
+	}
+
+	return bs.listToDTO(list, users, totalCount, page, limit), nil
 }
 
 // Update is a method that updates the fields of a booking.
@@ -268,6 +279,26 @@ func (bs *BookingService) GetFreeSlots(ctx context.Context, offerID uuid.UUID, d
 		bs.generateFreeSlots(schedule, offer, bookings),
 		date,
 	), nil
+}
+
+func (bs *BookingService) lookupUsers(ctx context.Context, bookings []*booking.Booking) (*responses.LookupUsers, error) {
+	req := requests.Lookup{
+		IDs: make([]uuid.UUID, len(bookings)),
+	}
+	for i, booking := range bookings {
+		req.IDs[i] = booking.UserID()
+	}
+
+	resp, err := bs.authService.Lookup(ctx, &req)
+	if err != nil {
+		bs.log.Error("failed to lookup users",
+			slog.String("error", err.Error()),
+		)
+
+		return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
+	}
+
+	return resp, nil
 }
 
 func (bs *BookingService) notifyCoachDeleteBooking(ctx context.Context, offerID uuid.UUID, startTime time.Time, id uuid.UUID) {
@@ -580,16 +611,35 @@ func (bs *BookingService) listByUserID(ctx context.Context, userID uuid.UUID, pa
 	return list, totalCount, err
 }
 
-func (bs *BookingService) listToDTO(list []*booking.Booking, totalCount int64, page, limit uint32) *responses.Bookings {
+func (bs *BookingService) listToDTO(list []*booking.Booking, users *responses.LookupUsers, totalCount int64, page, limit uint32) *responses.Bookings {
+	userMap := make(map[uuid.UUID]*responses.LookupUser, len(users.List))
+	for _, user := range users.List {
+		userMap[user.ID] = &user
+	}
+
 	totalPages := (totalCount + int64(limit) - 1) / int64(limit)
 	response := responses.Bookings{
-		List:        make([]*responses.Booking, len(list)),
+		List:        make([]responses.ListElement, 0, len(list)),
 		HasNextPage: totalPages > int64(page),
 		HasPrevPage: page > 1,
 		TotalPages:  uint32(totalPages),
 	}
-	for i, booking := range list {
-		response.List[i] = bs.bookingToDTO(booking)
+	for _, booking := range list {
+		if user, ok := userMap[booking.UserID()]; ok {
+			response.List = append(response.List, responses.ListElement{
+				Booking: bs.bookingToDTO(booking),
+				User: &responses.BookingUser{
+					ID:             user.ID,
+					Firstname:      user.Firstname,
+					Lastname:       user.Lastname,
+					ConfirmedEmail: user.ConfirmedEmail,
+				},
+			})
+
+			continue
+		}
+
+		bs.log.Warn("tried to get unexisted user", slog.String("user_id", booking.UserID().String()))
 	}
 
 	return &response

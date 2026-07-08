@@ -14,10 +14,22 @@ type Booking struct {
 }
 
 type Bookings struct {
-	List        []*Booking `json:"list"`
-	TotalPages  uint32     `json:"total_pages"`
-	HasNextPage bool       `json:"has_next_page"`
-	HasPrevPage bool       `json:"has_prev_page"`
+	List        []ListElement `json:"list"`
+	TotalPages  uint32        `json:"total_pages"`
+	HasNextPage bool          `json:"has_next_page"`
+	HasPrevPage bool          `json:"has_prev_page"`
+}
+
+type ListElement struct {
+	Booking *Booking     `json:"booking"`
+	User    *BookingUser `json:"user"`
+}
+
+type BookingUser struct {
+	ID             uuid.UUID `json:"id"`
+	Firstname      string    `json:"firstname"`
+	Lastname       string    `json:"lastname"`
+	ConfirmedEmail string    `json:"confirmed_email"`
 }
 
 type Slots struct {
