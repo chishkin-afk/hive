@@ -37,3 +37,14 @@ type TgBinding struct {
 type CodeResent struct {
 	NextSendAt int64 `json:"next_send_at"` // UNIX
 }
+
+type LookupUsers struct {
+	List []LookupUser `json:"list"`
+}
+
+type LookupUser struct {
+	ID             uuid.UUID `json:"id"`
+	Firstname      string    `json:"firstname"`
+	Lastname       string    `json:"lastname"`
+	ConfirmedEmail string    `json:"confirmed_email"`
+}

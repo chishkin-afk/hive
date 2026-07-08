@@ -2,6 +2,7 @@ package userpg
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/devathh/hive/backend/internal/modules/auth/domain/user"
 )
@@ -52,4 +53,22 @@ func toDomain(record *userRecord) (*user.User, error) {
 		record.CreatedAt,
 		record.UpdatedAt,
 	), nil
+}
+
+func lookupToDomain(record *userRecord) *user.User {
+	return user.From(
+		record.ID,
+		record.Firstname,
+		record.Lastname,
+		user.Email(record.ConfirmedEmail),
+		"",
+		"",
+		time.Time{},
+		false,
+		0,
+		user.NewNotification(false),
+		false,
+		time.Time{},
+		time.Time{},
+	)
 }

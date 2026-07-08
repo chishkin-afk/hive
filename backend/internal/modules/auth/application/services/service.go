@@ -301,6 +301,57 @@ func (as *AuthService) BindTG(ctx context.Context, req *requests.BindTG) (*respo
 	return as.userToDTO(updatedUser), nil
 }
 
+func (as *AuthService) Lookup(ctx context.Context, req *requests.Lookup) (*responses.LookupUsers, error) {
+	if err := as.validateIDs(req.IDs); err != nil {
+		return nil, err
+	}
+
+	users, err := as.lookupUsersStore(ctx, req.IDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return as.usersToDTO(users), nil
+}
+
+func (as *AuthService) usersToDTO(users []*user.User) *responses.LookupUsers {
+	response := responses.LookupUsers{
+		List: make([]responses.LookupUser, len(users)),
+	}
+	for i, user := range users {
+		response.List[i] = responses.LookupUser{
+			ID:             user.ID(),
+			Firstname:      user.Firstname(),
+			Lastname:       user.Lastname(),
+			ConfirmedEmail: user.ConfirmedEmail().String(),
+		}
+	}
+
+	return &response
+}
+
+func (as *AuthService) lookupUsersStore(ctx context.Context, ids []uuid.UUID) ([]*user.User, error) {
+	users, err := as.userPersistence.Lookup(ctx, ids)
+	if err != nil {
+		as.log.Error("failed to lookup users from db",
+			slog.String("error", err.Error()),
+		)
+
+		return nil, as.handleRepoError(err)
+	}
+
+	return users, nil
+}
+
+func (as *AuthService) validateIDs(ids []uuid.UUID) error {
+	n := len(ids)
+	if n == 0 || n > 200 {
+		return errs.NewErrorWithKind(errs.ErrInvalidLenIDs, errs.KindRequest)
+	}
+
+	return nil
+}
+
 func (as *AuthService) storeLastSendTime(ctx context.Context, at time.Time, email user.Email) error {
 	if err := as.preparedCache.SaveLastSend(ctx, email, at); err != nil {
 		as.log.Error("failed to store last send time",

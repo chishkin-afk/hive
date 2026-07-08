@@ -45,3 +45,7 @@ type BindTG struct {
 type ResendCode struct {
 	Email string `json:"email"`
 }
+
+type Lookup struct {
+	IDs []uuid.UUID `json:"ids"`
+}

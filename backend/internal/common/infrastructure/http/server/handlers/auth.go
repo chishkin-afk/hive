@@ -18,6 +18,7 @@ type authService interface {
 	GetSelfUser(ctx context.Context) (*responses.User, error)
 	GetTgBindingURL(ctx context.Context) (*responses.TgBinding, error)
 	BindTG(ctx context.Context, req *requests.BindTG) (*responses.User, error)
+	Lookup(ctx context.Context, req *requests.Lookup) (*responses.LookupUsers, error)
 }
 
 // @Summary      Prepare the user
@@ -249,6 +250,19 @@ func (h *HandlerFuncs) BindTG() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Resend the auth code
+// @Description  Resend the auth code
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Success      202  {object}  responses.CodeResent
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /auth/resend [post]
 func (h *HandlerFuncs) ResendCode() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req requests.ResendCode
@@ -268,5 +282,27 @@ func (h *HandlerFuncs) ResendCode() gin.HandlerFunc {
 		}
 
 		ctx.JSON(http.StatusAccepted, resp)
+	}
+}
+
+func (h *HandlerFuncs) Lookup() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req requests.Lookup
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		resp, err := h.authService.Lookup(ctx.Request.Context(), &req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
 	}
 }

@@ -16,6 +16,7 @@ import (
 type DB interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
 type userPersistenceRepository struct {
@@ -140,6 +141,75 @@ func (upr *userPersistenceRepository) Update(ctx context.Context, updUser *user.
 	}
 
 	return toDomain(record)
+}
+
+func (upr *userPersistenceRepository) Lookup(ctx context.Context, ids []uuid.UUID) ([]*user.User, error) {
+	upr.log.Debug("starting to lookup users", slog.Int("ids_len", len(ids)))
+	query, args, err := upr.buildLookupUsers(ids)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build lookup query: %w", err)
+	}
+
+	upr.log.Debug("executing the lookup query", slog.String("query", query))
+	rows, err := upr.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		if safeErr, ok := upr.normalizeError(err); ok {
+			return nil, safeErr
+		}
+
+		return nil, fmt.Errorf("failed to lookup users: %w", err)
+	}
+	defer rows.Close()
+
+	records, err := upr.mapLookupRows(rows)
+	if err != nil {
+		if safeErr, ok := upr.normalizeError(err); ok {
+			return nil, safeErr
+		}
+
+		return nil, fmt.Errorf("failed to map users: %w", err)
+	}
+
+	users := make([]*user.User, len(records))
+	for i, record := range records {
+		users[i] = lookupToDomain(record)
+	}
+
+	return users, nil
+}
+
+func (upr *userPersistenceRepository) mapLookupRows(rows *sql.Rows) ([]*userRecord, error) {
+	var records []*userRecord
+	for rows.Next() {
+		var record userRecord
+		if err := rows.Scan(
+			&record.ID,
+			&record.Firstname,
+			&record.Lastname,
+			&record.ConfirmedEmail,
+		); err != nil {
+			return nil, err
+		}
+
+		records = append(records, &record)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+func (upr *userPersistenceRepository) buildLookupUsers(ids []uuid.UUID) (string, []any, error) {
+	return upr.sqlBuiler.Select(
+		"id",
+		"firstname",
+		"lastname",
+		"confirmed_email",
+	).From("users").Limit(1000).Where(squirrel.Eq{
+		"id": ids,
+	}).ToSql()
 }
 
 func (upr *userPersistenceRepository) mapRow(row *sql.Row) (*userRecord, error) {
