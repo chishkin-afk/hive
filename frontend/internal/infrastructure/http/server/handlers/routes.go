@@ -1,0 +1,33 @@
+package handlers
+
+import (
+	"github.com/devathh/hive/frontend/internal/infrastructure/config"
+	"github.com/gin-gonic/gin"
+)
+
+const (
+	EnvDev   = "dev"
+	EnvProd  = "prod"
+	EnvLocal = "local"
+)
+
+func New(cfg *config.Config, mws ...gin.HandlerFunc) *gin.Engine {
+	router := getRouter(cfg.App.Env)
+	router.Use(mws...)
+
+	router.LoadHTMLGlob("internal/web/templates/*")
+	router.Static("/static", "./internal/web/static")
+
+	return router
+}
+
+func getRouter(env string) *gin.Engine {
+	switch env {
+	case EnvDev, EnvLocal:
+		router := gin.New()
+		router.Use(gin.Recovery())
+		return router
+	}
+
+	return gin.Default()
+}

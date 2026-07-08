@@ -5,12 +5,18 @@ import (
 	"os"
 
 	"github.com/devathh/hive/frontend/internal/infrastructure/config"
+	"github.com/devathh/hive/frontend/internal/infrastructure/http/server"
+	"github.com/devathh/hive/frontend/internal/infrastructure/http/server/handlers"
 	"github.com/devathh/hive/frontend/pkg/log"
+	"github.com/gin-gonic/gin"
 )
 
 type DIContainer struct {
 	cfg *config.Config
 	log *slog.Logger
+
+	handler *gin.Engine
+	server  *server.Server
 }
 
 func (di *DIContainer) Cfg() *config.Config {
@@ -36,4 +42,25 @@ func (di *DIContainer) Log() *slog.Logger {
 	}
 
 	return di.log
+}
+
+func (di *DIContainer) Handler() *gin.Engine {
+	if di.handler == nil {
+		di.handler = handlers.New(
+			di.Cfg(),
+		)
+	}
+
+	return di.handler
+}
+
+func (di *DIContainer) Server() *server.Server {
+	if di.server == nil {
+		di.server = server.New(
+			di.Cfg(),
+			di.Handler(),
+		)
+	}
+
+	return di.server
 }

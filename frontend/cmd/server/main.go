@@ -15,4 +15,6 @@ func main() {
 	}
 	var di app.DIContainer
 	di.Log().Info("di container was loaded")
+
+	di.Server().Start()
 }
