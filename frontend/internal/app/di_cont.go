@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/devathh/hive/frontend/internal/infrastructure/application/services"
 	"github.com/devathh/hive/frontend/internal/infrastructure/config"
 	"github.com/devathh/hive/frontend/internal/infrastructure/http/server"
 	"github.com/devathh/hive/frontend/internal/infrastructure/http/server/handlers"
@@ -17,6 +18,8 @@ type DIContainer struct {
 
 	handler *gin.Engine
 	server  *server.Server
+
+	frontendService *services.FrontendServices
 }
 
 func (di *DIContainer) Cfg() *config.Config {
@@ -48,6 +51,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 	if di.handler == nil {
 		di.handler = handlers.New(
 			di.Cfg(),
+			di.FrontendService(),
 		)
 	}
 
@@ -63,4 +67,15 @@ func (di *DIContainer) Server() *server.Server {
 	}
 
 	return di.server
+}
+
+func (di *DIContainer) FrontendService() *services.FrontendServices {
+	if di.frontendService == nil {
+		di.frontendService = services.New(
+			di.Cfg(),
+			di.Log(),
+		)
+	}
+
+	return di.frontendService
 }

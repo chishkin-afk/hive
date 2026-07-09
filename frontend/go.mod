@@ -4,6 +4,7 @@ go 1.25.5
 
 require (
 	github.com/fatih/color v1.19.0
+	github.com/gin-contrib/cors v1.7.7
 	github.com/go-playground/validator/v10 v10.30.3
 	github.com/goccy/go-yaml v1.19.2
 	github.com/joho/godotenv v1.5.1
@@ -26,7 +27,7 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
-	golang.org/x/arch v0.22.0 // indirect
+	golang.org/x/arch v0.23.0 // indirect
 	golang.org/x/net v0.54.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )

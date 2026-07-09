@@ -11,12 +11,20 @@ const (
 	EnvLocal = "local"
 )
 
-func New(cfg *config.Config, mws ...gin.HandlerFunc) *gin.Engine {
+func New(cfg *config.Config, fs frontendService, mws ...gin.HandlerFunc) *gin.Engine {
 	router := getRouter(cfg.App.Env)
 	router.Use(mws...)
 
 	router.LoadHTMLGlob("internal/web/templates/*")
 	router.Static("/static", "./internal/web/static")
+
+	handlers := handlers{
+		fs: fs,
+	}
+
+	router.GET("/js/config.js", handlers.Config())
+
+	router.GET("/", handlers.Landing())
 
 	return router
 }
