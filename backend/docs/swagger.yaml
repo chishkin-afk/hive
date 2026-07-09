@@ -173,6 +173,17 @@ definitions:
       user_id:
         type: string
     type: object
+  responses.BookingUser:
+    properties:
+      confirmed_email:
+        type: string
+      firstname:
+        type: string
+      id:
+        type: string
+      lastname:
+        type: string
+    type: object
   responses.Bookings:
     properties:
       has_next_page:
@@ -181,7 +192,7 @@ definitions:
         type: boolean
       list:
         items:
-          $ref: '#/definitions/responses.Booking'
+          $ref: '#/definitions/responses.ListElement'
         type: array
       total_pages:
         type: integer
@@ -221,6 +232,12 @@ definitions:
       total_pages:
         type: integer
     type: object
+  responses.CodeResent:
+    properties:
+      next_send_at:
+        description: UNIX
+        type: integer
+    type: object
   responses.DayTime:
     properties:
       hour:
@@ -232,6 +249,13 @@ definitions:
     properties:
       error:
         type: string
+    type: object
+  responses.ListElement:
+    properties:
+      booking:
+        $ref: '#/definitions/responses.Booking'
+      user:
+        $ref: '#/definitions/responses.BookingUser'
     type: object
   responses.Notification:
     properties:
@@ -319,7 +343,7 @@ definitions:
     type: object
   responses.Rates:
     properties:
-      rate:
+      list:
         items:
           $ref: '#/definitions/responses.Rate'
         type: array
@@ -529,6 +553,43 @@ paths:
           schema:
             $ref: '#/definitions/responses.ErrMsg'
       summary: Prepare the user
+      tags:
+      - auth
+  /auth/resend:
+    post:
+      consumes:
+      - application/json
+      description: Resend the auth code
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/responses.CodeResent'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrMsg'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/responses.ErrMsg'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/responses.ErrMsg'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/responses.ErrMsg'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrMsg'
+      security:
+      - BearerAuth: []
+      summary: Resend the auth code
       tags:
       - auth
   /auth/tgbinding:

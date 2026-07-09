@@ -187,6 +187,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 			}),
 			middlewares.RateLimit(store),
 			middlewares.NewFingerprint(),
+			middlewares.CORSMiddleware(),
 		)
 	}
 

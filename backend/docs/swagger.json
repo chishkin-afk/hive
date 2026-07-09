@@ -189,6 +189,64 @@
                 }
             }
         },
+        "/auth/resend": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Resend the auth code",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Resend the auth code",
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/responses.CodeResent"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrMsg"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrMsg"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrMsg"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrMsg"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrMsg"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/tgbinding": {
             "get": {
                 "security": [
@@ -2606,6 +2664,23 @@
                 }
             }
         },
+        "responses.BookingUser": {
+            "type": "object",
+            "properties": {
+                "confirmed_email": {
+                    "type": "string"
+                },
+                "firstname": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastname": {
+                    "type": "string"
+                }
+            }
+        },
         "responses.Bookings": {
             "type": "object",
             "properties": {
@@ -2618,7 +2693,7 @@
                 "list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/responses.Booking"
+                        "$ref": "#/definitions/responses.ListElement"
                     }
                 },
                 "total_pages": {
@@ -2680,6 +2755,15 @@
                 }
             }
         },
+        "responses.CodeResent": {
+            "type": "object",
+            "properties": {
+                "next_send_at": {
+                    "description": "UNIX",
+                    "type": "integer"
+                }
+            }
+        },
         "responses.DayTime": {
             "type": "object",
             "properties": {
@@ -2696,6 +2780,17 @@
             "properties": {
                 "error": {
                     "type": "string"
+                }
+            }
+        },
+        "responses.ListElement": {
+            "type": "object",
+            "properties": {
+                "booking": {
+                    "$ref": "#/definitions/responses.Booking"
+                },
+                "user": {
+                    "$ref": "#/definitions/responses.BookingUser"
                 }
             }
         },
@@ -2831,7 +2926,7 @@
         "responses.Rates": {
             "type": "object",
             "properties": {
-                "rate": {
+                "list": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/responses.Rate"
