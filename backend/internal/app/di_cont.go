@@ -301,6 +301,7 @@ func (di *DIContainer) BookingService() *bookingservices.BookingService {
 				di.Log(),
 				http.DefaultClient,
 			),
+			di.SMTP(),
 		)
 	}
 

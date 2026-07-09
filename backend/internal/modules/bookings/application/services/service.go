@@ -37,6 +37,10 @@ type offerService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*responses.Offer, error)
 }
 
+type SMTPClient interface {
+	Notify(ctx context.Context, body string, to []string) error
+}
+
 type BookingService struct {
 	cfg                *config.Config
 	log                *slog.Logger
@@ -48,6 +52,8 @@ type BookingService struct {
 	authService     authService
 	offerService    offerService
 	engageClient    engageClient
+
+	sc SMTPClient
 }
 
 func New(
@@ -60,6 +66,7 @@ func New(
 	authService authService,
 	offerService offerService,
 	engageClient engageClient,
+	sc SMTPClient,
 ) *BookingService {
 	return &BookingService{
 		cfg:                cfg,
@@ -71,6 +78,7 @@ func New(
 		authService:        authService,
 		offerService:       offerService,
 		engageClient:       engageClient,
+		sc:                 sc,
 	}
 }
 
@@ -283,6 +291,8 @@ func (bs *BookingService) notifyHolders(ctx context.Context, booking *booking.Bo
 			bs.log.Error("failed to notify client",
 				slog.String("error", err.Error()),
 			)
+
+			go bs.notifyByMail(context.Background(), msg, client.Email)
 		}
 
 		bs.log.Debug("client was be notified",
@@ -309,6 +319,17 @@ func (bs *BookingService) notifyHolders(ctx context.Context, booking *booking.Bo
 
 	if err := bs.notifyUser(ctx, coach, msg); err != nil {
 		bs.log.Error("failed to notify coach",
+			slog.String("error", err.Error()),
+		)
+	}
+}
+
+func (bs *BookingService) notifyByMail(ctx context.Context, msg string, to string) {
+	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := bs.sc.Notify(ctxTimeout, msg, []string{to}); err != nil {
+		bs.log.Error("failed to notify client by email",
 			slog.String("error", err.Error()),
 		)
 	}

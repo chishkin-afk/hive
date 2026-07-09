@@ -8,6 +8,7 @@ service:
   max_registrations: 2
   sending_duration: 1m
   tg_bot_url: https://t.me/hiveeeeeeeeeeeebot
+  retry_count: 3
 
 middlewares:
   rate_limit:

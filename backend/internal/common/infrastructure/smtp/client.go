@@ -87,3 +87,34 @@ func (sc *SMTPClient) SendPassword(ctx context.Context, password string, to []st
 		return err
 	}
 }
+
+func (sc *SMTPClient) Notify(ctx context.Context, body string, to []string) error {
+	errCh := make(chan error, 1)
+
+	go func() {
+		defer close(errCh)
+
+		msg := fmt.Sprintf(
+			"From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n\r\n%s",
+			sc.cfg.SMTP.From, strings.Join(to, ","), sc.cfg.SMTP.Msg.Subject, body,
+		)
+
+		if err := smtp.SendMail(sc.addr, sc.auth, sc.cfg.SMTP.From, to, []byte(msg)); err != nil {
+			errCh <- err
+			return
+		}
+
+		errCh <- nil
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err, ok := <-errCh:
+		if ok {
+			return nil
+		}
+
+		return err
+	}
+}

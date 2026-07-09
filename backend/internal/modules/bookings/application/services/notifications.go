@@ -105,5 +105,20 @@ func (bs *BookingService) notifyUser(ctx context.Context, user *responses.User, 
 		return nil
 	}
 
-	return bs.engageClient.SendMessage(ctx, user.TgChatID, msg)
+	// retries
+	var err error
+	for i := 0; i < bs.cfg.Service.RetryCount; i++ {
+		if err = bs.engageClient.SendMessage(ctx, user.TgChatID, msg); err != nil {
+			bs.log.Debug("failed to send msg",
+				slog.Int("iteration", i),
+				slog.String("error", err.Error()),
+			)
+
+			continue
+		}
+
+		break
+	}
+
+	return err
 }
