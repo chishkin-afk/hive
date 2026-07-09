@@ -163,6 +163,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 			di.ScheduleService(),
 			di.BookingService(),
 			di.PaymentService(),
+			middlewares.CORSMiddleware(),
 			middlewares.NewAuthMiddleware(di.JWT(), map[string]bool{
 				"GET:/api/v1/auth/user":                 true,
 				"GET:/api/v1/auth/tgbinding":            true,
@@ -187,7 +188,6 @@ func (di *DIContainer) Handler() *gin.Engine {
 			}),
 			middlewares.RateLimit(store),
 			middlewares.NewFingerprint(),
-			middlewares.CORSMiddleware(),
 		)
 	}
 
