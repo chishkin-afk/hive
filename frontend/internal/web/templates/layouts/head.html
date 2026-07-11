@@ -1,0 +1,14 @@
+{{define "head"}}
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ .title }}</title>
+        
+        <link rel="stylesheet" href="/static/css/base.css">
+        <link rel="icon" href="/static/images/svg/favicon.svg" type="image/svg+xml">
+        
+        <script src="/static/js/theme.js"></script>
+
+        {{template "extraHead" .}}
+    </head>
+{{end}}

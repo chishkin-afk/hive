@@ -15,7 +15,7 @@ func New(cfg *config.Config, fs frontendService, mws ...gin.HandlerFunc) *gin.En
 	router := getRouter(cfg.App.Env)
 	router.Use(mws...)
 
-	router.LoadHTMLGlob("internal/web/templates/*")
+	router.LoadHTMLGlob("internal/web/templates/**/*.html")
 	router.Static("/static", "./internal/web/static")
 
 	handlers := handlers{

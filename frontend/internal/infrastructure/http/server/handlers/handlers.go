@@ -23,6 +23,8 @@ func (h *handlers) Config() gin.HandlerFunc {
 
 func (h *handlers) Landing() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		ctx.HTML(http.StatusOK, "landing.html", nil)
+		ctx.HTML(http.StatusOK, "landing", gin.H{
+			"title": "Hive",
+		})
 	}
 }
