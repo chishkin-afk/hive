@@ -1,3 +1,5 @@
+/* HEADER  */
+
 .island-actions, .hero-buttons {
   display: flex;
   gap: 16px
@@ -117,8 +119,10 @@
   padding: 16px 32px;
 }
 
+/* HERO SECTION */
+
 .hero {
-  height: 100lvh;
+  min-height: 100vh;
   display: grid;
   grid-template-columns: 60% 40%;
   gap: 16px;
@@ -131,6 +135,7 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
+  animation: slide-down 1.3s;
 }
 
 .hero-title {
@@ -152,7 +157,7 @@
   font-size: 16px;
   font-weight: 600;
   padding: 16px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   text-align: center;
   transition: color .3s,
     transform .3s,
@@ -191,7 +196,7 @@
   display: flex;
   padding: 16px;
   gap: 16px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background-color: var(--color-bg-secondary);
   box-shadow: var(--shadow-lg);
   animation: float 4s ease-in-out infinite;
@@ -203,7 +208,7 @@
   box-shadow: var(--shadow-md);
 }
 
-.card-icon-wrapper {
+.hero-icon-wrapper {
   display: flex;
   padding: 8px;
   border-radius: var(--radius-md);
@@ -215,7 +220,7 @@
   color: var(--color-accent);
 }
 
-.floating-card svg path {
+path {
   stroke: currentColor;
 }
 
@@ -247,7 +252,96 @@
   animation-delay: -2s;
 }
 
-@media (max-width: 768px) {  
+/* FEATURES SECTION */
+
+.features {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  background-color: var(--color-bg-secondary);
+  transition: background-color .3s;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  padding: 64px 16vw;
+}
+
+.section-title {
+  font-size: clamp(32px, 3vw, 48px);
+}
+
+.features-grid {
+  display: grid;
+  gap: 32px;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: solid 1px transparent;
+  transition: background-color .3s,
+    border-color .3s,
+    box-shadow .3s;
+}
+
+.feature-card:hover {
+  background-color: var(--color-bg-tertiary);
+  border-color: var(--color-bg-hover);
+  box-shadow: var(--shadow-lg);
+}
+
+.feature-card svg {
+  color: var(--color-accent);
+  transition: color .3s;
+}
+
+.feature-card:hover svg {
+  color: var(--color-bg-secondary);
+}
+
+.feature-icon-wrapper {
+  width: fit-content;
+  display: flex;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  transition: background-color .3s,
+    transform .3s,
+    box-shadow .3s;
+}
+
+.feature-card:hover .feature-icon-wrapper {
+  background-color: var(--color-accent);
+  transform: rotate(5deg);
+  box-shadow: var(--shadow-lg);
+}
+
+.feature-card h3 {
+  transition: color .3s;
+}
+
+.feature-card:hover h3 {
+  color: var(--color-text-secondary);
+}
+
+.feature-card p {
+  color: var(--color-text-secondary);
+  transition: color .3s;
+}
+
+.feature-card:hover p {
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 768px) {
   .island-actions, .hero-visual {
     display: none;
   }
@@ -269,6 +363,20 @@
   .hero-btn {
     width: clamp(256px, 100%, 512px);
     justify-content: center;
+  }
+
+  .container {
+    padding: 64px 10vw;
+  }
+
+  .section-title {
+    font-size: 24px;
+    text-align: center;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(6, 1fr);
   }
 }
 
