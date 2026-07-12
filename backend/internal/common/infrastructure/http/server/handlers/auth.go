@@ -19,6 +19,8 @@ type authService interface {
 	GetTgBindingURL(ctx context.Context) (*responses.TgBinding, error)
 	BindTG(ctx context.Context, req *requests.BindTG) (*responses.User, error)
 	Lookup(ctx context.Context, req *requests.Lookup) (*responses.LookupUsers, error)
+	ForgetPassword(ctx context.Context, req *requests.ForgetPassword) error
+	ChangePassword(ctx context.Context, req *requests.ChangePassword) (*responses.Token, error)
 }
 
 // @Summary      Prepare the user
@@ -296,6 +298,75 @@ func (h *HandlerFuncs) Lookup() gin.HandlerFunc {
 		}
 
 		resp, err := h.authService.Lookup(ctx.Request.Context(), &req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Summary      Send the change password url
+// @Description  Send the change password url
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Success      202  {null}
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /auth/forget-password [post]
+func (h *HandlerFuncs) ForgetPassword() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req requests.ForgetPassword
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		if err := h.authService.ForgetPassword(ctx.Request.Context(), &req); err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.Status(http.StatusAccepted)
+	}
+}
+
+// @Summary      Change the password's field
+// @Description  Change the password's field by reset token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  responses.Token
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /auth/password [patch]
+func (h *HandlerFuncs) ChangePassword() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req requests.ChangePassword
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		resp, err := h.authService.ChangePassword(ctx.Request.Context(), &req)
 		if err != nil {
 			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
 				Error: err.Error(),

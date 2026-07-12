@@ -9,3 +9,8 @@ type customClaims struct {
 	jwt.RegisteredClaims
 	UserID uuid.UUID `json:"user_id"`
 }
+
+type resetClaims struct {
+	jwt.RegisteredClaims
+	UserID uuid.UUID `json:"target_user_id"`
+}

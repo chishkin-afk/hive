@@ -181,7 +181,7 @@ func (h *HandlerFuncs) GetSchedulesByUserID() gin.HandlerFunc {
 // @Accept       json
 // @Produce      json
 // @Param        id path string true "UUID of schedule" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
-// @Success      200  {object} 	responses.Schedule
+// @Success      204 {null}
 // @Failure      400  {object}  responses.ErrMsg
 // @Failure      401  {object}  responses.ErrMsg
 // @Failure      403  {object}  responses.ErrMsg

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -20,14 +21,21 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	ResetPassword = `
+Ваша ссылка для сброса пароля: %s?token=%s
+`
+)
+
 type JWTManager interface {
-	Generate(userID uuid.UUID) (string, error)
+	Generate(userID uuid.UUID, ttl time.Duration) (string, error)
+	GenerateResetToken(userID uuid.UUID, ttl time.Duration) (string, error)
 	Validate(tokenString string) (uuid.UUID, error)
+	ValidateReset(resetToken string) (uuid.UUID, error)
 }
 
 type SMTPClient interface {
-	SendCode(ctx context.Context, code int, to []string) error
-	SendPassword(ctx context.Context, password string, to []string) error
+	Notify(ctx context.Context, body string, to []string) error
 }
 
 type AuthService struct {
@@ -164,6 +172,113 @@ func (as *AuthService) Confirm(ctx context.Context, req *requests.ConfirmUser) (
 	}
 
 	return as.generateToken(savedUser.ID())
+}
+
+func (as *AuthService) ForgetPassword(ctx context.Context, req *requests.ForgetPassword) error {
+	email, err := as.validateEmail(req.Email)
+	if err != nil {
+		return err
+	}
+
+	user, err := as.getUserByEmailFromPersistence(ctx, email)
+	if err != nil {
+		return err
+	}
+
+	token, err := as.generateChangeToken(user)
+	if err != nil {
+		return err
+	}
+
+	go as.sendChangeURL(context.Background(), user.ConfirmedEmail(), token)
+	return nil
+}
+
+func (as *AuthService) ChangePassword(ctx context.Context, req *requests.ChangePassword) (*responses.Token, error) {
+	userID, err := as.validateResetToken(req.ResetToken)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := as.getUserFromPersistence(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.changePassword(user, req.NewPassword); err != nil {
+		return nil, err
+	}
+
+	updatedUser, err := as.updateUserStore(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	return as.generateToken(updatedUser.ID())
+}
+
+func (as *AuthService) changePassword(user *user.User, newPassword string) error {
+	if err := user.ChangePassword(newPassword); err != nil {
+		return errs.NewErrorWithKind(err, errs.KindRequest)
+	}
+
+	return nil
+}
+
+func (as *AuthService) sendChangeURL(ctx context.Context, email user.Email, token string) {
+	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := as.smtpClient.Notify(ctxTimeout, fmt.Sprintf(
+		ResetPassword,
+		as.cfg.Service.ChangePasswordURL,
+		token,
+	), []string{email.String()}); err != nil {
+		as.log.Error("failed to send reset url for user",
+			slog.String("error", err.Error()),
+		)
+	}
+}
+
+func (as *AuthService) generateChangeToken(user *user.User) (string, error) {
+	token, err := as.jwt.GenerateResetToken(user.ID(), as.cfg.Service.ChangePasswordTTL)
+	if err != nil {
+		as.log.Error("failed to generate jwt token",
+			slog.String("error", err.Error()),
+			slog.String("user_id", user.ID().String()),
+		)
+
+		return "", errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
+	}
+
+	return token, nil
+}
+
+func (as *AuthService) validateResetToken(resetToken string) (uuid.UUID, error) {
+	userID, err := as.jwt.ValidateReset(resetToken)
+	if err != nil {
+		as.log.Error("failed to validate reset token",
+			slog.String("error", err.Error()),
+		)
+
+		return uuid.Nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindRequest)
+	}
+
+	return userID, nil
+}
+
+func (as *AuthService) getUserByEmailFromPersistence(ctx context.Context, email user.Email) (*user.User, error) {
+	user, err := as.userPersistence.GetByEmail(ctx, email)
+	if err != nil {
+		as.log.Error("failed to get user from persistence by email",
+			slog.String("error", err.Error()),
+			slog.String("email", email.String()),
+		)
+
+		return nil, as.handleRepoError(err)
+	}
+
+	return user, nil
 }
 
 // Login is a method that find user in db
@@ -664,7 +779,7 @@ func (as *AuthService) getFingerprint(ctx context.Context) (string, error) {
 }
 
 func (as *AuthService) generateToken(userID uuid.UUID) (*responses.Token, error) {
-	token, err := as.jwt.Generate(userID)
+	token, err := as.jwt.Generate(userID, as.cfg.Authorization.JWT.TokenTTL)
 	if err != nil {
 		as.log.Error("failed to generate jwt token of user", slog.String("error", err.Error()))
 		return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
@@ -810,7 +925,7 @@ func (as *AuthService) generateSecureCode() (int, error) {
 }
 
 func (as *AuthService) sendPassword(ctx context.Context, email user.Email, password string) error {
-	if err := as.smtpClient.SendPassword(ctx, password, []string{email.String()}); err != nil {
+	if err := as.smtpClient.Notify(ctx, fmt.Sprintf("ваш сгенерированный пароль: %s", password), []string{email.String()}); err != nil {
 		return err
 	}
 
@@ -818,7 +933,7 @@ func (as *AuthService) sendPassword(ctx context.Context, email user.Email, passw
 }
 
 func (as *AuthService) sendCode(ctx context.Context, email user.Email, code int) error {
-	if err := as.smtpClient.SendCode(ctx, code, []string{email.String()}); err != nil {
+	if err := as.smtpClient.Notify(ctx, fmt.Sprintf("Ваш код подтверждения: %d", code), []string{email.String()}); err != nil {
 		return err
 	}
 

@@ -49,3 +49,12 @@ type ResendCode struct {
 type Lookup struct {
 	IDs []uuid.UUID `json:"ids"`
 }
+
+type ForgetPassword struct {
+	Email string `json:"email"`
+}
+
+type ChangePassword struct {
+	ResetToken  string `json:"reset_token"`
+	NewPassword string `json:"new_password"`
+}
