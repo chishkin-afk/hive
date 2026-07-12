@@ -21,6 +21,7 @@ type engageClient interface {
 }
 
 type scheduleService interface {
+	GetSchedulesByUserID(ctx context.Context, userID uuid.UUID) (*responses.Schedules, error)
 	GetScheduleByUserID(ctx context.Context, userID uuid.UUID, dayOfWeek uint8) (*responses.Schedule, error)
 }
 
@@ -261,6 +262,123 @@ func (bs *BookingService) GetFreeSlots(ctx context.Context, offerID uuid.UUID, d
 	), nil
 }
 
+func (bs *BookingService) GetAllDays(ctx context.Context, offerID uuid.UUID, from, to time.Time) (*responses.Days, error) {
+	parsedFrom, parsedTo, err := bs.validateAllDaysRequest(from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	bookings, err := bs.listBookingsInRange(ctx, offerID, from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	coach, offer, err := bs.getCoachAndOffer(ctx, offerID)
+	if err != nil {
+		return nil, err
+	}
+
+	schedules, err := bs.getAllSchedules(ctx, coach.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return bs.getDays(
+		schedules,
+		offer,
+		bookings,
+		time.Unix(coach.PaidUntil, 0),
+		parsedFrom,
+		parsedTo,
+	)
+}
+
+func (bs *BookingService) getAllSchedules(ctx context.Context, userID uuid.UUID) (*responses.Schedules, error) {
+	schedules, err := bs.scheduleService.GetSchedulesByUserID(ctx, userID)
+	if err != nil {
+		bs.log.Error("failed to get schedules by user's id",
+			slog.String("error", err.Error()),
+			slog.String("user_id", userID.String()),
+		)
+
+		return nil, err
+	}
+
+	return schedules, nil
+}
+
+func (bs *BookingService) getDays(schedules *responses.Schedules, offer *responses.Offer, bookings []*booking.Booking, paidUntil, from, to time.Time) (*responses.Days, error) {
+	approxDays := int(to.Sub(from).Hours()/24) + 1
+	allDays := responses.Days{
+		List: make([]responses.Day, 0, approxDays),
+	}
+
+	mpSchedules := make(map[uint8]*responses.Schedule)
+	for _, schedule := range schedules.List {
+		mpSchedules[schedule.DayOfWeek] = &schedule
+	}
+
+	end := to
+	if end.Compare(paidUntil) > 0 {
+		end = paidUntil
+	}
+
+	for !from.After(end) {
+		day := responses.Day{
+			Time: from.Unix(),
+		}
+
+		schedule, ok := mpSchedules[uint8(from.Weekday())]
+		if ok && bs.checkFreeSlotsInDay(schedule, offer, bookings, from) {
+			day.IsActive = true
+		}
+
+		allDays.List = append(allDays.List, day)
+		from = from.AddDate(0, 0, 1)
+	}
+
+	return &allDays, nil
+}
+
+func (bs *BookingService) checkFreeSlotsInDay(schedule *responses.Schedule, offer *responses.Offer, bookings []*booking.Booking, day time.Time) bool {
+	accepted := make([]*booking.Booking, 0, len(bookings))
+	for _, b := range bookings {
+		if b.StartTime().Month() == day.Month() &&
+			b.StartTime().Day() == day.Day() {
+			accepted = append(accepted, b)
+		}
+	}
+
+	if len(bs.generateFreeSlots(schedule, offer, accepted)) > 0 {
+		return true
+	}
+
+	return false
+}
+
+func (bs *BookingService) validateAllDaysRequest(from, to time.Time) (time.Time, time.Time, error) {
+	from = time.Date(
+		from.Year(),
+		from.Month(),
+		from.Day(),
+		0, 0, 0, 0, time.UTC,
+	)
+
+	to = time.Date(
+		to.Year(),
+		to.Month(),
+		to.Day(),
+		0, 0, 0, 0, time.UTC,
+	)
+
+	diff := to.Sub(from)
+	if diff < 24*time.Hour || diff > 14*24*time.Hour {
+		return time.Time{}, time.Time{}, errs.NewErrorWithKind(errs.ErrInvalidDays, errs.KindRequest)
+	}
+
+	return from, to, nil
+}
+
 func (bs *BookingService) lookupUsers(ctx context.Context, bookings []*booking.Booking) (*responses.LookupUsers, error) {
 	req := requests.Lookup{
 		IDs: make([]uuid.UUID, len(bookings)),
@@ -334,100 +452,6 @@ func (bs *BookingService) notifyByMail(ctx context.Context, msg string, to strin
 		)
 	}
 }
-
-// func (bs *BookingService) notifyCoachDeleteBooking(ctx context.Context, offerID uuid.UUID, startTime time.Time, id uuid.UUID) {
-// 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
-// 	defer cancel()
-
-// 	coach, offer, err := bs.getCoachAndOffer(ctxTimeout, offerID)
-// 	if err != nil {
-// 		bs.log.Error("failed to get coach",
-// 			slog.String("error", err.Error()),
-// 		)
-
-// 		return
-// 	}
-
-// 	startTime, zone := bs.convertDate(startTime)
-// 	msg := fmt.Sprintf(DeleteBooking,
-// 		offer.Title,
-// 		startTime.Day(),
-// 		bs.getMonthRU(startTime.Month().String()),
-// 		startTime.Hour(),
-// 		startTime.Minute(),
-// 		zone,
-// 		id.String(),
-// 	)
-
-// 	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
-// 		bs.log.Error("failed to notify coach",
-// 			slog.String("error", err.Error()),
-// 			slog.String("coach_id", coach.ID.String()),
-// 		)
-// 	}
-// }
-
-// func (bs *BookingService) notifyCoachUpdateBooking(ctx context.Context, coachID uuid.UUID, title string, newTime, oldTime time.Time, id uuid.UUID) {
-// 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
-// 	defer cancel()
-
-// 	coach, err := bs.authService.GetUserByID(ctxTimeout, coachID)
-// 	if err != nil {
-// 		bs.log.Error("failed to get coach by id",
-// 			slog.String("coach_id", coachID.String()),
-// 		)
-
-// 		return
-// 	}
-
-// 	newTime, newZone := bs.convertDate(newTime)
-// 	oldTime, oldZone := bs.convertDate(oldTime)
-
-// 	msg := fmt.Sprintf(UpdateBooking,
-// 		title,
-// 		oldTime.Day(),
-// 		bs.getMonthRU(oldTime.Month().String()),
-// 		oldTime.Hour(),
-// 		oldTime.Minute(),
-// 		oldZone,
-// 		newTime.Day(),
-// 		bs.getMonthRU(newTime.Month().String()),
-// 		newTime.Hour(),
-// 		newTime.Minute(),
-// 		newZone,
-// 		id.String(),
-// 	)
-
-// 	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
-// 		bs.log.Error("failed to notify coach",
-// 			slog.String("error", err.Error()),
-// 			slog.String("coach_id", coach.ID.String()),
-// 		)
-// 	}
-// }
-
-// func (bs *BookingService) notifyCoachNewBooking(ctx context.Context, coach *responses.User, title string, startTime time.Time, id uuid.UUID) {
-// 	startTime, zone := bs.convertDate(startTime)
-// 	msg := fmt.Sprintf(NewBooking,
-// 		title,
-// 		startTime.Day(),
-// 		bs.getMonthRU(startTime.Month().String()),
-// 		startTime.Hour(),
-// 		startTime.Minute(),
-// 		zone,
-// 		id.String(),
-// 	)
-
-// 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
-// 	defer cancel()
-
-// 	if err := bs.notifyCoach(ctxTimeout, coach, msg); err != nil {
-// 		bs.log.Error("failed to notify coach",
-// 			slog.String("error", err.Error()),
-// 			slog.String("coach_id", coach.ID.String()),
-// 		)
-// 	}
-// }
 
 func (bs *BookingService) convertDate(t time.Time) (time.Time, string) {
 	moscowLocation, err := time.LoadLocation("Europe/Moscow")

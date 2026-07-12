@@ -301,53 +301,53 @@ func (bpr *bookingPersistenceRepository) buildListByUserIDQuery(userID uuid.UUID
 }
 
 // ListAllByOfferID returns all future bookings for the offer
-func (bpr *bookingPersistenceRepository) ListAllByOfferID(ctx context.Context, offerID uuid.UUID) ([]*booking.Booking, error) {
-	bpr.log.Debug("build the list all of bookings by offer id query", slog.String("offer_id", offerID.String()))
-	query, args, err := bpr.buildListAllQuery(offerID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build list all query: %w", err)
-	}
+// func (bpr *bookingPersistenceRepository) ListAllByOfferID(ctx context.Context, offerID uuid.UUID) ([]*booking.Booking, error) {
+// 	bpr.log.Debug("build the list all of bookings by offer id query", slog.String("offer_id", offerID.String()))
+// 	query, args, err := bpr.buildListAllQuery(offerID)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to build list all query: %w", err)
+// 	}
 
-	bpr.log.Debug("exec the list all query", slog.String("query", query))
-	rows, err := bpr.db.QueryContext(ctx, query, args...)
-	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
+// 	bpr.log.Debug("exec the list all query", slog.String("query", query))
+// 	rows, err := bpr.db.QueryContext(ctx, query, args...)
+// 	if err != nil {
+// 		if safeErr, ok := bpr.handleError(err); ok {
+// 			return nil, safeErr
+// 		}
 
-		return nil, fmt.Errorf("failed to get list of all future bookings: %w", err)
-	}
-	defer rows.Close()
+// 		return nil, fmt.Errorf("failed to get list of all future bookings: %w", err)
+// 	}
+// 	defer rows.Close()
 
-	records, err := bpr.mapRows(rows)
-	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
+// 	records, err := bpr.mapRows(rows)
+// 	if err != nil {
+// 		if safeErr, ok := bpr.handleError(err); ok {
+// 			return nil, safeErr
+// 		}
 
-		return nil, fmt.Errorf("failed to map rows: %w", err)
-	}
+// 		return nil, fmt.Errorf("failed to map rows: %w", err)
+// 	}
 
-	bookings := make([]*booking.Booking, len(records))
-	for i, record := range records {
-		bookings[i] = recordToBooking(record)
-	}
+// 	bookings := make([]*booking.Booking, len(records))
+// 	for i, record := range records {
+// 		bookings[i] = recordToBooking(record)
+// 	}
 
-	return bookings, nil
-}
+// 	return bookings, nil
+// }
 
-func (bpr *bookingPersistenceRepository) buildListAllQuery(offerID uuid.UUID) (string, []any, error) {
-	return bpr.sqlBuilder.Select(
-		"id",
-		"offer_id",
-		"user_id",
-		"comment",
-		"start_time",
-		"is_cancelled",
-		"created_at",
-		"updated_at",
-	).From("bookings").Limit(100000).Where("start_time >= NOW() AND offer_id = ?", offerID).ToSql()
-}
+// func (bpr *bookingPersistenceRepository) buildListAllQuery(offerID uuid.UUID) (string, []any, error) {
+// 	return bpr.sqlBuilder.Select(
+// 		"id",
+// 		"offer_id",
+// 		"user_id",
+// 		"comment",
+// 		"start_time",
+// 		"is_cancelled",
+// 		"created_at",
+// 		"updated_at",
+// 	).From("bookings").Limit(1000).Where("start_time >= NOW() AND offer_id = ?", offerID).ToSql()
+// }
 
 func (bpr *bookingPersistenceRepository) ListAllPerTime(ctx context.Context, offerID uuid.UUID, startTime, endTime time.Time) ([]*booking.Booking, error) {
 	bpr.log.Debug("build the list all query per time")

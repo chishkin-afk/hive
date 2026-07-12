@@ -36,3 +36,12 @@ type Slots struct {
 	Date  string    `json:"date"`
 	Times []DayTime `json:"times"`
 }
+
+type Days struct {
+	List []Day `json:"list"`
+}
+
+type Day struct {
+	Time     int64 `json:"unix"`
+	IsActive bool  `json:"is_active"` // true if it has free slots & < paid until
+}

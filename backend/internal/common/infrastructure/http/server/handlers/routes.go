@@ -78,6 +78,7 @@ func New(cfg *config.Config,
 				bookings.GET("/booking/:id", funcs.GetBookingByID())
 				bookings.GET("/bookings", funcs.ListBookings())       // ?limit=&page=&offer_id=?
 				bookings.GET("/slots/:offerID", funcs.GetFreeSlots()) // ?date=2026-06-18
+				bookings.GET("/days/:offerID", funcs.GetAllDays())    // ?from=2026-06-18&to=2026-06-19
 			}
 
 			payments := v1.Group("/payments")

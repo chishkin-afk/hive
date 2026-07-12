@@ -17,6 +17,7 @@ type bookingService interface {
 	ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) (*responses.Bookings, error)
 	ListByUserID(ctx context.Context, page, limit uint32) (*responses.Bookings, error)
 	GetFreeSlots(ctx context.Context, offerID uuid.UUID, date time.Time) (*responses.Slots, error)
+	GetAllDays(ctx context.Context, offerID uuid.UUID, from, to time.Time) (*responses.Days, error)
 	Update(ctx context.Context, req *requests.UpdateBooking) (*responses.Booking, error)
 }
 
@@ -239,6 +240,60 @@ func (h *HandlerFuncs) GetFreeSlots() gin.HandlerFunc {
 			rawDate.Day(),
 			0, 0, 0, 0, time.UTC,
 		))
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Summary      Returns the list of days
+// @Description  Returns the list of days with is_active's field
+// @Tags         booking
+// @Accept       json
+// @Produce      json
+// @Param        offerID path string true "UUID of offer" format(uuid) example("550e8400-e29b-41d4-a716-446655440000")
+// @Param        from query string true "date of booking" format(date)
+// @Param        to query string true "date of booking" format(date)
+// @Success      200  {object}  responses.Days
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      408  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Router       /bookings/days/{offerID} [get]
+func (h *HandlerFuncs) GetAllDays() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		rawFrom, err := time.Parse(time.DateOnly, ctx.Query("from"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid from",
+			})
+			return
+		}
+
+		rawTo, err := time.Parse(time.DateOnly, ctx.Query("to"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid to",
+			})
+			return
+		}
+
+		offerID, err := uuid.Parse(ctx.Param("offerID"))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid offer id",
+			})
+			return
+		}
+
+		resp, err := h.bookingService.GetAllDays(ctx.Request.Context(), offerID, rawFrom, rawTo)
 		if err != nil {
 			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
 				Error: err.Error(),
