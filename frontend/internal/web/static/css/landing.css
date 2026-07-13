@@ -268,10 +268,11 @@ path {
   display: flex;
   align-items: center;
   background-color: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
   transition: background-color .3s;
 }
 
-.container {
+section .container {
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -533,6 +534,54 @@ path {
   opacity: 1;
 }
 
+.cta {
+  padding-top: 16px;
+}
+
+.cta .container {
+  padding: 16px 10vw;
+  background: linear-gradient(45deg, var(--color-accent), var(--color-accent-dark));
+  border-radius: var(--radius-lg);
+}
+
+.cta-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: #1A1A1A;
+}
+
+.cta-content h2 {
+  text-align: center;
+  font-size: clamp(14px, 2vw, 24px);
+}
+
+.cta-content p {
+  text-align: center;
+  font-size: clamp(14px, 2vw, 18px);
+}
+
+.cta-btn {
+  font-size: clamp(14px, 2vw, 18px);
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  transition: color .3s,
+    transform .3s,
+    background-color .3s;
+}
+
+.cta-btn:hover {
+  transform: scale(1.05);
+}
+
+.cta-btn:active {
+  transform: scale(.95);
+}
+
 @media (max-width: 768px) {
   .island-actions, .hero-visual {
     display: none;
@@ -557,7 +606,7 @@ path {
     justify-content: center;
   }
 
-  .container {
+  section .container {
     padding: 64px 10vw;
   }
 
