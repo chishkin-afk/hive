@@ -9,11 +9,11 @@ import (
 )
 
 type UserPersistenceRepository interface {
-	Save(ctx context.Context, user *User) (*User, error)
+	Save(ctx context.Context, user *User) error
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetByEmail(ctx context.Context, email Email) (*User, error)
 	Lookup(ctx context.Context, ids []uuid.UUID) ([]*User, error)
-	Update(ctx context.Context, updUser *User) (*User, error)
+	Update(ctx context.Context, updUser *User) error
 }
 
 type UserCacheRepository interface {

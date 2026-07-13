@@ -154,24 +154,23 @@ func (as *AuthService) Confirm(ctx context.Context, req *requests.ConfirmUser) (
 		return nil, err
 	}
 
-	savedUser, err := as.storePreparedUserDB(ctx, preparedUser)
-	if err != nil {
+	if err = as.storePreparedUserDB(ctx, preparedUser); err != nil {
 		return nil, err
 	}
 
-	if err := as.clearPreparedCache(ctx, savedUser.ConfirmedEmail()); err != nil {
+	if err := as.clearPreparedCache(ctx, preparedUser.ConfirmedEmail()); err != nil {
 		as.log.Warn("failed to clear prepared user's cache",
 			slog.String("error", err.Error()),
 		)
 	}
 
-	if err := as.saveFingerprint(ctx, fp, savedUser.ID()); err != nil {
+	if err := as.saveFingerprint(ctx, fp, preparedUser.ID()); err != nil {
 		as.log.Warn("failed to save fingerprint",
 			slog.String("error", err.Error()),
 		)
 	}
 
-	return as.generateToken(savedUser.ID())
+	return as.generateToken(preparedUser.ID())
 }
 
 func (as *AuthService) ForgetPassword(ctx context.Context, req *requests.ForgetPassword) error {
@@ -209,12 +208,11 @@ func (as *AuthService) ChangePassword(ctx context.Context, req *requests.ChangeP
 		return nil, err
 	}
 
-	updatedUser, err := as.updateUserStore(ctx, user)
-	if err != nil {
+	if err = as.updateUserStore(ctx, user); err != nil {
 		return nil, err
 	}
 
-	return as.generateToken(updatedUser.ID())
+	return as.generateToken(user.ID())
 }
 
 func (as *AuthService) changePassword(user *user.User, newPassword string) error {
@@ -314,16 +312,15 @@ func (as *AuthService) Update(ctx context.Context, req *requests.UpdateUser) (*r
 		return nil, err
 	}
 
-	updatedUser, err := as.updateUserStore(ctx, updUser)
-	if err != nil {
+	if err = as.updateUserStore(ctx, updUser); err != nil {
 		return nil, err
 	}
 
-	if err := as.clearUserCache(ctx, updatedUser.ID()); err != nil {
+	if err := as.clearUserCache(ctx, updUser.ID()); err != nil {
 		as.log.Warn("failed to clear user's cache", slog.String("error", err.Error()))
 	}
 
-	return as.userToDTO(updatedUser), nil
+	return as.userToDTO(updUser), nil
 }
 
 // GetSelfUser is a method that find user in db (or cache)
@@ -404,16 +401,15 @@ func (as *AuthService) BindTG(ctx context.Context, req *requests.BindTG) (*respo
 		return nil, err
 	}
 
-	updatedUser, err := as.updateUserStore(ctx, updUser)
-	if err != nil {
+	if err := as.updateUserStore(ctx, updUser); err != nil {
 		return nil, err
 	}
 
-	if err := as.clearUserCache(ctx, updatedUser.ID()); err != nil {
+	if err := as.clearUserCache(ctx, updUser.ID()); err != nil {
 		as.log.Warn("failed to clear user's cache", slog.String("error", err.Error()))
 	}
 
-	return as.userToDTO(updatedUser), nil
+	return as.userToDTO(updUser), nil
 }
 
 func (as *AuthService) Lookup(ctx context.Context, req *requests.Lookup) (*responses.LookupUsers, error) {
@@ -711,18 +707,17 @@ func (as *AuthService) resolvePreparedUser(ctx context.Context, requestedCode in
 	return preparedUser, nil
 }
 
-func (as *AuthService) storePreparedUserDB(ctx context.Context, user *user.User) (*user.User, error) {
-	savedUser, err := as.userPersistence.Save(ctx, user)
-	if err != nil {
+func (as *AuthService) storePreparedUserDB(ctx context.Context, user *user.User) error {
+	if err := as.userPersistence.Save(ctx, user); err != nil {
 		as.log.Error("failed to save user into db",
 			slog.String("user_id", user.ID().String()),
 			slog.String("error", err.Error()),
 		)
 
-		return nil, as.handleRepoError(err)
+		return as.handleRepoError(err)
 	}
 
-	return savedUser, nil
+	return nil
 }
 
 func (as *AuthService) clearPreparedCache(ctx context.Context, email user.Email) error {
@@ -877,18 +872,17 @@ func (as *AuthService) applyUserChanges(updUser *user.User, req *requests.Update
 	return nil
 }
 
-func (as *AuthService) updateUserStore(ctx context.Context, user *user.User) (*user.User, error) {
-	updatedUser, err := as.userPersistence.Update(ctx, user)
-	if err != nil {
+func (as *AuthService) updateUserStore(ctx context.Context, user *user.User) error {
+	if err := as.userPersistence.Update(ctx, user); err != nil {
 		as.log.Error("failed to update user into db",
 			slog.String("user_id", user.ID().String()),
 			slog.String("error", err.Error()),
 		)
 
-		return nil, as.handleRepoError(err)
+		return as.handleRepoError(err)
 	}
 
-	return updatedUser, nil
+	return nil
 }
 
 func (as *AuthService) clearUserCache(ctx context.Context, id uuid.UUID) error {
