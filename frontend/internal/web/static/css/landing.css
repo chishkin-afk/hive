@@ -225,6 +225,10 @@
   color: var(--color-accent);
 }
 
+svg {
+  width: 24px;
+}
+
 path {
   stroke: currentColor;
 }
@@ -259,7 +263,7 @@ path {
 
 /* FEATURES SECTION */
 
-.features {
+.features, .faq {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -392,6 +396,11 @@ path {
   transition: background-color .3s;
 }
 
+.pricing-card.loading {
+  pointer-events: none;
+  user-select: none;
+}
+
 .skeleton::after {
   content: '';
   position: absolute;
@@ -457,6 +466,73 @@ path {
     border-color .3s;
 }
 
+/* FAQ SECTION */
+
+.faq-list {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.faq-item {
+  width: 60%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-tertiary);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  user-select: none;
+  cursor: pointer;
+  transition: background-color .3s,
+    box-shadow .3s,
+    gap .3s;
+}
+
+.faq-item:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.faq-item.open {
+  gap: 8px;
+}
+
+.faq-question {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: clamp(14px, .9vw, 24px);
+  font-weight: 600;
+}
+
+.faq-question svg {
+  color: var(--color-text-primary);
+  transition: color .3s,
+   transform .3s;
+}
+
+.faq-answer {
+  color: var(--color-text-secondary);
+  font-size: clamp(14px, .8vw, 24px);
+  max-height: 0;
+  opacity: 0;
+  transition: max-height .5s,
+    padding-top .5s,
+    opacity .5s;
+}
+
+.faq-item.open .faq-question svg {
+  transform: rotate(180deg);
+}
+
+.faq-item.open .faq-answer {
+  opacity: 1;
+}
+
 @media (max-width: 768px) {
   .island-actions, .hero-visual {
     display: none;
@@ -498,6 +574,10 @@ path {
   .pricing-grid {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr 1fr 1fr;
+  }
+
+  .faq-item {
+    width: 100%;
   }
 }
 
@@ -592,6 +672,6 @@ path {
   animation-delay: 0.1s;
 }
 
-.feature-card.visible, .pricing-card.visible {
+.feature-card.visible, .pricing-card.visible, .faq-item.visible {
   animation: fade-scale 0.6s forwards;
 }

@@ -15,15 +15,37 @@ menuLinks.forEach(link => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-  const observer = new IntersectionObserver((entries) => {
+    const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
+        if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+        }
     });
-  }, { threshold: 0.1 });
-  
-  document.querySelectorAll('.section-title, .section-subtitle, .feature-card, .pricing-card')
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll(`
+        .section-title, .section-subtitle, .feature-card,
+        .pricing-card, .faq-item
+    `)
     .forEach(el => observer.observe(el));
 });
+
+const faqItems = document.querySelectorAll('.faq-item');
+faqItems.forEach(item => {
+    item.addEventListener('click', () => {
+        const isOpen = item.classList.contains('open');
+
+        faqItems.forEach(item => {
+            item.classList.remove('open');
+            item.querySelector('.faq-answer').style.maxHeight = '0px';
+        })
+
+        if (!isOpen) {
+            item.classList.add('open');
+            const answer = item.querySelector('.faq-answer');
+            const height = answer.querySelector('p').scrollHeight;
+            answer.style.maxHeight = height + 'px';
+        }
+    });
+})
