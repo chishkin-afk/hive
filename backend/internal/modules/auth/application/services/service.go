@@ -730,7 +730,7 @@ func (as *AuthService) saveFingerprint(ctx context.Context, fp string, userID uu
 		return err
 	}
 
-	if _, err := as.registrationPersistence.Save(ctx, registration); err != nil {
+	if err := as.registrationPersistence.Save(ctx, registration); err != nil {
 		as.log.Error("failed to save registration into db",
 			slog.String("error", err.Error()),
 			slog.String("fingerprint", fp),

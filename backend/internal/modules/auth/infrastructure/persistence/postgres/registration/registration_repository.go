@@ -18,48 +18,51 @@ type DB interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-type registrationPersistenceRepository struct {
-	sqlBuiler squirrel.StatementBuilderType
-	log       *slog.Logger
-	db        DB
+type registrationRepository struct {
+	sqlBuilder squirrel.StatementBuilderType
+	log        *slog.Logger
+	db         DB
 }
 
-func New(log *slog.Logger, db DB) *registrationPersistenceRepository {
-	return &registrationPersistenceRepository{
-		sqlBuiler: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
-		log:       log,
-		db:        db,
+func New(log *slog.Logger, db DB) *registrationRepository {
+	return &registrationRepository{
+		sqlBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
+		log:        log,
+		db:         db,
 	}
 }
 
-func (rpr *registrationPersistenceRepository) Save(ctx context.Context, registration *registration.Registration) (*registration.Registration, error) {
-	rpr.log.Debug("building the insert query of registration",
+// Save is a function that saves a registration record
+// to the database; otherwise, it returns an error.
+func (rr *registrationRepository) Save(ctx context.Context, registration *registration.Registration) error {
+	rr.log.Debug("saving registration in db",
 		slog.String("registration_id", registration.ID().String()),
 	)
 
-	record := registrationToRecord(registration)
-	query, args, err := rpr.buildInsertQuery(record)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build insert query: %w", err)
+	if err := rr.save(ctx, rr.db, registration); err != nil {
+		return fmt.Errorf("failed to save registration: %w",
+			handleError(err),
+		)
 	}
 
-	rpr.log.Debug("exec the insert query of registration",
-		slog.String("query", query),
-	)
-
-	if _, err := rpr.db.ExecContext(ctx, query, args...); err != nil {
-		if safeErr, ok := rpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to save registration into db: %w", err)
-	}
-
-	return recordToRegistration(record), nil
+	return nil
 }
 
-func (rpr *registrationPersistenceRepository) buildInsertQuery(record *registrationRecord) (string, []any, error) {
-	return rpr.sqlBuiler.Insert("registrations").Columns(
+func (rr *registrationRepository) save(ctx context.Context, db DB, registration *registration.Registration) error {
+	query, args, err := rr.buildInsertQuery(registrationToRecord(registration))
+	if err != nil {
+		return err
+	}
+
+	if _, err := db.ExecContext(ctx, query, args...); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (rr *registrationRepository) buildInsertQuery(record *registrationRecord) (string, []any, error) {
+	return rr.sqlBuilder.Insert("registrations").Columns(
 		"id",
 		"user_id",
 		"fingerprint",
@@ -72,37 +75,39 @@ func (rpr *registrationPersistenceRepository) buildInsertQuery(record *registrat
 	).ToSql()
 }
 
-func (rpr *registrationPersistenceRepository) Count(ctx context.Context, fingerprint string) (int64, error) {
-	rpr.log.Debug("building the count query of registrations",
-		slog.String("fingerprint", fingerprint),
-	)
+// Count is a function that calculates
+// the total number of user registrations
+// based on their fingerprint.
+func (rr *registrationRepository) Count(ctx context.Context, fingerprint string) (int64, error) {
+	rr.log.Debug("counting registrations of user")
 
-	query, args, err := rpr.buildCountQuery(fingerprint)
+	count, err := rr.count(ctx, rr.db, fingerprint)
 	if err != nil {
-		return 0, fmt.Errorf("failed to build count query: %w", err)
-	}
-
-	rpr.log.Debug("exec the count query of registrations",
-		slog.String("query", query),
-	)
-
-	count, err := rpr.mapCountRow(rpr.db.QueryRowContext(ctx, query, args...))
-	if err != nil {
-		if safeErr, ok := rpr.handleError(err); ok {
-			return 0, safeErr
-		}
-
-		return 0, fmt.Errorf("failed to count all the registrations: %w", err)
+		return 0, fmt.Errorf("failed to count registrations: %w",
+			handleError(err),
+		)
 	}
 
 	return count, nil
 }
 
-func (rpr *registrationPersistenceRepository) buildCountQuery(fingerprint string) (string, []any, error) {
-	return rpr.sqlBuiler.Select("count(*)").From("registrations").Where("fingerprint = ?", fingerprint).ToSql()
+func (rr *registrationRepository) count(ctx context.Context, db DB, fingerprint string) (int64, error) {
+	query, args, err := rr.buildCountQuery(fingerprint)
+	if err != nil {
+		return 0, err
+	}
+
+	return rr.mapCountRow(db.QueryRowContext(ctx, query, args...))
 }
 
-func (rpr *registrationPersistenceRepository) mapCountRow(row *sql.Row) (int64, error) {
+func (rr *registrationRepository) buildCountQuery(fingerprint string) (string, []any, error) {
+	return rr.sqlBuilder.Select("count(*)").
+		From("registrations").
+		Where("fingerprint = ?", fingerprint).
+		ToSql()
+}
+
+func (rr *registrationRepository) mapCountRow(row *sql.Row) (int64, error) {
 	var count int64
 	if err := row.Scan(&count); err != nil {
 		return 0, err
@@ -115,22 +120,19 @@ func (rpr *registrationPersistenceRepository) mapCountRow(row *sql.Row) (int64, 
 	return count, nil
 }
 
-func (rpr *registrationPersistenceRepository) handleError(err error) (error, bool) {
+func handleError(err error) error {
 	switch {
-	case errors.Is(err, context.DeadlineExceeded),
-		errors.Is(err, context.Canceled):
-		return err, true
 	case errors.Is(err, sql.ErrNoRows):
-		return registration.ErrNotFound, true
+		return registration.ErrNotFound
 	}
 
 	var pqErr *pq.Error
 	if errors.As(err, &pqErr) {
 		switch pqErr.Code {
 		case "23503":
-			return registration.ErrUserNotFound, true
+			return registration.ErrUserNotFound
 		}
 	}
 
-	return err, false
+	return err
 }
