@@ -26,7 +26,7 @@ type PreparedCacheRepository interface {
 	Prepare(ctx context.Context, user *User, generatedPassword string, code int) error
 	GetPrepared(ctx context.Context, email Email) (*User, string, int, error)
 	DelPrepared(ctx context.Context, email Email) error
-	SaveLastSend(ctx context.Context, email Email, at time.Time) error
+	SetLastSend(ctx context.Context, email Email, at time.Time) error
 	GetLastSend(ctx context.Context, email Email) (time.Time, error)
 }
 

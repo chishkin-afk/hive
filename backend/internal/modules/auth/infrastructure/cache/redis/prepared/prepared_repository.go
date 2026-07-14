@@ -20,135 +20,202 @@ type Cache interface {
 	Del(ctx context.Context, key ...string) *redis.IntCmd
 }
 
-type preparedCacheRepository struct {
+type preparedRepository struct {
 	cfg   *config.Config
 	log   *slog.Logger
 	cache Cache
 }
 
-func New(cfg *config.Config, log *slog.Logger, cache Cache) *preparedCacheRepository {
-	return &preparedCacheRepository{
+func New(cfg *config.Config, log *slog.Logger, cache Cache) *preparedRepository {
+	return &preparedRepository{
 		cfg:   cfg,
 		log:   log,
 		cache: cache,
 	}
 }
 
-func (ucr *preparedCacheRepository) Prepare(ctx context.Context, preparingUser *user.User, generatedPassword string, code int) error {
-	key := ucr.getPreparedKey(preparingUser.ConfirmedEmail())
-	ucr.log.Debug("check for already prepared user", slog.String("email", preparingUser.ConfirmedEmail().String()))
-	if err := ucr.cache.Get(ctx, key).Err(); err == nil {
-		return user.ErrUserAlreadyExists
-	} else if !errors.Is(err, redis.Nil) {
-		return fmt.Errorf("failed to check prepared user: %w", err)
+// Prepare is a method that creates (prepares) a user
+// in the cache based on their email.
+// Before doing so, it checks whether the user exists.
+func (pr *preparedRepository) Prepare(
+	ctx context.Context,
+	preparingUser *user.User,
+	generatedPassword string,
+	code int,
+) error {
+	pr.log.Debug("checking for prepared existing",
+		slog.String("prepared_id", preparingUser.ID().String()),
+	)
+
+	if err := pr.checkExisting(ctx, pr.cache, preparingUser.ConfirmedEmail()); err != nil {
+		return fmt.Errorf("failed to check existing of user: %w",
+			handleError(err),
+		)
 	}
 
-	ucr.log.Debug("converting domain into prepared")
-	preparedRecord, err := domainToPreparedBytes(preparingUser, generatedPassword, code)
-	if err != nil {
-		return fmt.Errorf("failed to convert domain into prepared: %w", err)
-	}
-
-	ucr.log.Debug("setting the prepared record into cache")
-	if err := ucr.cache.Set(ctx, key, preparedRecord, ucr.cfg.Cache.PreparingTTL).Err(); err != nil {
-		if safeErr, ok := ucr.normalizeError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to set prepared record: %w", err)
-	}
-
-	return nil
-}
-
-func (ucr *preparedCacheRepository) GetPrepared(ctx context.Context, email user.Email) (*user.User, string, int, error) {
-	ucr.log.Debug("get the prepared user from cache")
-	bytes, err := ucr.cache.Get(ctx, ucr.getPreparedKey(email)).Bytes()
-	if err != nil {
-		if safeErr, ok := ucr.normalizeError(err); ok {
-			return nil, "", 0, safeErr
-		}
-
-		return nil, "", 0, fmt.Errorf("failed to get prepared record: %w", err)
-	}
-
-	prepared, err := bytesToPrepared(bytes)
-	if err != nil {
-		return nil, "", 0, fmt.Errorf("failed to convert prepared model: %w", err)
-	}
-
-	return preparedToUser(prepared), prepared.GeneratedPassword, prepared.Code, nil
-}
-
-func (ucr *preparedCacheRepository) DelPrepared(ctx context.Context, email user.Email) error {
-	ucr.log.Debug("delete prepared user from cache")
-	if err := ucr.cache.Del(ctx, ucr.getPreparedKey(email)).Err(); err != nil {
-		if safeErr, ok := ucr.normalizeError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to delete prepared user from cache: %w", err)
+	pr.log.Debug("setting prepared into cache",
+		slog.String("prepared_id", preparingUser.ID().String()),
+	)
+	if err := pr.setPrepared(
+		ctx,
+		pr.cache,
+		preparingUser,
+		generatedPassword,
+		code,
+	); err != nil {
+		return fmt.Errorf("failed to save prepared into cache: %w",
+			handleError(err),
+		)
 	}
 
 	return nil
 }
 
-func (ucr *preparedCacheRepository) SaveLastSend(ctx context.Context, email user.Email, at time.Time) error {
-	ucr.log.Debug("new send saving into cache")
+func (pr *preparedRepository) setPrepared(
+	ctx context.Context,
+	cache Cache,
+	preparingUser *user.User,
+	generatedPassword string,
+	code int,
+) error {
+	bytes, err := preparedToBytes(
+		preparingUser,
+		generatedPassword,
+		code,
+	)
+	if err != nil {
+		return err
+	}
+
+	key := getPreparedKey(preparingUser.ConfirmedEmail())
+	return cache.Set(ctx, key, bytes, pr.cfg.Cache.PreparingTTL).Err()
+}
+
+func (pr *preparedRepository) checkExisting(ctx context.Context, cache Cache, email user.Email) error {
+	key := getPreparedKey(email)
+	return cache.Get(ctx, key).Err()
+}
+
+// GetPrepared is a method that returns a prepared user,
+// or an error otherwise.
+func (pr *preparedRepository) GetPrepared(ctx context.Context, email user.Email) (*user.User, string, int, error) {
+	pr.log.Debug("getting prepared from cache by id",
+		slog.String("email", email.String()),
+	)
+
+	user, password, code, err := pr.getPrepared(ctx, pr.cache, email)
+	if err != nil {
+		return nil, "", 0, fmt.Errorf("failed to get prepared from cache: %w",
+			handleError(err),
+		)
+	}
+
+	return user, password, code, err
+}
+
+func (pr *preparedRepository) getPrepared(ctx context.Context, cache Cache, email user.Email) (*user.User, string, int, error) {
+	bytes, err := cache.Get(ctx, getPreparedKey(email)).Bytes()
+	if err != nil {
+		return nil, "", 0, err
+	}
+
+	record, err := bytesToPrepared(bytes)
+	if err != nil {
+		return nil, "", 0, err
+	}
+
+	return preparedToUser(record), record.GeneratedPassword, record.Code, nil
+}
+
+// DelPrepared is a method that removes
+// a prepared user and their data
+// from the cache based on their email.
+func (pr *preparedRepository) DelPrepared(ctx context.Context, email user.Email) error {
+	pr.log.Debug("deleting prepared from cache",
+		slog.String("email", email.String()),
+	)
+
+	if err := pr.delPrepared(ctx, pr.cache, email); err != nil {
+		return fmt.Errorf("failed to delete prepared from cache: %w",
+			handleError(err),
+		)
+	}
+
+	return nil
+}
+
+func (pr *preparedRepository) delPrepared(ctx context.Context, cache Cache, email user.Email) error {
+	return cache.Del(ctx, getPreparedKey(email)).Err()
+}
+
+// SetLastSend is a method that records
+// the time of the user's last request
+// in the cache.
+func (pr *preparedRepository) SetLastSend(ctx context.Context, email user.Email, at time.Time) error {
+	pr.log.Debug("setting last send into cache",
+		slog.String("email", email.String()),
+	)
+
+	if err := pr.setLastSend(ctx, pr.cache, email, at); err != nil {
+		return fmt.Errorf("failed to set last send into cache: %w",
+			handleError(err),
+		)
+	}
+
+	return nil
+}
+
+func (pr *preparedRepository) setLastSend(ctx context.Context, cache Cache, email user.Email, at time.Time) error {
 	bytes, err := lastSendToBytes(at)
 	if err != nil {
-		return fmt.Errorf("failed to converting last time into bytes: %w", err)
+		return err
 	}
 
-	ucr.log.Debug("saving last send into cache")
-	if err := ucr.cache.Set(ctx, ucr.getLastSendKey(email), bytes, ucr.cfg.Service.SendingDuration).Err(); err != nil {
-		if safeErr, ok := ucr.normalizeError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to save last send: %w", err)
-	}
-
-	return nil
+	key := getLastSendKey(email)
+	return cache.Set(ctx, key, bytes, pr.cfg.Service.SendingDuration).Err()
 }
 
-func (ucr *preparedCacheRepository) GetLastSend(ctx context.Context, email user.Email) (time.Time, error) {
-	ucr.log.Debug("getting last send")
-	bytes, err := ucr.cache.Get(ctx, ucr.getLastSendKey(email)).Bytes()
+// GetLastSend is a method that returns the timestamp
+// of the last user code transmission,
+// or an error otherwise.
+func (pr *preparedRepository) GetLastSend(ctx context.Context, email user.Email) (time.Time, error) {
+	pr.log.Debug("getting last send of user by email",
+		slog.String("email", email.String()),
+	)
+
+	at, err := pr.getLastSend(ctx, pr.cache, email)
 	if err != nil {
-		if safeErr, ok := ucr.normalizeError(err); ok {
-			return time.Time{}, safeErr
-		}
-
-		return time.Time{}, fmt.Errorf("failed to get last send: %w", err)
+		return time.Time{}, fmt.Errorf("failed to get last send of user: %w",
+			handleError(err),
+		)
 	}
 
-	record, err := bytesToLastSendRecord(bytes)
+	return at, nil
+}
+
+func (pr *preparedRepository) getLastSend(ctx context.Context, cache Cache, email user.Email) (time.Time, error) {
+	bytes, err := cache.Get(ctx, getLastSendKey(email)).Bytes()
 	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to convert last send bytes: %w", err)
+		return time.Time{}, err
 	}
 
-	return record.At, nil
+	return bytesToLastSendRecord(bytes)
 }
 
-func (ucr *preparedCacheRepository) normalizeError(err error) (error, bool) {
-	switch {
-	case errors.Is(err, context.DeadlineExceeded),
-		errors.Is(err, context.Canceled):
-		return err, true
-	case errors.Is(err, redis.Nil):
-		return user.ErrUserNotFound, true
+func handleError(err error) error {
+	if errors.Is(err, redis.Nil) {
+		return user.ErrUserNotFound
 	}
 
-	return err, false
+	return err
 }
 
-func (ucr *preparedCacheRepository) getPreparedKey(email user.Email) string {
+func getPreparedKey(email user.Email) string {
 	hash := sha256.Sum256([]byte(email.String()))
 	return fmt.Sprintf("prepared:%s", hex.EncodeToString(hash[:]))
 }
 
-func (ucr *preparedCacheRepository) getLastSendKey(email user.Email) string {
+func getLastSendKey(email user.Email) string {
 	hash := sha256.Sum256([]byte(email.String()))
 	return fmt.Sprintf("last_send:%s", hex.EncodeToString(hash[:]))
 }

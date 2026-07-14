@@ -19,78 +19,102 @@ type Cache interface {
 	Del(ctx context.Context, key ...string) *redis.IntCmd
 }
 
-type userCacheRepository struct {
+type userRepository struct {
 	cfg   *config.Config
 	log   *slog.Logger
 	cache Cache
 }
 
-func New(cfg *config.Config, log *slog.Logger, cache Cache) *userCacheRepository {
-	return &userCacheRepository{
+func New(cfg *config.Config, log *slog.Logger, cache Cache) *userRepository {
+	return &userRepository{
 		cfg:   cfg,
 		log:   log,
 		cache: cache,
 	}
 }
 
-func (ucr *userCacheRepository) Set(ctx context.Context, user *user.User) error {
-	ucr.log.Debug("start to convert domain into bytes", slog.String("user_id", user.ID().String()))
-	bytes, err := domainToRecord(user)
-	if err != nil {
-		return fmt.Errorf("failed to convert domain into bytes: %w", err)
-	}
+// Set is a function used to save a user
+// to the cache based on their ID.
+func (ur *userRepository) Set(ctx context.Context, user *user.User) error {
+	ur.log.Debug("setting user into cache",
+		slog.String("user_id", user.ID().String()),
+	)
 
-	ucr.log.Debug("setting the user's cache by id", slog.String("user_id", user.ID().String()))
-	if err := ucr.cache.Set(ctx, ucr.getUserKey(user.ID()), bytes, ucr.cfg.Cache.UserTTL).Err(); err != nil {
-		if safeErr, ok := ucr.normalizeError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to set user's cache: %w", err)
+	if err := ur.set(ctx, ur.cache, user); err != nil {
+		return fmt.Errorf("failed to set user into cache: %w",
+			handleError(err),
+		)
 	}
 
 	return nil
 }
 
-func (ucr *userCacheRepository) Get(ctx context.Context, id uuid.UUID) (*user.User, error) {
-	ucr.log.Debug("get the user's cache by id", slog.String("user_id", id.String()))
-	bytes, err := ucr.cache.Get(ctx, ucr.getUserKey(id)).Bytes()
+func (ur *userRepository) set(ctx context.Context, cache Cache, user *user.User) error {
+	bytes, err := domainToBytes(user)
 	if err != nil {
-		if safeErr, ok := ucr.normalizeError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get user's cache: %w", err)
+		return err
 	}
 
-	return recordToDomain(bytes)
+	return cache.Set(ctx, getUserKey(user.ID()), bytes, ur.cfg.Cache.UserTTL).Err()
 }
 
-func (ucr *userCacheRepository) Del(ctx context.Context, id uuid.UUID) error {
-	ucr.log.Debug("deleting the user's cache", slog.String("user_id", id.String()))
-	if err := ucr.cache.Del(ctx, ucr.getUserKey(id)).Err(); err != nil {
-		if safeErr, ok := ucr.normalizeError(err); ok {
-			return safeErr
-		}
+// Get is a function that returns a user
+// from the cache by their ID,
+// or otherwise returns an error.
+func (ur *userRepository) Get(ctx context.Context, id uuid.UUID) (*user.User, error) {
+	ur.log.Debug("getting user from cache by id",
+		slog.String("user_id", id.String()),
+	)
 
-		return fmt.Errorf("failed to delete user's cache: %w", err)
+	user, err := ur.get(ctx, ur.cache, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user from cache: %w",
+			handleError(err),
+		)
+	}
+
+	return user, nil
+}
+
+func (ur *userRepository) get(ctx context.Context, cache Cache, id uuid.UUID) (*user.User, error) {
+	bytes, err := cache.Get(ctx, getUserKey(id)).Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	return bytesToDomain(bytes)
+}
+
+// Del is a function that clears a user's cache
+// based on their ID; otherwise,
+// it returns an error
+// (except when the user does not exist).
+func (ur *userRepository) Del(ctx context.Context, id uuid.UUID) error {
+	ur.log.Debug("deleting user's cache by id",
+		slog.String("user_id", id.String()),
+	)
+
+	if err := ur.del(ctx, ur.cache, id); err != nil {
+		return fmt.Errorf("failed to delete user's cache by id: %w",
+			handleError(err),
+		)
 	}
 
 	return nil
 }
 
-func (ucr *userCacheRepository) normalizeError(err error) (error, bool) {
-	switch {
-	case errors.Is(err, context.DeadlineExceeded),
-		errors.Is(err, context.Canceled):
-		return err, true
-	case errors.Is(err, redis.Nil):
-		return user.ErrUserNotFound, true
-	}
-
-	return err, false
+func (ur *userRepository) del(ctx context.Context, cache Cache, id uuid.UUID) error {
+	return cache.Del(ctx, getUserKey(id)).Err()
 }
 
-func (ucr *userCacheRepository) getUserKey(id uuid.UUID) string {
+func handleError(err error) error {
+	if errors.Is(err, redis.Nil) {
+		return user.ErrUserNotFound
+	}
+
+	return err
+}
+
+func getUserKey(id uuid.UUID) string {
 	return fmt.Sprintf("user:%s", id.String())
 }

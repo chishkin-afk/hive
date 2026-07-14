@@ -8,9 +8,9 @@ import (
 )
 
 type TgBindingCacheRepository interface {
-	Save(ctx context.Context, tgBinding *TgBinding) error
-	GetByID(ctx context.Context, id uuid.UUID) (*TgBinding, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	Set(ctx context.Context, tgBinding *TgBinding) error
+	Get(ctx context.Context, id uuid.UUID) (*TgBinding, error)
+	Del(ctx context.Context, id uuid.UUID) error
 }
 
 var (

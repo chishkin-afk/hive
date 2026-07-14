@@ -464,7 +464,7 @@ func (as *AuthService) validateIDs(ids []uuid.UUID) error {
 }
 
 func (as *AuthService) storeLastSendTime(ctx context.Context, at time.Time, email user.Email) error {
-	if err := as.preparedCache.SaveLastSend(ctx, email, at); err != nil {
+	if err := as.preparedCache.SetLastSend(ctx, email, at); err != nil {
 		as.log.Error("failed to store last send time",
 			slog.String("error", err.Error()),
 		)
@@ -499,7 +499,7 @@ func (as *AuthService) checkLastSendTime(ctx context.Context, email user.Email) 
 }
 
 func (as *AuthService) clearTgBindingCache(ctx context.Context, bindingID uuid.UUID) error {
-	if err := as.tgBindingCache.Delete(ctx, bindingID); err != nil {
+	if err := as.tgBindingCache.Del(ctx, bindingID); err != nil {
 		as.log.Error("failed to clear tg binding's cache",
 			slog.String("error", err.Error()),
 			slog.String("binding_id", bindingID.String()),
@@ -511,7 +511,7 @@ func (as *AuthService) clearTgBindingCache(ctx context.Context, bindingID uuid.U
 }
 
 func (as *AuthService) getBindingFromCache(ctx context.Context, bindingID uuid.UUID) (*tgbinding.TgBinding, error) {
-	tgBinding, err := as.tgBindingCache.GetByID(ctx, bindingID)
+	tgBinding, err := as.tgBindingCache.Get(ctx, bindingID)
 	if err != nil {
 		as.log.Error("failed to get binding from cache",
 			slog.String("error", err.Error()),
@@ -534,7 +534,7 @@ func (as *AuthService) bindingToDTO(tgBinding *tgbinding.TgBinding) *responses.T
 }
 
 func (as *AuthService) storeBindingCache(ctx context.Context, tgBinding *tgbinding.TgBinding) error {
-	if err := as.tgBindingCache.Save(ctx, tgBinding); err != nil {
+	if err := as.tgBindingCache.Set(ctx, tgBinding); err != nil {
 		as.log.Error("failed to save tg binding's cache",
 			slog.String("binding_id", tgBinding.ID().String()),
 			slog.String("error", err.Error()),

@@ -19,7 +19,7 @@ type Cache interface {
 	Del(ctx context.Context, key ...string) *redis.IntCmd
 }
 
-type tgbindingCacheRepository struct {
+type tgbindingRepository struct {
 	cfg   *config.Config
 	log   *slog.Logger
 	cache Cache
@@ -29,84 +29,94 @@ func New(
 	cfg *config.Config,
 	log *slog.Logger,
 	cache Cache,
-) *tgbindingCacheRepository {
-	return &tgbindingCacheRepository{
+) *tgbindingRepository {
+	return &tgbindingRepository{
 		cfg:   cfg,
 		log:   log,
 		cache: cache,
 	}
 }
 
-func (tb *tgbindingCacheRepository) Save(ctx context.Context, tgBinding *tgbinding.TgBinding) error {
-	tb.log.Debug("converting tg's binding model into bytes",
-		slog.String("binding_id", tgBinding.ID().String()),
+// Set establishes the structure for
+// binding a Telegram account in the cache
+// otherwise, it returns an error.
+func (tr *tgbindingRepository) Set(ctx context.Context, tgBinding *tgbinding.TgBinding) error {
+	tr.log.Debug("setting tg's binding in cache",
+		slog.String("tgbinding_id", tgBinding.ID().String()),
 	)
 
-	bytes, err := tgBindingToBytes(tgBinding)
-	if err != nil {
-		return fmt.Errorf("failed to convert tg's binding into bytes: %w", err)
-	}
-
-	tb.log.Debug("setting binding's bytes into cache",
-		slog.String("binding_id", tgBinding.ID().String()),
-	)
-
-	if err := tb.cache.Set(ctx, tb.getBindingKey(tgBinding.ID()), bytes, tb.cfg.Cache.TgBindingTTL).Err(); err != nil {
-		if safeErr, ok := tb.handleError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to set binding into cache: %w", err)
+	if err := tr.set(ctx, tr.cache, tgBinding); err != nil {
+		return fmt.Errorf("failed to set tg's binding cache: %w",
+			handleError(err),
+		)
 	}
 
 	return nil
 }
 
-func (tb *tgbindingCacheRepository) GetByID(ctx context.Context, id uuid.UUID) (*tgbinding.TgBinding, error) {
-	tb.log.Debug("getting bytes from cache of tg binding",
-		slog.String("binding_id", id.String()),
+func (tr *tgbindingRepository) set(ctx context.Context, cache Cache, tgBinding *tgbinding.TgBinding) error {
+	bytes, err := tgBindingToBytes(tgBinding)
+	if err != nil {
+		return err
+	}
+
+	key := getBindingKey(tgBinding.ID())
+	return cache.Set(ctx, key, bytes, tr.cfg.Cache.TgBindingTTL).Err()
+}
+
+// Get returns the structure for
+// the Telegram bind (if it exists),
+// or an error otherwise.
+func (tr *tgbindingRepository) Get(ctx context.Context, id uuid.UUID) (*tgbinding.TgBinding, error) {
+	tr.log.Debug("getting tg's binding from cache by id",
+		slog.String("tgbinding_id", id.String()),
 	)
 
-	bytes, err := tb.cache.Get(ctx, tb.getBindingKey(id)).Bytes()
+	tgBinding, err := tr.get(ctx, tr.cache, id)
 	if err != nil {
-		if safeErr, ok := tb.handleError(err); ok {
-			return nil, safeErr
-		}
+		return nil, fmt.Errorf("failed to get tgbinding from cache: %w",
+			handleError(err),
+		)
+	}
 
-		return nil, fmt.Errorf("failed to get tgbinding cache: %w", err)
+	return tgBinding, nil
+}
+
+func (tr *tgbindingRepository) get(ctx context.Context, cache Cache, id uuid.UUID) (*tgbinding.TgBinding, error) {
+	bytes, err := cache.Get(ctx, getBindingKey(id)).Bytes()
+	if err != nil {
+		return nil, err
 	}
 
 	return bytesToTgBinding(bytes)
 }
 
-func (tb *tgbindingCacheRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	tb.log.Debug("trying to delete binding by id",
-		slog.String("binding_id", id.String()),
+func (tr *tgbindingRepository) Del(ctx context.Context, id uuid.UUID) error {
+	tr.log.Debug("deleting tg's binding from cache by id",
+		slog.String("tgbinding_id", id.String()),
 	)
 
-	if err := tb.cache.Del(ctx, tb.getBindingKey(id)).Err(); err != nil {
-		if safeErr, ok := tb.handleError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to delete tgbinding cache: %w", err)
+	if err := tr.del(ctx, tr.cache, id); err != nil {
+		return fmt.Errorf("failed to delete tg's binding from cache: %w",
+			handleError(err),
+		)
 	}
 
 	return nil
 }
 
-func (tb *tgbindingCacheRepository) handleError(err error) (error, bool) {
-	switch {
-	case errors.Is(err, context.DeadlineExceeded),
-		errors.Is(err, context.Canceled):
-		return err, true
-	case errors.Is(err, redis.Nil):
-		return tgbinding.ErrTgBindingNotFound, true
-	}
-
-	return err, false
+func (tr *tgbindingRepository) del(ctx context.Context, cache Cache, id uuid.UUID) error {
+	return cache.Del(ctx, getBindingKey(id)).Err()
 }
 
-func (tb *tgbindingCacheRepository) getBindingKey(id uuid.UUID) string {
+func handleError(err error) error {
+	if errors.Is(err, redis.Nil) {
+		return tgbinding.ErrTgBindingNotFound
+	}
+
+	return err
+}
+
+func getBindingKey(id uuid.UUID) string {
 	return fmt.Sprintf("tgbinding:%s", id.String())
 }
