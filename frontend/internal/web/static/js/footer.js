@@ -4,13 +4,13 @@ email.addEventListener('click', () => {
     if (text === 'Скопировано!') {
         return;
     }
-  
-    navigator.clipboard.writeText(text)
-    .then(() => {
-        email.textContent = 'Скопировано!';
 
-        timeoutId = setTimeout(() => {
-            email.textContent = text;
-        }, 2000);
-      });
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            email.textContent = 'Скопировано!';
+
+            timeoutId = setTimeout(() => {
+                email.textContent = text;
+            }, 2000);
+        });
 });

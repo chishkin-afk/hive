@@ -1,108 +1,113 @@
 {{define "auth_extra_head"}}
-    <link rel="stylesheet" href="/static/css/auth.css">
+<link rel="stylesheet" href="/static/css/auth.css">
 {{end}}
 
 {{define "auth_content"}}
-    <div class="container">
+<div class="container">
 
-        <div class="form-wrapper">
-            <p class="error-message" id="errorMessage"></p>
-            <p class="success-message" id="successMessage"></p>
+    <div class="form-wrapper">
+        <p class="error-message" id="errorMessage"></p>
+        <p class="success-message" id="successMessage"></p>
 
-            <form class="auth-form {{if ne .action "login"}}active{{end}}" id="registerForm">
-                <h1 class="auth-title">Создать аккаунт</h1>
-    
-                <div class="form-group">
-                    <label class="form-label" for="regFirstname">Имя <span>*</span></label>
-                    <input type="text" id="regFirstname" class="form-input" placeholder="Иван" required>
+        <form class="auth-form {{if ne .action " login"}}active{{end}}" id="registerForm">
+            <h1 class="auth-title">Создать аккаунт</h1>
+
+            <div class="form-group">
+                <label class="form-label" for="regFirstname">Имя <span>*</span></label>
+                <input type="text" id="regFirstname" class="form-input" placeholder="Иван" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="regLastname">Фамилия</label>
+                <input type="text" id="regLastname" class="form-input optional" placeholder="Иванов (необязательно)">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="regEmail">Email <span>*</span></label>
+                <input type="email" id="regEmail" class="form-input" placeholder="email@example.com" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="regPhone">Телефон</label>
+                <input type="tel" id="regPhone" class="form-input optional"
+                    placeholder="8 000 000 00 00 (необязательно)">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="regPassword">Пароль <span>*</span></label>
+                <div class="password-wrapper">
+                    <input type="password" id="regPassword" class="form-input" placeholder="••••••••" required>
+                    <button type="button" class="password-toggle">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z"
+                                stroke-width="2" stroke-linejoin="round" />
+                            <path
+                                d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
+                                stroke-width="2" />
+                        </svg>
+                    </button>
                 </div>
-    
-                <div class="form-group">
-                    <label class="form-label" for="regLastname">Фамилия</label>
-                    <input type="text" id="regLastname" class="form-input optional" placeholder="Иванов (необязательно)">
+            </div>
+
+            <div class="form-options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="agreeTerms">
+                    <span class="checkmark"></span>
+                    <span>
+                        Я принимаю
+                        <a href="/terms" target="_blank">пользовательское соглашение</a>
+                        и даю
+                        <a href="/privacy" target="_blank">согласие на обработку персональных данных</a>
+                    </span>
+                </label>
+            </div>
+
+            <button type="button" class="submit-btn" id="registerBtn">Создать аккаунт</button>
+            <button type="button" class="switch-btn">Уже есть аккаунт?</button>
+        </form>
+        <form class="auth-form {{if eq .action " login"}}active{{end}}" id="loginForm">
+            <h1 class="auth-title">Войти</h1>
+
+            <div class="form-group">
+                <label class="form-label" for="loginEmail">Email</label>
+                <input type="email" id="loginEmail" class="form-input" placeholder="email@example.com" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="loginPassword">Пароль</label>
+                <div class="password-wrapper">
+                    <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
+                    <button type="button" class="password-toggle">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z"
+                                stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round" />
+                            <path
+                                d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
+                                stroke="#1A1A1A" stroke-width="2" />
+                        </svg>
+                    </button>
                 </div>
-    
-                <div class="form-group">
-                    <label class="form-label" for="regEmail">Email <span>*</span></label>
-                    <input type="email" id="regEmail" class="form-input" placeholder="email@example.com" required>
-                </div>
-    
-                <div class="form-group">
-                    <label class="form-label" for="regPhone">Телефон</label>
-                    <input type="tel" id="regPhone" class="form-input optional" placeholder="8 000 000 00 00 (необязательно)">
-                </div>
-    
-                <div class="form-group">
-                    <label class="form-label" for="regPassword">Пароль <span>*</span></label>
-                    <div class="password-wrapper">
-                        <input type="password" id="regPassword" class="form-input" placeholder="••••••••" required>
-                        <button type="button" class="password-toggle">
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z"
-                                    stroke-width="2" stroke-linejoin="round"/>
-                                <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
-                                    stroke-width="2"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-    
-                <div class="form-options">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="agreeTerms">
-                        <span class="checkmark"></span>
-                        <span>
-                            Я принимаю
-                            <a href="/terms" target="_blank">пользовательское соглашение</a>
-                            и даю
-                            <a href="/privacy" target="_blank">согласие на обработку персональных данных</a>
-                        </span>
-                    </label>
-                </div>
-    
-                <button type="button" class="submit-btn" id="registerBtn">Создать аккаунт</button>
-                <button type="button" class="switch-btn">Уже есть аккаунт?</button>
-            </form>
-            <form class="auth-form {{if eq .action "login"}}active{{end}}" id="loginForm">
-                <h1 class="auth-title">Войти</h1>
-    
-                <div class="form-group">
-                    <label class="form-label" for="loginEmail">Email</label>
-                    <input type="email" id="loginEmail" class="form-input" placeholder="email@example.com" required>
-                </div>
-    
-                <div class="form-group">
-                    <label class="form-label" for="loginPassword">Пароль</label>
-                    <div class="password-wrapper">
-                        <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
-                        <button type="button" class="password-toggle">
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z"
-                                    stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/>
-                                <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
-                                    stroke="#1A1A1A" stroke-width="2"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-    
-                <div class="form-options">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="rememberMe">
-                        <span class="checkmark"></span>
-                        <span>Запомнить меня</span>
-                    </label>
-    
-                    <a href="/forgot-password" class="forgot-password">Восстановить пароль?</a>
-                </div>
-                
-                <button type="button" class="submit-btn" id="loginBtn">Войти</button>
-                <button type="button" class="switch-btn">Нет аккаунта?</button>
-            </form>
-        </div>
+            </div>
+
+            <div class="form-options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="rememberMe">
+                    <span class="checkmark"></span>
+                    <span>Запомнить меня</span>
+                </label>
+
+                <a href="/forgot-password" class="forgot-password">Восстановить пароль?</a>
+            </div>
+
+            <button type="button" class="submit-btn" id="loginBtn">Войти</button>
+            <button type="button" class="switch-btn">Нет аккаунта?</button>
+        </form>
     </div>
+</div>
 {{end}}
 
 {{define "auth_extra_scripts"}}
-    <script src="/static/js/auth.js"></script>
+<script src="/static/js/auth.js"></script>
 {{end}}

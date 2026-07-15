@@ -16,19 +16,19 @@ menuLinks.forEach(link => {
 
 document.addEventListener('DOMContentLoaded', () => {
     const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-            observer.unobserve(entry.target);
-        }
-    });
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                observer.unobserve(entry.target);
+            }
+        });
     }, { threshold: 0.1 });
 
     document.querySelectorAll(`
         .section-title, .section-subtitle, .feature-card,
         .pricing-card, .faq-item
     `)
-    .forEach(el => observer.observe(el));
+        .forEach(el => observer.observe(el));
 });
 
 const faqItems = document.querySelectorAll('.faq-item');

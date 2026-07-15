@@ -23,7 +23,7 @@ function setAuthCookie(token, rememberMe) {
 
 const passwordToggles = document.querySelectorAll('.password-toggle');
 passwordToggles.forEach(el => {
-    el.addEventListener('click', function() {
+    el.addEventListener('click', function () {
         const wrapper = this.closest('.password-wrapper');
         const input = wrapper.querySelector('.form-input');
 
