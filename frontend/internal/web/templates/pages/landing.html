@@ -1,18 +1,12 @@
-{{define "landing"}}
-{{template "base" .}}
-{{end}}
-
-{{define "extraHead"}}
+{{define "landing_extra_head"}}
     <link rel="stylesheet" href="/static/css/header.css">
     <link rel="stylesheet" href="/static/css/landing.css">
     <link rel="stylesheet" href="/static/css/footer.css">
 {{end}}
 
-{{define "header"}}
-    {{template "header-landing" .}}
-{{end}}
+{{define "landing_content"}}
+    {{template "header_landing" .}}
 
-{{define "content"}}
     <section id="hero" class="hero">
         <div class="hero-content">
             <h1 class="hero-title">
@@ -24,7 +18,7 @@
                 в одном удобном месте. Автоматизация без лишних сложностей
             </p>
             <div class="hero-buttons">
-                <a href="/register" class="hero-btn hero-btn-primary">Начать бесплатно</a>
+                <a href="/auth?action=register" class="hero-btn hero-btn-primary">Начать бесплатно</a>
                 <a href="#pricing" class="hero-btn hero-btn-outline">Смотреть тарифы</a>
             </div>
         </div>
@@ -298,9 +292,11 @@
             </div>
         </div>
     </section> -->
+
+    {{template "footer" .}}
 {{end}}
 
-{{define "extraScripts"}}
+{{define "landing_extra_scripts"}}
     <script src="/static/js/landing.js"></script>
     <script src="/static/js/footer.js"></script>
 {{end}}

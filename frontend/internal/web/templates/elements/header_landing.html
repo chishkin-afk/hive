@@ -1,4 +1,4 @@
-{{define "header-landing"}}
+{{define "header_landing"}}
     <header>
         <div class="header-wrapper">
             <div class="dynamic-island">
@@ -20,8 +20,8 @@
                 <div class="island-divider" role="separator"></div>
 
                 <div class="island-actions">
-                    <a class="island-btn" href="/login">Войти</a>
-                    <a class="island-btn island-btn-primary" href="/register">Регистрация</a>
+                    <a class="island-btn" href="/auth?action=login">Войти</a>
+                    <a class="island-btn island-btn-primary" href="/auth?action=register">Регистрация</a>
                 </div>
 
                 <button class="burger-btn" id="burgerBtn" aria-label="Меню">
@@ -66,8 +66,8 @@
             </div>
 
             <div class="menu-actions">
-                <a class="menu-btn" href="/login">Войти</a>
-                <a class="menu-btn menu-btn-primary" href="/register">Регистрация</a>
+                <a class="menu-btn" href="/auth?action=login">Войти</a>
+                <a class="menu-btn menu-btn-primary" href="/auth?action=register">Регистрация</a>
             </div>
         </nav>
     </header>

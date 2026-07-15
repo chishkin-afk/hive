@@ -9,8 +9,12 @@
         <link rel="icon" href="/static/images/svg/favicon-dark.svg" media="(prefers-color-scheme: light)">
         <link rel="icon" href="/static/images/svg/favicon-light.svg" media="(prefers-color-scheme: dark)">
         
-        <script src="/static/js/theme.js"></script>
+        {{if eq .page "landing"}}
+            {{block "landing_extra_head" .}}{{end}}
+        {{else if eq .page "auth"}}
+            {{block "auth_extra_head" .}}{{end}}
+        {{end}}
 
-        {{template "extraHead" .}}
+        <script src="/static/js/theme.js"></script>
     </head>
 {{end}}

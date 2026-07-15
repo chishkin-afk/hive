@@ -1,15 +1,14 @@
 {{define "base"}}
 <!DOCTYPE html>
 <html lang="en">
-{{template "head" .}}
+    {{template "head" .}}
 <body>
-    {{template "header" .}}
+    {{if eq .page "landing"}}
+        {{template "landing_content" .}}
+    {{else if eq .page "auth"}}
+        {{template "auth_content" .}}
+    {{end}}
 
-    <main>
-        {{template "content" .}}
-    </main>
-
-    {{template "footer" .}}
     {{template "scripts" .}}
 </body>
 </html>

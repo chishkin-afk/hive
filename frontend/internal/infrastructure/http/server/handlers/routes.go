@@ -25,6 +25,7 @@ func New(cfg *config.Config, fs frontendService, mws ...gin.HandlerFunc) *gin.En
 	router.GET("/js/config.js", handlers.Config())
 
 	router.GET("/", handlers.Landing())
+	router.GET("/auth", handlers.Auth())
 
 	return router
 }

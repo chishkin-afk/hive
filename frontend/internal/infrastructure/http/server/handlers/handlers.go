@@ -23,8 +23,21 @@ func (h *handlers) Config() gin.HandlerFunc {
 
 func (h *handlers) Landing() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		ctx.HTML(http.StatusOK, "landing", gin.H{
+		ctx.HTML(http.StatusOK, "base", gin.H{
 			"title": "Hive",
+			"page":  "landing",
+		})
+	}
+}
+
+func (h *handlers) Auth() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		action := ctx.DefaultQuery("action", "register")
+
+		ctx.HTML(http.StatusOK, "base", gin.H{
+			"title":  "Auth",
+			"page":   "auth",
+			"action": action,
 		})
 	}
 }
