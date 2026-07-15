@@ -19,76 +19,103 @@ type Cache interface {
 	Del(ctx context.Context, key ...string) *redis.IntCmd
 }
 
-type bookingCacheRepository struct {
+type bookingRepository struct {
 	cfg   *config.Config
 	log   *slog.Logger
 	cache Cache
 }
 
-func New(cfg *config.Config, log *slog.Logger, cache Cache) *bookingCacheRepository {
-	return &bookingCacheRepository{
+func New(cfg *config.Config, log *slog.Logger, cache Cache) *bookingRepository {
+	return &bookingRepository{
 		cfg:   cfg,
 		log:   log,
 		cache: cache,
 	}
 }
 
-func (bcr *bookingCacheRepository) Save(ctx context.Context, booking *booking.Booking) error {
-	bcr.log.Debug("converting booking into bytes", slog.String("booking_id", booking.ID().String()))
-	bytes, err := bookingToBytes(booking)
-	if err != nil {
-		return fmt.Errorf("failed to convert booking into bytes: %w", err)
-	}
+// Save is a function that saves a booking
+// to the cache using its ID; otherwise,
+// it returns an error.
+func (br *bookingRepository) Save(ctx context.Context, booking *booking.Booking) error {
+	br.log.Debug("saving booking into cache",
+		slog.String("booking_id", booking.ID().String()),
+	)
 
-	if err := bcr.cache.Set(ctx, bcr.getBookingKey(booking.ID()), bytes, bcr.cfg.Cache.BookingTTL).Err(); err != nil {
-		if safeErr, ok := bcr.handleError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to save booking into cache: %w", err)
+	if err := br.save(ctx, br.cache, booking); err != nil {
+		return fmt.Errorf("failed to save booking: %w",
+			handleError(err),
+		)
 	}
 
 	return nil
 }
 
-func (bcr *bookingCacheRepository) GetByID(ctx context.Context, id uuid.UUID) (*booking.Booking, error) {
-	bcr.log.Debug("getting bytes from cache", slog.String("booking_id", id.String()))
-	bytes, err := bcr.cache.Get(ctx, bcr.getBookingKey(id)).Bytes()
+func (br *bookingRepository) save(ctx context.Context, cache Cache, booking *booking.Booking) error {
+	bytes, err := bookingToBytes(booking)
 	if err != nil {
-		if safeErr, ok := bcr.handleError(err); ok {
-			return nil, safeErr
-		}
+		return err
+	}
 
-		return nil, fmt.Errorf("failed to get booking from cache: %w", err)
+	key := getBookingKey(booking.ID())
+	return cache.Set(ctx, key, bytes, br.cfg.Cache.BookingTTL).Err()
+}
+
+// GetByID is a function that returns a booking
+// from the cache based on its ID,
+// or an error otherwise.
+func (br *bookingRepository) GetByID(ctx context.Context, id uuid.UUID) (*booking.Booking, error) {
+	br.log.Debug("getting booking by id from cache",
+		slog.String("booking_id", id.String()),
+	)
+
+	booking, err := br.get(ctx, br.cache, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get booking by id: %w",
+			handleError(err),
+		)
+	}
+
+	return booking, nil
+}
+
+func (br *bookingRepository) get(ctx context.Context, cache Cache, id uuid.UUID) (*booking.Booking, error) {
+	bytes, err := cache.Get(ctx, getBookingKey(id)).Bytes()
+	if err != nil {
+		return nil, err
 	}
 
 	return bytesToBooking(bytes)
 }
 
-func (bcr *bookingCacheRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	if err := bcr.cache.Del(ctx, bcr.getBookingKey(id)).Err(); err != nil {
-		if safeErr, ok := bcr.handleError(err); ok {
-			return safeErr
-		}
+// Delete is a method that removes a booking
+// from the cache by its ID
+// otherwise, it returns an error.
+func (br *bookingRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	br.log.Debug("deleting booking from cache by id",
+		slog.String("booking_id", id.String()),
+	)
 
-		return fmt.Errorf("failed to delete booking from cache: %w", err)
+	if err := br.delete(ctx, br.cache, id); err != nil {
+		return fmt.Errorf("failed to delete booking: %w",
+			handleError(err),
+		)
 	}
 
 	return nil
 }
 
-func (bcr *bookingCacheRepository) getBookingKey(id uuid.UUID) string {
+func (br *bookingRepository) delete(ctx context.Context, cache Cache, id uuid.UUID) error {
+	return cache.Del(ctx, getBookingKey(id)).Err()
+}
+
+func getBookingKey(id uuid.UUID) string {
 	return fmt.Sprintf("booking:%s", id.String())
 }
 
-func (bcr *bookingCacheRepository) handleError(err error) (error, bool) {
-	switch {
-	case errors.Is(err, context.DeadlineExceeded),
-		errors.Is(err, context.Canceled):
-		return err, true
-	case errors.Is(err, redis.Nil):
-		return booking.ErrBookingNotFound, true
+func handleError(err error) error {
+	if errors.Is(err, redis.Nil) {
+		return booking.ErrBookingNotFound
 	}
 
-	return err, false
+	return err
 }
