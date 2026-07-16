@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// TODO: сделать уведомление пользователей по почте
+
 const (
 	createdNotification = `
 📅 Новая запись:
@@ -43,13 +45,17 @@ ID: %s
 `
 )
 
+func (bs *BookingService) notifyMail(ctx context.Context, msg string, email []string) error {
+	return bs.sc.Notify(ctx, msg, email)
+}
+
 func (bs *BookingService) notifyHolder(ctx context.Context, msg string, user *responses.User) error {
 	if !user.Notification.TelegramEnable {
 		bs.log.Warn("tg's notification of user is disabled",
 			slog.String("user_id", user.ID.String()),
 		)
 
-		return nil
+		return bs.notifyMail(ctx, msg, []string{user.Email})
 	}
 
 	if err := bs.engageClient.SendMessage(ctx, user.TgChatID, msg); err != nil {

@@ -93,8 +93,6 @@ func New(
 	}
 }
 
-// TODO: refactor
-
 // Create is a function that saves a booking to the database,
 // performing all necessary checks (including overlaps,
 // a counter of the user's existing bookings,
