@@ -158,10 +158,10 @@ func (di *DIContainer) Handler() *gin.Engine {
 		di.handler = handlers.New(
 			di.Cfg(),
 			di.AuthService(),
+			di.BookingService(),
 			di.OfferService(),
 			di.ClientService(),
 			di.ScheduleService(),
-			di.BookingService(),
 			di.PaymentService(),
 			middlewares.CORSMiddleware(),
 			middlewares.NewAuthMiddleware(di.JWT(), map[string]bool{

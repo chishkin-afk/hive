@@ -16,6 +16,16 @@ import (
 	"github.com/google/uuid"
 )
 
+var mskLocation *time.Location
+
+func init() {
+	var err error
+	mskLocation, err = time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		panic("failed to load MSK timezone: " + err.Error())
+	}
+}
+
 type engageClient interface {
 	SendMessage(ctx context.Context, chatID int64, msg string) error
 }
@@ -83,61 +93,68 @@ func New(
 	}
 }
 
-// Create is a function that saves a Booking to the database,
-// but before that, it performs a full validation to check if there are any overlaps,
-// if it falls within the deadline, and if the user's subscription is paid.
+// TODO: refactor
+
+// Create is a function that saves a booking to the database,
+// performing all necessary checks (including overlaps,
+// a counter of the user's existing bookings,
+// and the trainer's schedule).
 func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBooking) (*responses.Booking, error) {
 	userID, err := bs.getUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	bookingStartTime, err := bs.validateBookingTime(req.StartTime)
+	offer, coach, err := bs.getOfferAndCoach(ctx, req.OfferID)
 	if err != nil {
 		return nil, err
 	}
 
-	coach, offer, err := bs.getCoachAndOffer(ctx, req.OfferID)
+	bookingStartTime, err := bs.parseStartTime(offer, &req.StartTime)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := bs.checkBookingPrecondition(coach, offer, bookingStartTime); err != nil {
-		return nil, err
-	}
-
-	bookingToSave, err := bs.buildNewBooking(req, userID, bookingStartTime)
+	schedule, err := bs.getSchedule(ctx, coach.ID, uint8(bookingStartTime.Weekday()))
 	if err != nil {
 		return nil, err
 	}
 
-	savedBooking, err := bs.saveBookingAtomically(ctx, offer, userID, bookingToSave)
+	if err := bs.checkSchedule(schedule, offer, bookingStartTime); err != nil {
+		return nil, err
+	}
+
+	savedBooking, err := bs.storeBookingPersistence(ctx, userID, req.Comment, offer, bookingStartTime)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := bs.upsertClient(ctx, savedBooking.OfferID()); err != nil {
-		bs.log.Error("failed to upsert client", slog.String("error", err.Error()))
+		bs.log.Error("failed to upsert client",
+			slog.String("error", err.Error()),
+		)
 	}
 
-	go bs.notifyHolders(context.Background(), savedBooking, bs.bookingCreatedMsg(&baseInfo{
-		title: offer.Title,
-		id:    savedBooking.ID(),
-	}, savedBooking.StartTime()))
+	go bs.notifyCreated(
+		context.Background(),
+		coach,
+		offer,
+		savedBooking,
+	)
 
 	return bs.bookingToDTO(savedBooking), nil
 }
 
-// GetByID is a method that allows you to retrieve a record
-// from the cache or database and return it to the user,
-// with permission checking
+// GetByID is a method that returns a booking by its ID
+// (from the cache or database),
+// including a check for read permissions.
 func (bs *BookingService) GetByID(ctx context.Context, id uuid.UUID) (*responses.Booking, error) {
 	userID, err := bs.getUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if cachedBooking, ok := bs.getBookingFromCache(ctx, id); ok {
+	if cachedBooking, ok := bs.getBookingCache(ctx, id); ok {
 		if err := bs.checkReadRights(ctx, cachedBooking, userID); err != nil {
 			return nil, err
 		}
@@ -145,7 +162,7 @@ func (bs *BookingService) GetByID(ctx context.Context, id uuid.UUID) (*responses
 		return bs.bookingToDTO(cachedBooking), nil
 	}
 
-	booking, err := bs.getBookingFromPersistence(ctx, id)
+	booking, err := bs.getBookingPersistence(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -154,22 +171,20 @@ func (bs *BookingService) GetByID(ctx context.Context, id uuid.UUID) (*responses
 		return nil, err
 	}
 
-	if err := bs.storeBookingCache(ctx, booking); err != nil {
-		bs.log.Warn("failed to store booking cache", slog.String("error", err.Error()))
-	}
-
+	go bs.storeBookingCache(context.Background(), booking)
 	return bs.bookingToDTO(booking), nil
 }
 
-// ListByOfferID returns a list of all bookings (with pagination)
-// by offer's id. Accordingly, it checks whether the user is the author
+// ListByOfferID is a method that
+// returns a paginated list of bookings
+// and checks whether the author is a user.
 func (bs *BookingService) ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) (*responses.Bookings, error) {
-	if err := bs.validatePagination(page, limit); err != nil {
+	userID, err := bs.getUserID(ctx)
+	if err != nil {
 		return nil, err
 	}
 
-	userID, err := bs.getUserID(ctx)
-	if err != nil {
+	if err := bs.validatePagination(page, limit); err != nil {
 		return nil, err
 	}
 
@@ -187,18 +202,39 @@ func (bs *BookingService) ListByOfferID(ctx context.Context, offerID uuid.UUID, 
 		return nil, err
 	}
 
-	return bs.listToDTO(list, users, totalCount, page, limit), nil
+	return bs.listToDTO(
+		list,
+		users,
+		totalCount,
+		page,
+		limit,
+	), nil
 }
 
-// ListByUserID method that returns a list of all bookings
-// with pagination by user's id from the token
+func (bs *BookingService) listByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) ([]*booking.Booking, int64, error) {
+	list, totalCount, err := bs.bookingPersistence.ListByOfferID(ctx, offerID, page, limit)
+	if err != nil {
+		bs.log.Error("failed to list bookings by offer's id",
+			slog.String("error", err.Error()),
+			slog.String("offer_id", offerID.String()),
+		)
+
+		return nil, 0, handleRepoError(err)
+	}
+
+	return list, totalCount, nil
+}
+
+// ListByUserID is a method that
+// returns a paginated list of bookings
+// based on the user's ID.
 func (bs *BookingService) ListByUserID(ctx context.Context, page, limit uint32) (*responses.Bookings, error) {
-	if err := bs.validatePagination(page, limit); err != nil {
+	userID, err := bs.getUserID(ctx)
+	if err != nil {
 		return nil, err
 	}
 
-	userID, err := bs.getUserID(ctx)
-	if err != nil {
+	if err := bs.validatePagination(page, limit); err != nil {
 		return nil, err
 	}
 
@@ -230,12 +266,17 @@ func (bs *BookingService) Update(ctx context.Context, req *requests.UpdateBookin
 	}
 
 	if err := bs.clearBookingCache(ctx, updatedBooking.ID()); err != nil {
-		bs.log.Warn("failed to clear booking cache", slog.String("error", err.Error()))
+		bs.log.Error("failed to clear booking cache",
+			slog.String("error", err.Error()),
+		)
 	}
 
 	return bs.bookingToDTO(updatedBooking), nil
 }
 
+// GetFreeSlots is a method that
+// returns a list of all
+// available slots for a given day.
 func (bs *BookingService) GetFreeSlots(ctx context.Context, offerID uuid.UUID, date time.Time) (*responses.Slots, error) {
 	date = bs.normalizeDate(date)
 
@@ -262,6 +303,9 @@ func (bs *BookingService) GetFreeSlots(ctx context.Context, offerID uuid.UUID, d
 	), nil
 }
 
+// GetAllDays is a method that returns a list of days
+// within a specified range, indicating
+// whether each day is a workday or not.
 func (bs *BookingService) GetAllDays(ctx context.Context, offerID uuid.UUID, from, to time.Time) (*responses.Days, error) {
 	parsedFrom, parsedTo, err := bs.validateAllDaysRequest(from, to)
 	if err != nil {
@@ -273,7 +317,7 @@ func (bs *BookingService) GetAllDays(ctx context.Context, offerID uuid.UUID, fro
 		return nil, err
 	}
 
-	coach, offer, err := bs.getCoachAndOffer(ctx, offerID)
+	offer, coach, err := bs.getOfferAndCoach(ctx, offerID)
 	if err != nil {
 		return nil, err
 	}
@@ -293,18 +337,20 @@ func (bs *BookingService) GetAllDays(ctx context.Context, offerID uuid.UUID, fro
 	)
 }
 
-func (bs *BookingService) getAllSchedules(ctx context.Context, userID uuid.UUID) (*responses.Schedules, error) {
-	schedules, err := bs.scheduleService.GetSchedulesByUserID(ctx, userID)
-	if err != nil {
-		bs.log.Error("failed to get schedules by user's id",
-			slog.String("error", err.Error()),
-			slog.String("user_id", userID.String()),
-		)
-
-		return nil, err
+func (bs *BookingService) checkFreeSlotsInDay(schedule *responses.Schedule, offer *responses.Offer, bookings []*booking.Booking, day time.Time) bool {
+	accepted := make([]*booking.Booking, 0, len(bookings))
+	for _, b := range bookings {
+		if b.StartTime().Month() == day.Month() &&
+			b.StartTime().Day() == day.Day() {
+			accepted = append(accepted, b)
+		}
 	}
 
-	return schedules, nil
+	if len(bs.generateFreeSlots(schedule, offer, accepted)) > 0 {
+		return true
+	}
+
+	return false
 }
 
 func (bs *BookingService) getDays(schedules *responses.Schedules, offer *responses.Offer, bookings []*booking.Booking, paidUntil, from, to time.Time) (*responses.Days, error) {
@@ -340,20 +386,18 @@ func (bs *BookingService) getDays(schedules *responses.Schedules, offer *respons
 	return &allDays, nil
 }
 
-func (bs *BookingService) checkFreeSlotsInDay(schedule *responses.Schedule, offer *responses.Offer, bookings []*booking.Booking, day time.Time) bool {
-	accepted := make([]*booking.Booking, 0, len(bookings))
-	for _, b := range bookings {
-		if b.StartTime().Month() == day.Month() &&
-			b.StartTime().Day() == day.Day() {
-			accepted = append(accepted, b)
-		}
+func (bs *BookingService) getAllSchedules(ctx context.Context, userID uuid.UUID) (*responses.Schedules, error) {
+	schedules, err := bs.scheduleService.GetSchedulesByUserID(ctx, userID)
+	if err != nil {
+		bs.log.Error("failed to get schedules by user's id",
+			slog.String("error", err.Error()),
+			slog.String("user_id", userID.String()),
+		)
+
+		return nil, err
 	}
 
-	if len(bs.generateFreeSlots(schedule, offer, accepted)) > 0 {
-		return true
-	}
-
-	return false
+	return schedules, nil
 }
 
 func (bs *BookingService) validateAllDaysRequest(from, to time.Time) (time.Time, time.Time, error) {
@@ -361,14 +405,14 @@ func (bs *BookingService) validateAllDaysRequest(from, to time.Time) (time.Time,
 		from.Year(),
 		from.Month(),
 		from.Day(),
-		0, 0, 0, 0, time.UTC,
+		0, 0, 0, 0, mskLocation,
 	)
 
 	to = time.Date(
 		to.Year(),
 		to.Month(),
 		to.Day(),
-		0, 0, 0, 0, time.UTC,
+		0, 0, 0, 0, mskLocation,
 	)
 
 	diff := to.Sub(from)
@@ -377,382 +421,6 @@ func (bs *BookingService) validateAllDaysRequest(from, to time.Time) (time.Time,
 	}
 
 	return from, to, nil
-}
-
-func (bs *BookingService) lookupUsers(ctx context.Context, bookings []*booking.Booking) (*responses.LookupUsers, error) {
-	req := requests.Lookup{
-		IDs: make([]uuid.UUID, len(bookings)),
-	}
-	for i, booking := range bookings {
-		req.IDs[i] = booking.UserID()
-	}
-
-	resp, err := bs.authService.Lookup(ctx, &req)
-	if err != nil {
-		bs.log.Error("failed to lookup users",
-			slog.String("error", err.Error()),
-		)
-
-		return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
-	}
-
-	return resp, nil
-}
-
-func (bs *BookingService) notifyHolders(ctx context.Context, booking *booking.Booking, msg string) {
-	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	client, err := bs.authService.GetUserByID(ctx, booking.UserID())
-	if err == nil {
-		if err = bs.notifyUser(ctx, client, msg); err != nil {
-			bs.log.Error("failed to notify client",
-				slog.String("error", err.Error()),
-			)
-
-			go bs.notifyByMail(context.Background(), msg, client.Email)
-		}
-
-		bs.log.Debug("client was be notified",
-			slog.String("client_id", client.ID.String()),
-		)
-	} else {
-		bs.log.Error("failed to get client",
-			slog.String("error", err.Error()),
-		)
-	}
-
-	coach, _, err := bs.getCoachAndOffer(ctxTimeout, booking.OfferID())
-	if err != nil {
-		bs.log.Error("failed to get coach",
-			slog.String("error", err.Error()),
-		)
-
-		return
-	}
-
-	if coach.ID == client.ID {
-		return
-	}
-
-	if err := bs.notifyUser(ctx, coach, msg); err != nil {
-		bs.log.Error("failed to notify coach",
-			slog.String("error", err.Error()),
-		)
-	}
-}
-
-func (bs *BookingService) notifyByMail(ctx context.Context, msg string, to string) {
-	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	if err := bs.sc.Notify(ctxTimeout, msg, []string{to}); err != nil {
-		bs.log.Error("failed to notify client by email",
-			slog.String("error", err.Error()),
-		)
-	}
-}
-
-func (bs *BookingService) convertDate(t time.Time) (time.Time, string) {
-	moscowLocation, err := time.LoadLocation("Europe/Moscow")
-	if err != nil {
-		return t, "UTC"
-	}
-
-	return t.In(moscowLocation), "MSK"
-}
-
-func (bs *BookingService) getUserID(ctx context.Context) (uuid.UUID, error) {
-	raw := ctx.Value(contextvalue.KeyUserID)
-	if raw == nil {
-		return uuid.Nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
-	}
-
-	if id, ok := raw.(uuid.UUID); ok {
-		return id, nil
-	}
-
-	return uuid.Nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
-}
-
-func (bs *BookingService) validateBookingTime(startTime int64) (time.Time, error) {
-	bookingStartTime := time.Unix(startTime, 0).UTC()
-	if bookingStartTime.Compare(time.Now().UTC()) < 0 {
-		return time.Time{}, errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
-	}
-
-	return bookingStartTime, nil
-}
-
-// getCoachOffer is a function that receives coach and offer
-// and validates them, then returns
-func (bs *BookingService) getCoachAndOffer(ctx context.Context, offerID uuid.UUID) (*responses.User, *responses.Offer, error) {
-	offer, err := bs.offerService.GetByID(ctx, offerID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	coach, err := bs.authService.GetUserByID(ctx, offer.AuthorID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return coach, offer, nil
-}
-
-func (bs *BookingService) checkBookingPrecondition(coach *responses.User, offer *responses.Offer, startTime time.Time) error {
-	if startTime.Add(
-		time.Duration(offer.SlotDurationMinutes+offer.SlotIntervalMinutes)*time.Minute,
-	).Day() != startTime.Day() {
-		return errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
-	}
-
-	// Checks for paid until
-	if coach.PaidUntil < startTime.Unix() {
-		return errs.NewErrorWithKind(errs.ErrUserNotPaid, errs.KindRequest)
-	}
-
-	return nil
-}
-
-func (bs *BookingService) buildNewBooking(req *requests.CreateBooking, userID uuid.UUID, startTime time.Time) (*booking.Booking, error) {
-	booking, err := booking.New(
-		req.OfferID,
-		userID,
-		req.Comment,
-		startTime,
-	)
-	if err != nil {
-		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
-	}
-
-	return booking, nil
-}
-
-func (bs *BookingService) upsertClient(ctx context.Context, offerID uuid.UUID) error {
-	_, err := bs.clientService.Upsert(ctx, &requests.UpsertClient{
-		OfferID: offerID,
-	})
-
-	return err
-}
-
-func (bs *BookingService) bookingToDTO(booking *booking.Booking) *responses.Booking {
-	return &responses.Booking{
-		ID:          booking.ID(),
-		OfferID:     booking.OfferID(),
-		UserID:      booking.UserID(),
-		Comment:     booking.Comment(),
-		StartTime:   booking.StartTime().Unix(),
-		IsCancelled: booking.IsCancelled(),
-		CreatedAt:   booking.CreatedAt().Unix(),
-		UpdatedAt:   booking.UpdatedAt().Unix(),
-	}
-}
-
-func (bs *BookingService) getBookingFromCache(ctx context.Context, id uuid.UUID) (*booking.Booking, bool) {
-	cachedBooking, err := bs.bookingCache.GetByID(ctx, id)
-	if err != nil {
-		if !errors.Is(err, booking.ErrBookingNotFound) {
-			bs.log.Warn("failed to get booking from cache",
-				slog.String("booking_id", id.String()),
-				slog.String("error", err.Error()),
-			)
-		}
-
-		return nil, false
-	}
-
-	bs.log.Debug("booking has been taken from cache", slog.String("booking_id", id.String()))
-	return cachedBooking, true
-}
-
-func (bs *BookingService) checkReadRights(ctx context.Context, booking *booking.Booking, userID uuid.UUID) error {
-	if booking.UserID() == userID {
-		return nil
-	}
-
-	offer, err := bs.fetchOffer(ctx, booking.OfferID())
-	if err != nil {
-		return err
-	}
-
-	if offer.AuthorID != userID {
-		return errs.NewErrorWithKind(errs.ErrNotEnoughRights, errs.KindPermissionDenied)
-	}
-
-	return nil
-}
-
-func (bs *BookingService) getBookingFromPersistence(ctx context.Context, id uuid.UUID) (*booking.Booking, error) {
-	booking, err := bs.bookingPersistence.GetByID(ctx, id)
-	if err != nil {
-		bs.log.Error("failed to get booking from db",
-			slog.String("error", err.Error()),
-			slog.String("booking_id", id.String()),
-		)
-
-		return nil, bs.handleRepoError(err)
-	}
-
-	return booking, nil
-}
-
-func (bs *BookingService) storeBookingCache(ctx context.Context, booking *booking.Booking) error {
-	return bs.bookingCache.Save(ctx, booking)
-}
-
-func (bs *BookingService) validatePagination(page, limit uint32) error {
-	if page < 1 || page > 1000 {
-		return errs.NewErrorWithKind(errs.ErrInvalidPage, errs.KindRequest)
-	}
-
-	if limit < 1 || limit > 100 {
-		return errs.NewErrorWithKind(errs.ErrInvalidLimit, errs.KindRequest)
-	}
-
-	return nil
-}
-
-func (bs *BookingService) checkAuthor(ctx context.Context, offerID, userID uuid.UUID) error {
-	offer, err := bs.offerService.GetByID(ctx, offerID)
-	if err != nil {
-		return err
-	}
-
-	if offer.AuthorID != userID {
-		return errs.NewErrorWithKind(errs.ErrNotEnoughRights, errs.KindPermissionDenied)
-	}
-
-	return nil
-}
-
-func (bs *BookingService) listByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) ([]*booking.Booking, int64, error) {
-	list, totalCount, err := bs.bookingPersistence.ListByOfferID(ctx, offerID, page, limit)
-	if err != nil {
-		bs.log.Error("failed to list the bookings by offer id",
-			slog.String("error", err.Error()),
-			slog.String("offer_id", offerID.String()),
-		)
-
-		return nil, 0, bs.handleRepoError(err)
-	}
-
-	return list, totalCount, err
-}
-
-func (bs *BookingService) listByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*booking.Booking, int64, error) {
-	list, totalCount, err := bs.bookingPersistence.ListByUserID(ctx, userID, page, limit)
-	if err != nil {
-		bs.log.Error("failed to list the bookings by offer id",
-			slog.String("error", err.Error()),
-			slog.String("user_id", userID.String()),
-		)
-
-		return nil, 0, bs.handleRepoError(err)
-	}
-
-	return list, totalCount, err
-}
-
-func (bs *BookingService) listToDTO(list []*booking.Booking, users *responses.LookupUsers, totalCount int64, page, limit uint32) *responses.Bookings {
-	userMap := make(map[uuid.UUID]*responses.LookupUser, len(users.List))
-	for _, user := range users.List {
-		userMap[user.ID] = &user
-	}
-
-	totalPages := (totalCount + int64(limit) - 1) / int64(limit)
-	response := responses.Bookings{
-		List:        make([]responses.ListElement, 0, len(list)),
-		HasNextPage: totalPages > int64(page),
-		HasPrevPage: page > 1,
-		TotalPages:  uint32(totalPages),
-	}
-	for _, booking := range list {
-		if user, ok := userMap[booking.UserID()]; ok {
-			response.List = append(response.List, responses.ListElement{
-				Booking: bs.bookingToDTO(booking),
-				User: &responses.BookingUser{
-					ID:             user.ID,
-					Firstname:      user.Firstname,
-					Lastname:       user.Lastname,
-					ConfirmedEmail: user.ConfirmedEmail,
-				},
-			})
-
-			continue
-		}
-
-		bs.log.Warn("tried to get unexisted user", slog.String("user_id", booking.UserID().String()))
-	}
-
-	return &response
-}
-
-func (bs *BookingService) updateBookingStore(ctx context.Context, req *requests.UpdateBooking, userID uuid.UUID) (*booking.Booking, error) {
-	updFunc := func(ctx context.Context, booking *booking.Booking) error {
-		if err := bs.checkReadRights(ctx, booking, userID); err != nil {
-			return err
-		}
-
-		if err := bs.applyChanges(ctx, booking, req); err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	updatedBooking, err := bs.bookingPersistence.Update(ctx, req.BookingID, updFunc)
-	if err != nil {
-		bs.log.Error("failed to update booking in db",
-			slog.String("error", err.Error()),
-			slog.String("booking_id", req.BookingID.String()),
-			slog.String("user_id", userID.String()),
-		)
-
-		return nil, bs.handleRepoError(err)
-	}
-
-	return updatedBooking, nil
-}
-
-func (bs *BookingService) clearBookingCache(ctx context.Context, id uuid.UUID) error {
-	return bs.bookingCache.Delete(ctx, id)
-}
-
-func (bs *BookingService) normalizeDate(date time.Time) time.Time {
-	return time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
-}
-
-func (bs *BookingService) fetchOffer(ctx context.Context, offerID uuid.UUID) (*responses.Offer, error) {
-	return bs.offerService.GetByID(ctx, offerID)
-}
-
-func (bs *BookingService) fetchScheduleForOffer(ctx context.Context, offer *responses.Offer, date time.Time) (*responses.Schedule, error) {
-	return bs.scheduleService.GetScheduleByUserID(ctx, offer.AuthorID, uint8(date.Weekday()))
-}
-
-func (bs *BookingService) computeTimeRange(schedule *responses.Schedule, date time.Time) (time.Time, time.Time) {
-	startDuration := time.Duration(schedule.StartTime.Hour)*time.Hour + time.Duration(schedule.StartTime.Minute)*time.Minute
-	dayStart := date.Add(startDuration)
-	endDuration := time.Duration(schedule.EndTime.Hour)*time.Hour + time.Duration(schedule.EndTime.Minute)*time.Minute
-	dayEnd := date.Add(endDuration)
-
-	return dayStart, dayEnd
-}
-
-func (bs *BookingService) listBookingsInRange(ctx context.Context, offerID uuid.UUID, dayStart, dayEnd time.Time) ([]*booking.Booking, error) {
-	bookings, err := bs.bookingPersistence.ListAllPerTime(ctx, offerID, dayStart, dayEnd)
-	if err != nil {
-		bs.log.Error("failed to list all per time",
-			slog.String("error", err.Error()),
-			slog.String("offer_id", offerID.String()),
-		)
-
-		return nil, bs.handleRepoError(err)
-	}
-
-	return bookings, nil
 }
 
 func (bs *BookingService) slotsToDTO(slots []responses.DayTime, date time.Time) *responses.Slots {
@@ -792,79 +460,6 @@ func (bs *BookingService) generateFreeSlots(schedule *responses.Schedule, offer 
 	return slots
 }
 
-func (bs *BookingService) saveBookingAtomically(
-	ctx context.Context,
-	offer *responses.Offer,
-	userID uuid.UUID,
-	bookingToSave *booking.Booking,
-) (*booking.Booking, error) {
-	startDate := time.Date(bookingToSave.StartTime().Year(), bookingToSave.StartTime().Month(), bookingToSave.StartTime().Day(), 0, 0, 0, 0, time.UTC)
-	endDate := startDate.Add(24 * time.Hour)
-
-	checkFn := func(ctx context.Context, others []*booking.Booking) (*booking.Booking, error) {
-		slotDuration := int(offer.SlotDurationMinutes + offer.SlotIntervalMinutes)
-		if bs.hasOverlap(bookingToSave.StartTime(), slotDuration, others) {
-			return nil, errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
-		}
-
-		if bs.hasBooking(userID, others) {
-			return nil, errs.NewErrorWithKind(booking.ErrTooMuchBookings, errs.KindRequest)
-		}
-
-		schedule, err := bs.scheduleService.GetScheduleByUserID(ctx, offer.AuthorID, uint8(bookingToSave.StartTime().Weekday()))
-		if err != nil {
-			return nil, err
-		}
-
-		startMinutes, endMinutes, err := bs.getBookingTime(bookingToSave.StartTime(), offer)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := bs.checkSchedule(schedule, startMinutes, endMinutes); err != nil {
-			return nil, err
-		}
-
-		return bookingToSave, nil
-	}
-
-	saved, err := bs.bookingPersistence.Save(ctx, offer.ID, startDate, endDate, checkFn)
-	if err != nil {
-		bs.log.Error("failed to save booking into db",
-			slog.String("error", err.Error()),
-			slog.String("offer_id", offer.ID.String()),
-			slog.String("user_id", userID.String()),
-		)
-
-		return nil, bs.handleRepoError(err)
-	}
-
-	return saved, nil
-}
-
-func (bs *BookingService) hasOverlap(newStart time.Time, durationMinutes int, existingBookings []*booking.Booking) bool {
-	newEnd := newStart.Add(time.Duration(durationMinutes) * time.Minute)
-
-	for _, existingBooking := range existingBookings {
-		existingEnd := existingBooking.StartTime().Add(time.Duration(durationMinutes) * time.Minute)
-
-		if newStart.Before(existingEnd) && existingBooking.StartTime().Before(newEnd) {
-			return true
-		}
-	}
-	return false
-}
-
-func (bs *BookingService) hasBooking(userID uuid.UUID, existingBookings []*booking.Booking) bool {
-	for _, booking := range existingBookings {
-		if booking.UserID() == userID {
-			return true
-		}
-	}
-
-	return false
-}
-
 func (bs *BookingService) checkBreaks(schedule *responses.Schedule, startSlot, endSlot int) bool {
 	for _, b := range schedule.Breaks {
 		bStartTime := int(b.StartTime.Hour)*60 + int(b.StartTime.Minute)
@@ -881,11 +476,16 @@ func (bs *BookingService) checkBreaks(schedule *responses.Schedule, startSlot, e
 
 func (bs *BookingService) checkBookings(offer *responses.Offer, bookings []*booking.Booking, startSlot, endSlot int) bool {
 	for _, booking := range bookings {
-		otherStartTime := booking.StartTime().Hour()*60 + booking.StartTime().Minute()
+		startTime := booking.StartTime().In(mskLocation)
+		otherStartTime := startTime.Hour()*60 + startTime.Minute()
 		otherEndTime := otherStartTime + int(offer.SlotDurationMinutes+offer.SlotIntervalMinutes)
 
-		if endSlot > otherStartTime &&
-			startSlot < otherEndTime {
+		if intervalsOverlap(
+			int64(startSlot),
+			int64(endSlot),
+			int64(otherStartTime),
+			int64(otherEndTime),
+		) {
 			return false
 		}
 	}
@@ -895,6 +495,54 @@ func (bs *BookingService) checkBookings(offer *responses.Offer, bookings []*book
 
 func (bs *BookingService) allMinutes(dayTime *responses.DayTime) int64 {
 	return int64(dayTime.Hour)*60 + int64(dayTime.Minute)
+}
+
+func (bs *BookingService) clearBookingCache(ctx context.Context, id uuid.UUID) error {
+	return bs.bookingCache.Delete(ctx, id)
+}
+
+func (bs *BookingService) computeTimeRange(schedule *responses.Schedule, date time.Time) (time.Time, time.Time) {
+	startDuration := int64(schedule.StartTime.Hour)*60 + int64(schedule.StartTime.Minute)
+	dayStart := date.Add(time.Duration(startDuration) * time.Minute)
+	endDuration := int64(schedule.EndTime.Hour)*60 + int64(schedule.EndTime.Minute)
+	dayEnd := date.Add(time.Duration(endDuration) * time.Minute)
+
+	return dayStart, dayEnd
+}
+
+func (bs *BookingService) fetchScheduleForOffer(ctx context.Context, offer *responses.Offer, date time.Time) (*responses.Schedule, error) {
+	return bs.scheduleService.GetScheduleByUserID(ctx, offer.AuthorID, uint8(date.Weekday()))
+}
+
+func (bs *BookingService) normalizeDate(date time.Time) time.Time {
+	return time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, mskLocation)
+}
+
+func (bs *BookingService) updateBookingStore(ctx context.Context, req *requests.UpdateBooking, userID uuid.UUID) (*booking.Booking, error) {
+	updFunc := func(ctx context.Context, booking *booking.Booking) error {
+		if err := bs.checkReadRights(ctx, booking, userID); err != nil {
+			return err
+		}
+
+		if err := bs.applyChanges(ctx, booking, req); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	updatedBooking, err := bs.bookingPersistence.Update(ctx, req.BookingID, updFunc)
+	if err != nil {
+		bs.log.Error("failed to update booking in db",
+			slog.String("error", err.Error()),
+			slog.String("booking_id", req.BookingID.String()),
+			slog.String("user_id", userID.String()),
+		)
+
+		return nil, handleRepoError(err)
+	}
+
+	return updatedBooking, nil
 }
 
 func (bs *BookingService) applyChanges(ctx context.Context, booking *booking.Booking, req *requests.UpdateBooking) error {
@@ -909,51 +557,64 @@ func (bs *BookingService) applyChanges(ctx context.Context, booking *booking.Boo
 				return errs.NewErrorWithKind(err, errs.KindRequest)
 			}
 
-			go bs.notifyHolders(
-				context.Background(),
-				booking,
-				bs.getBookingCanceledMsg(context.Background(), booking),
-			)
+			go func() {
+				ctxTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
+				offer, coach, err := bs.getOfferAndCoach(ctxTimeout, booking.OfferID())
+				if err != nil {
+					bs.log.Error("failed to get offer & coach",
+						slog.String("error", err.Error()),
+					)
+				}
+
+				bs.notifyCanceled(
+					ctxTimeout,
+					coach,
+					offer,
+					booking,
+				)
+			}()
 		}
 	}
 	if req.StartTime != nil {
-		return bs.applyNewStartTime(ctx, booking, time.Unix(*req.StartTime, 0))
+		return bs.applyNewStartTime(ctx, booking, *req.StartTime)
 	}
 
 	return nil
 }
 
-func (bs *BookingService) getBookingCanceledMsg(ctx context.Context, booking *booking.Booking) string {
-	ctxTimeout, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
-	offer, err := bs.offerService.GetByID(ctxTimeout, booking.OfferID())
-	if err != nil {
-		bs.log.Error("failed to get title of offer",
-			slog.String("error", err.Error()),
-		)
-
-		return ""
-	}
-
-	return bs.bookingCanceledMsg(&baseInfo{
-		title: offer.Title,
-		id:    booking.ID(),
-	}, booking.StartTime())
-}
-
-func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *booking.Booking, newStartTime time.Time) error {
-	offer, err := bs.offerService.GetByID(ctx, booking.OfferID())
+func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *booking.Booking, newStartTime requests.Time) error {
+	offer, coach, err := bs.getOfferAndCoach(ctx, booking.OfferID())
 	if err != nil {
 		return err
 	}
 
-	bookingStartTime, bookingEndTime, err := bs.getBookingTime(newStartTime, offer)
+	bookingStartTime, err := bs.parseStartTime(offer, &newStartTime)
 	if err != nil {
 		return err
 	}
 
-	startDate := time.Date(newStartTime.Year(), newStartTime.Month(), newStartTime.Day(), 0, 0, 0, 0, time.UTC)
+	now := time.Now().In(mskLocation)
+	if now.Compare(bookingStartTime) > 1 {
+		return errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
+	}
+
+	schedule, err := bs.getSchedule(ctx, coach.ID, uint8(bookingStartTime.Weekday()))
+	if err != nil {
+		return err
+	}
+
+	if err := bs.checkSchedule(schedule, offer, bookingStartTime); err != nil {
+		return err
+	}
+
+	startDate := time.Date(
+		bookingStartTime.Year(),
+		bookingStartTime.Month(),
+		bookingStartTime.Day(),
+		0, 0, 0, 0, mskLocation,
+	)
 	endDate := startDate.Add(24 * time.Hour)
 
 	allBookings, err := bs.listBookingsInRange(ctx, booking.OfferID(), startDate, endDate)
@@ -961,107 +622,386 @@ func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *bookin
 		return err
 	}
 
-	for _, other := range allBookings {
-		otherStartTime := other.StartTime().Hour()*60 + other.StartTime().Minute()
-		otherEndTime := otherStartTime + int(offer.SlotDurationMinutes+offer.SlotIntervalMinutes)
+	startCurrent := bookingStartTime.Minute() + bookingStartTime.Hour()*60
+	endCurrent := startCurrent + int(offer.SlotDurationMinutes) + int(offer.SlotIntervalMinutes)
 
-		if bookingEndTime > otherStartTime &&
-			bookingStartTime < otherEndTime {
+	for _, booking := range allBookings {
+		otherTime := booking.StartTime().In(mskLocation)
+		startOther := otherTime.Hour()*60 + otherTime.Minute()
+		endOther := startOther + int(offer.SlotDurationMinutes) + int(offer.SlotIntervalMinutes)
+
+		if intervalsOverlap(
+			int64(startCurrent),
+			int64(endCurrent),
+			int64(startOther),
+			int64(endOther),
+		) {
 			return errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
 		}
 	}
 
-	schedule, err := bs.scheduleService.GetScheduleByUserID(ctx, offer.AuthorID, uint8(newStartTime.Weekday()))
+	oldTime := booking.StartTime()
+	if err := booking.ChangeStartTime(bookingStartTime); err != nil {
+		return errs.NewErrorWithKind(err, errs.KindRequest)
+	}
+
+	go bs.notifyUpdated(
+		context.Background(),
+		coach,
+		offer,
+		booking,
+		oldTime,
+	)
+
+	return nil
+}
+
+func (bs *BookingService) listBookingsInRange(ctx context.Context, offerID uuid.UUID, dayStart, dayEnd time.Time) ([]*booking.Booking, error) {
+	bookings, err := bs.bookingPersistence.ListAllPerTime(ctx, offerID, dayStart, dayEnd)
+	if err != nil {
+		bs.log.Error("failed to list all per time",
+			slog.String("error", err.Error()),
+			slog.String("offer_id", offerID.String()),
+		)
+
+		return nil, handleRepoError(err)
+	}
+
+	return bookings, nil
+}
+
+func (bs *BookingService) listByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*booking.Booking, int64, error) {
+	list, totalCount, err := bs.bookingPersistence.ListByUserID(ctx, userID, page, limit)
+	if err != nil {
+		bs.log.Error("failed to list booking by user's id",
+			slog.String("error", err.Error()),
+			slog.String("user_id", userID.String()),
+		)
+
+		return nil, 0, handleRepoError(err)
+	}
+
+	return list, totalCount, nil
+}
+
+func (bs *BookingService) lookupUsers(ctx context.Context, list []*booking.Booking) (*responses.LookupUsers, error) {
+	req := requests.Lookup{
+		IDs: make([]uuid.UUID, len(list)),
+	}
+
+	for i, booking := range list {
+		req.IDs[i] = booking.UserID()
+	}
+
+	resp, err := bs.authService.Lookup(ctx, &req)
+	if err != nil {
+		bs.log.Error("failed to lookup users",
+			slog.Int("len_of_ids", len(list)),
+			slog.String("error", err.Error()),
+		)
+
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (bs *BookingService) storeBookingCache(ctx context.Context, booking *booking.Booking) {
+	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := bs.bookingCache.Save(ctxTimeout, booking); err != nil {
+		bs.log.Error("failed to save booking into cache",
+			slog.String("error", err.Error()),
+		)
+	}
+}
+
+func (bs *BookingService) getBookingCache(ctx context.Context, id uuid.UUID) (*booking.Booking, bool) {
+	cachedBooking, err := bs.bookingCache.GetByID(ctx, id)
+	if err != nil {
+		if !errors.Is(err, booking.ErrBookingNotFound) {
+			bs.log.Error("failed to get booking from cache",
+				slog.String("error", err.Error()),
+				slog.String("booking_id", id.String()),
+			)
+		}
+
+		return nil, false
+	}
+
+	bs.log.Debug("booking has been taken from cache",
+		slog.String("booking_id", id.String()),
+	)
+
+	return cachedBooking, true
+}
+
+func (bs *BookingService) getBookingPersistence(ctx context.Context, id uuid.UUID) (*booking.Booking, error) {
+	booking, err := bs.bookingPersistence.GetByID(ctx, id)
+	if err != nil {
+		bs.log.Error("failed to get booking persistence",
+			slog.String("error", err.Error()),
+			slog.String("booking_id", id.String()),
+		)
+
+		return nil, handleRepoError(err)
+	}
+
+	return booking, nil
+}
+
+func (bs *BookingService) checkReadRights(ctx context.Context, booking *booking.Booking, userID uuid.UUID) error {
+	if booking.UserID() == userID {
+		return nil
+	}
+
+	offer, err := bs.fetchOffer(ctx, booking.OfferID())
 	if err != nil {
 		return err
 	}
 
-	if err := bs.checkSchedule(schedule, bookingStartTime, bookingEndTime); err != nil {
-		return err
-	}
-
-	go bs.notifyHolders(context.Background(), booking, bs.bookingUpdatedMsg(
-		&baseInfo{
-			title: offer.Title,
-			id:    booking.ID(),
-		},
-		newStartTime,
-		booking.StartTime(),
-	))
-
-	return booking.ChangeStartTime(newStartTime)
-}
-
-// checkSchedule is a mini method that validates whether
-// a booking falls within the author's specified period
-// or if it falls on a break.
-func (bs *BookingService) checkSchedule(schedule *responses.Schedule, bStartTime, bEndTime int) error {
-	// Checks for breaks of coach's schedule
-	for _, br := range schedule.Breaks {
-		brStartTime := int(br.StartTime.Hour)*60 + int(br.StartTime.Minute)
-		brEndTime := int(br.EndTime.Hour)*60 + int(br.EndTime.Minute)
-
-		if bEndTime > brStartTime &&
-			bStartTime < brEndTime {
-			return errs.ErrInvalidTimeForBooking
-		}
-	}
-
-	// Checks for start & end times of coach's schedule
-	startTime := int(schedule.StartTime.Hour)*60 + int(schedule.StartTime.Minute)
-	endTime := int(schedule.EndTime.Hour)*60 + int(schedule.EndTime.Minute)
-
-	if startTime > bStartTime || endTime < bEndTime {
-		return errs.ErrInvalidTimeForBooking
+	if offer.AuthorID != userID {
+		return errs.NewErrorWithKind(errs.ErrNotEnoughRights, errs.KindPermissionDenied)
 	}
 
 	return nil
 }
 
-// getBookingTime is a method that simply creates
-// the start and end times of the recording in minutes (relative)
-func (bs *BookingService) getBookingTime(startTime time.Time, offer *responses.Offer) (int, int, error) {
-	bookingStartTime := startTime.Hour()*60 + startTime.Minute()
-	bookingEndTime := int(offer.SlotDurationMinutes) + bookingStartTime
-	if bookingStartTime >= bookingEndTime {
-		return 0, 0, errs.ErrInvalidTimeForBooking
-	}
-
-	return bookingStartTime, bookingEndTime, nil
+func (bs *BookingService) fetchOffer(ctx context.Context, offerID uuid.UUID) (*responses.Offer, error) {
+	return bs.offerService.GetByID(ctx, offerID)
 }
 
-func (bs *BookingService) getMonthRU(month string) string {
-	switch month {
-	case "January":
-		return "Января"
-	case "February":
-		return "Февраля"
-	case "March":
-		return "Марта"
-	case "April":
-		return "Апреля"
-	case "May":
-		return "Мая"
-	case "June":
-		return "Июня"
-	case "July":
-		return "Июля"
-	case "August":
-		return "Августа"
-	case "September":
-		return "Сентября"
-	case "October":
-		return "Октября"
-	case "November":
-		return "Ноября"
-	case "December":
-		return "Декабря"
-	}
+func (bs *BookingService) upsertClient(ctx context.Context, offerID uuid.UUID) error {
+	_, err := bs.clientService.Upsert(ctx, &requests.UpsertClient{
+		OfferID: offerID,
+	})
 
-	return month
+	return err
 }
 
-func (bs *BookingService) handleRepoError(err error) error {
+func (bs *BookingService) storeBookingPersistence(ctx context.Context, userID uuid.UUID, comment string, offer *responses.Offer, bookingStartTime time.Time) (*booking.Booking, error) {
+	startDate := time.Date(
+		bookingStartTime.Year(),
+		bookingStartTime.Month(),
+		bookingStartTime.Day(),
+		0, 0, 0, 0, mskLocation,
+	)
+	endDate := startDate.Add(24 * time.Hour)
+
+	createFunc := func(ctx context.Context, bookings []*booking.Booking) (*booking.Booking, error) {
+		startCurrent := bookingStartTime.Minute() + bookingStartTime.Hour()*60
+		endCurrent := startCurrent + int(offer.SlotDurationMinutes) + int(offer.SlotIntervalMinutes)
+
+		if bs.hasBooking(userID, bookings) {
+			return nil, errs.NewErrorWithKind(booking.ErrTooMuchBookings, errs.KindRequest)
+		}
+
+		for _, booking := range bookings {
+			otherTime := booking.StartTime().In(mskLocation)
+			startOther := otherTime.Hour()*60 + otherTime.Minute()
+			endOther := startOther + int(offer.SlotDurationMinutes) + int(offer.SlotIntervalMinutes)
+
+			if intervalsOverlap(
+				int64(startCurrent),
+				int64(endCurrent),
+				int64(startOther),
+				int64(endOther),
+			) {
+				return nil, errs.ErrInvalidTimeForBooking
+			}
+		}
+
+		return booking.New(
+			offer.ID,
+			userID,
+			comment,
+			bookingStartTime,
+		)
+	}
+
+	booking, err := bs.bookingPersistence.Save(ctx, offer.ID, startDate, endDate, createFunc)
+	if err != nil {
+		bs.log.Error("failed to store booking persistence",
+			slog.String("error", err.Error()),
+		)
+
+		return nil, handleRepoError(err)
+	}
+
+	return booking, nil
+}
+
+func (bs *BookingService) hasBooking(userID uuid.UUID, existingBookings []*booking.Booking) bool {
+	for _, booking := range existingBookings {
+		if booking.UserID() == userID {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (bs *BookingService) checkSchedule(schedule *responses.Schedule, offer *responses.Offer, bookingStartTime time.Time) error {
+	startTimeMinutes := bookingStartTime.Minute() + bookingStartTime.Hour()*60
+	endTimeMinutes := startTimeMinutes + int(offer.SlotDurationMinutes)
+
+	for _, br := range schedule.Breaks {
+		breakStart := int64(br.StartTime.Hour)*60 + int64(br.StartTime.Minute)
+		breakEnd := int64(br.EndTime.Hour)*60 + int64(br.EndTime.Minute)
+
+		if intervalsOverlap(
+			int64(startTimeMinutes),
+			int64(endTimeMinutes),
+			breakStart,
+			breakEnd,
+		) {
+			return errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
+		}
+	}
+
+	scheduleStart := int64(schedule.StartTime.Hour)*60 + int64(schedule.StartTime.Minute)
+	scheduleEnd := int64(schedule.EndTime.Hour)*60 + int64(schedule.EndTime.Minute)
+
+	if scheduleStart > int64(startTimeMinutes) || scheduleEnd < int64(endTimeMinutes) {
+		return errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
+	}
+
+	return nil
+}
+
+func (bs *BookingService) getSchedule(ctx context.Context, userID uuid.UUID, dayOfWeek uint8) (*responses.Schedule, error) {
+	schedule, err := bs.scheduleService.GetScheduleByUserID(ctx, userID, dayOfWeek)
+	if err != nil {
+		return nil, err
+	}
+
+	return schedule, nil
+}
+
+func (bs *BookingService) getOfferAndCoach(ctx context.Context, offerID uuid.UUID) (*responses.Offer, *responses.User, error) {
+	offer, err := bs.offerService.GetByID(ctx, offerID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	coach, err := bs.authService.GetUserByID(ctx, offer.AuthorID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return offer, coach, nil
+}
+
+func (bs *BookingService) parseStartTime(offer *responses.Offer, startTime *requests.Time) (time.Time, error) {
+	bookingStart, err := time.ParseInLocation(time.DateOnly, startTime.Date, mskLocation)
+	if err != nil {
+		return time.Time{}, errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
+	}
+
+	endTime := int64(startTime.StartTime.Hour)*60 + int64(startTime.StartTime.Minute)
+	endTime += int64(offer.SlotDurationMinutes)
+
+	if endTime > 23*60+59 {
+		return time.Time{}, errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
+	}
+
+	return time.Date(
+		bookingStart.Year(),
+		bookingStart.Month(),
+		bookingStart.Day(),
+		int(startTime.StartTime.Hour),
+		int(startTime.StartTime.Minute),
+		0, 0, mskLocation,
+	), nil
+}
+
+func (bs *BookingService) checkAuthor(ctx context.Context, offerID, userID uuid.UUID) error {
+	offer, err := bs.offerService.GetByID(ctx, offerID)
+	if err != nil {
+		return err
+	}
+
+	if offer.AuthorID != userID {
+		return errs.NewErrorWithKind(errs.ErrNotEnoughRights, errs.KindPermissionDenied)
+	}
+
+	return nil
+}
+
+func (bs *BookingService) validatePagination(page, limit uint32) error {
+	if page < 1 || page > 1000 {
+		return errs.NewErrorWithKind(errs.ErrInvalidPage, errs.KindRequest)
+	}
+
+	if limit < 1 || limit > 100 {
+		return errs.NewErrorWithKind(errs.ErrInvalidLimit, errs.KindRequest)
+	}
+
+	return nil
+}
+
+func (bs *BookingService) getUserID(ctx context.Context) (uuid.UUID, error) {
+	raw := ctx.Value(contextvalue.KeyUserID)
+	if raw == nil {
+		return uuid.Nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
+	}
+
+	if id, ok := raw.(uuid.UUID); ok {
+		return id, nil
+	}
+
+	return uuid.Nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindUnauthorized)
+}
+
+func (bs *BookingService) listToDTO(list []*booking.Booking, users *responses.LookupUsers, totalCount int64, page, limit uint32) *responses.Bookings {
+	userMap := make(map[uuid.UUID]*responses.LookupUser, len(users.List))
+	for _, user := range users.List {
+		userMap[user.ID] = &user
+	}
+
+	totalPages := (totalCount + int64(limit) - 1) / int64(limit)
+	response := responses.Bookings{
+		List:        make([]responses.ListElement, 0, len(list)),
+		HasNextPage: totalPages > int64(page),
+		HasPrevPage: page > 1,
+		TotalPages:  uint32(totalPages),
+	}
+	for _, booking := range list {
+		if user, ok := userMap[booking.UserID()]; ok {
+			response.List = append(response.List, responses.ListElement{
+				Booking: bs.bookingToDTO(booking),
+				User: &responses.BookingUser{
+					ID:             user.ID,
+					Firstname:      user.Firstname,
+					Lastname:       user.Lastname,
+					ConfirmedEmail: user.ConfirmedEmail,
+				},
+			})
+
+			continue
+		}
+
+		bs.log.Warn("tried to get unexisted user", slog.String("user_id", booking.UserID().String()))
+	}
+
+	return &response
+}
+
+func (bs *BookingService) bookingToDTO(booking *booking.Booking) *responses.Booking {
+	return &responses.Booking{
+		ID:          booking.ID(),
+		OfferID:     booking.OfferID(),
+		UserID:      booking.UserID(),
+		Comment:     booking.Comment(),
+		StartTime:   booking.StartTime().Unix(),
+		IsCancelled: booking.IsCancelled(),
+		CreatedAt:   booking.CreatedAt().Unix(),
+		UpdatedAt:   booking.UpdatedAt().Unix(),
+	}
+}
+
+func handleRepoError(err error) error {
 	switch {
 	case errors.Is(err, context.DeadlineExceeded),
 		errors.Is(err, context.Canceled):
@@ -1079,4 +1019,8 @@ func (bs *BookingService) handleRepoError(err error) error {
 	}
 
 	return errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
+}
+
+func intervalsOverlap(start1, end1, start2, end2 int64) bool {
+	return start1 < end2 && start2 < end1
 }

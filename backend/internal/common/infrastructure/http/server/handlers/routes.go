@@ -10,10 +10,10 @@ import (
 
 func New(cfg *config.Config,
 	authService authService,
+	bookingService bookingService,
 	offerService offerService,
 	clientService clientService,
 	scheduleService scheduleService,
-	bookingService bookingService,
 	paymentService paymentService,
 	mws ...gin.HandlerFunc) *gin.Engine {
 	router := getRouter(cfg)
@@ -21,10 +21,10 @@ func New(cfg *config.Config,
 
 	funcs := HandlerFuncs{
 		authService:     authService,
+		bookingService:  bookingService,
 		offerService:    offerService,
 		clientService:   clientService,
 		scheduleService: scheduleService,
-		bookingService:  bookingService,
 		paymentService:  paymentService,
 	}
 
