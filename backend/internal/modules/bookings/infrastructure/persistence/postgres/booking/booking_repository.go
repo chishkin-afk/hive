@@ -466,12 +466,10 @@ func (br *bookingRepository) beginTx(ctx context.Context) (*sql.Tx, func(), erro
 	}
 
 	return tx, func() {
-		if err != nil {
-			if err := tx.Rollback(); err != nil {
-				br.log.Error("failed to rollback tx",
-					slog.String("error", err.Error()),
-				)
-			}
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			br.log.Error("failed to rollback tx",
+				slog.String("error", err.Error()),
+			)
 		}
 	}, nil
 }

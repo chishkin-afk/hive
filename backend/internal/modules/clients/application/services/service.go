@@ -168,8 +168,7 @@ func (cs *ClientService) createClient(ctx context.Context, userID, offerID uuid.
 		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
 	}
 
-	savedClient, err := cs.clientPersistence.Save(ctx, client)
-	if err != nil {
+	if err := cs.clientPersistence.Save(ctx, client); err != nil {
 		cs.log.Error("failed to save client into db",
 			slog.String("user_id", userID.String()),
 			slog.String("offer_id", offerID.String()),
@@ -178,7 +177,7 @@ func (cs *ClientService) createClient(ctx context.Context, userID, offerID uuid.
 		return nil, cs.handleRepoError(err)
 	}
 
-	return cs.clientToDTO(savedClient), nil
+	return cs.clientToDTO(client), nil
 }
 
 func (cs *ClientService) getClientFromCache(ctx context.Context, id uuid.UUID) (*client.Client, bool) {
