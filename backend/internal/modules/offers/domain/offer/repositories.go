@@ -8,11 +8,11 @@ import (
 )
 
 type OfferPersistenceRepository interface {
-	Save(ctx context.Context, offer *Offer) (*Offer, error)
-	Update(ctx context.Context, updOffer *Offer) (*Offer, error)
+	Save(ctx context.Context, offer *Offer) error
+	Update(ctx context.Context, updOffer *Offer) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Offer, error)
-	ListByAuthorID(ctx context.Context, authorID uuid.UUID, page, limit uint32) ([]*Offer, uint64, error)
+	ListByAuthorID(ctx context.Context, authorID uuid.UUID, page, limit uint32) ([]*Offer, int64, error)
 }
 
 type OfferCacheRepository interface {

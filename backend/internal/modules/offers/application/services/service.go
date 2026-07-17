@@ -170,8 +170,7 @@ func (os *OfferService) buildNewOffer(req *requests.CreateOffer, userID uuid.UUI
 }
 
 func (os *OfferService) storeOfferPersistence(ctx context.Context, offer *offer.Offer) (*offer.Offer, error) {
-	savedOffer, err := os.offerPersistence.Save(ctx, offer)
-	if err != nil {
+	if err := os.offerPersistence.Save(ctx, offer); err != nil {
 		os.log.Error("failed to save offer into db",
 			slog.String("error", err.Error()),
 			slog.String("offer_id", offer.ID().String()),
@@ -180,7 +179,7 @@ func (os *OfferService) storeOfferPersistence(ctx context.Context, offer *offer.
 		return nil, os.handleRepoError(err)
 	}
 
-	return savedOffer, nil
+	return offer, nil
 }
 
 func (os *OfferService) offerToDTO(offer *offer.Offer) *responses.Offer {
@@ -262,8 +261,7 @@ func (os *OfferService) applyChanges(updOffer *offer.Offer, req *requests.Update
 }
 
 func (os *OfferService) updateOfferPersistence(ctx context.Context, updOffer *offer.Offer) (*offer.Offer, error) {
-	updatedOffer, err := os.offerPersistence.Update(ctx, updOffer)
-	if err != nil {
+	if err := os.offerPersistence.Update(ctx, updOffer); err != nil {
 		os.log.Error("failed to update persistence offer",
 			slog.String("error", err.Error()),
 			slog.String("offer_id", updOffer.ID().String()),
@@ -272,7 +270,7 @@ func (os *OfferService) updateOfferPersistence(ctx context.Context, updOffer *of
 		return nil, os.handleRepoError(err)
 	}
 
-	return updatedOffer, nil
+	return updOffer, nil
 }
 
 func (os *OfferService) deleteOfferPersistence(ctx context.Context, id uuid.UUID) error {
