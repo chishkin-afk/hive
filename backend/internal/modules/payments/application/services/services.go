@@ -300,8 +300,7 @@ func (ps *PaymentService) createPayment(ctx context.Context, userID uuid.UUID, r
 }
 
 func (ps *PaymentService) storePaymentPersistence(ctx context.Context, payment *payment.Payment) (*payment.Payment, error) {
-	savedPayment, err := ps.paymentPersistence.Save(ctx, payment)
-	if err != nil {
+	if err := ps.paymentPersistence.Save(ctx, payment); err != nil {
 		ps.log.Error("failed to save payment into db",
 			slog.String("error", err.Error()),
 			slog.String("payment_id", payment.ID().String()),
@@ -310,7 +309,7 @@ func (ps *PaymentService) storePaymentPersistence(ctx context.Context, payment *
 		return nil, ps.handleRepoError(err)
 	}
 
-	return savedPayment, nil
+	return payment, nil
 }
 
 func (ps *PaymentService) unconfirmedPaymentToDTO(payment *payment.Payment, url string) *responses.UnconfirmedPayment {

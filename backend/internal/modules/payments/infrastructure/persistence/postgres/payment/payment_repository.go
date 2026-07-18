@@ -18,47 +18,61 @@ type DB interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
+type WithTx interface {
+	DB
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
-type paymentPersistenceRepository struct {
+type paymentRepository struct {
 	log        *slog.Logger
-	db         DB
+	db         WithTx
 	sqlBuilder squirrel.StatementBuilderType
 }
 
-func New(log *slog.Logger, db DB) *paymentPersistenceRepository {
-	return &paymentPersistenceRepository{
+func New(log *slog.Logger, db WithTx) *paymentRepository {
+	return &paymentRepository{
 		log:        log,
 		db:         db,
 		sqlBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
 	}
 }
 
-func (ppr *paymentPersistenceRepository) Save(ctx context.Context, payment *payment.Payment) (*payment.Payment, error) {
-	ppr.log.Debug("converting payment into record", slog.String("payment_id", payment.ID().String()))
-	record := paymentToRecord(payment)
+// Save is a method that saves
+// an unconfirmed payment
+// to the database.
+func (pr *paymentRepository) Save(ctx context.Context, payment *payment.Payment) error {
+	pr.log.Debug("saving payment into db",
+		slog.String("payment_id", payment.ID().String()),
+	)
 
-	ppr.log.Debug("build insert query", slog.String("payment_id", payment.ID().String()))
-	query, args, err := ppr.buildInsertQuery(record)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build insert query: %w", err)
+	if err := pr.save(ctx, pr.db, payment); err != nil {
+		return fmt.Errorf("failed to save payment: %w",
+			handleError(err),
+		)
 	}
 
-	ppr.log.Debug("exec the insert query of payment", slog.String("query", query))
-	if _, err := ppr.db.ExecContext(ctx, query, args...); err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to save payment into db: %w", err)
-	}
-
-	return recordToPayment(record), nil
+	return nil
 }
 
-func (ppr *paymentPersistenceRepository) buildInsertQuery(record *paymentRecord) (string, []any, error) {
-	return ppr.sqlBuilder.Insert("payments_history").Columns(
+func (pr *paymentRepository) save(ctx context.Context, db DB, payment *payment.Payment) error {
+	record := paymentToRecord(payment)
+
+	query, args, err := pr.buildInsertQuery(record)
+	if err != nil {
+		return err
+	}
+
+	if _, err := db.ExecContext(ctx, query, args...); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pr *paymentRepository) buildInsertQuery(record *paymentRecord) (string, []any, error) {
+	return pr.sqlBuilder.Insert("payments_history").Columns(
 		"id",
 		"payment_id",
 		"user_id",
@@ -77,28 +91,35 @@ func (ppr *paymentPersistenceRepository) buildInsertQuery(record *paymentRecord)
 	).ToSql()
 }
 
-func (ppr *paymentPersistenceRepository) GetByID(ctx context.Context, paymentID uuid.UUID) (*payment.Payment, error) {
-	ppr.log.Debug("build the select query by id", slog.String("payment_id", paymentID.String()))
-	query, args, err := ppr.buildSelectQueryByID(paymentID)
+// GetByID executes a SELECT query
+// against the database to
+// retrieve a single payment by its ID.
+func (pr *paymentRepository) GetByID(ctx context.Context, id uuid.UUID) (*payment.Payment, error) {
+	pr.log.Debug("getting payment by id",
+		slog.String("payment_id", id.String()),
+	)
+
+	payment, err := pr.getByID(ctx, pr.db, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build select query: %w", err)
+		return nil, fmt.Errorf("failed to get payment by id: %w",
+			handleError(err),
+		)
 	}
 
-	ppr.log.Debug("exec the select by id query", slog.String("query", query))
-	record, err := ppr.mapRow(ppr.db.QueryRowContext(ctx, query, args...))
-	if err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get payment by id from db: %w", err)
-	}
-
-	return recordToPayment(record), nil
+	return payment, nil
 }
 
-func (ppr *paymentPersistenceRepository) buildSelectQueryByID(id uuid.UUID) (string, []any, error) {
-	return ppr.sqlBuilder.Select(
+func (pr *paymentRepository) getByID(ctx context.Context, db DB, id uuid.UUID) (*payment.Payment, error) {
+	query, args, err := pr.buildSelectByIDQuery(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (pr *paymentRepository) buildSelectByIDQuery(id uuid.UUID) (string, []any, error) {
+	return pr.sqlBuilder.Select(
 		"id",
 		"payment_id",
 		"user_id",
@@ -109,28 +130,35 @@ func (ppr *paymentPersistenceRepository) buildSelectQueryByID(id uuid.UUID) (str
 	).From("payments_history").Where("id = ?", id).ToSql()
 }
 
-func (ppr *paymentPersistenceRepository) GetByPaymentID(ctx context.Context, paymentID uuid.UUID) (*payment.Payment, error) {
-	ppr.log.Debug("build the select query by payment's id", slog.String("payment_id", paymentID.String()))
-	query, args, err := ppr.buildSelectQueryByPaymentID(paymentID)
+// GetByPaymentID executes a SELECT query
+// against the database to retrieve
+// a single payment record using the YooKassa payment ID.
+func (pr *paymentRepository) GetByPaymentID(ctx context.Context, paymentID uuid.UUID) (*payment.Payment, error) {
+	pr.log.Debug("getting payment by payment's id",
+		slog.String("payment_id", paymentID.String()),
+	)
+
+	payment, err := pr.getByPaymentID(ctx, pr.db, paymentID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build select query: %w", err)
+		return nil, fmt.Errorf("failed to get payment by payment id: %w",
+			handleError(err),
+		)
 	}
 
-	ppr.log.Debug("exec the select by id query", slog.String("query", query))
-	record, err := ppr.mapRow(ppr.db.QueryRowContext(ctx, query, args...))
-	if err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get payment by id from db: %w", err)
-	}
-
-	return recordToPayment(record), nil
+	return payment, nil
 }
 
-func (ppr *paymentPersistenceRepository) buildSelectQueryByPaymentID(id uuid.UUID) (string, []any, error) {
-	return ppr.sqlBuilder.Select(
+func (pr *paymentRepository) getByPaymentID(ctx context.Context, db DB, paymentID uuid.UUID) (*payment.Payment, error) {
+	query, args, err := pr.buildSelectByPaymentIDQuery(paymentID)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (pr *paymentRepository) buildSelectByPaymentIDQuery(id uuid.UUID) (string, []any, error) {
+	return pr.sqlBuilder.Select(
 		"id",
 		"payment_id",
 		"user_id",
@@ -141,72 +169,53 @@ func (ppr *paymentPersistenceRepository) buildSelectQueryByPaymentID(id uuid.UUI
 	).From("payments_history").Where("payment_id = ?", id).ToSql()
 }
 
-func (ppr *paymentPersistenceRepository) ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*payment.Payment, int64, error) {
-	ppr.log.Debug("count all the payments by user's id",
+// ListByUserID executes a SELECT query
+// against the database to retrieve
+// multiple payments based on the user (author) ID.
+func (pr *paymentRepository) ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*payment.Payment, int64, error) {
+	pr.log.Debug("counting payments by user's id",
 		slog.String("user_id", userID.String()),
 	)
 
-	count, err := ppr.countByUserID(ctx, userID)
+	count, err := pr.countByUserID(ctx, pr.db, userID)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to count payments by user's id: %w",
+			handleError(err),
+		)
 	}
 
-	ppr.log.Debug("build list query by user's id",
+	pr.log.Debug("listing payments by user's id",
 		slog.String("user_id", userID.String()),
 	)
 
-	listQuery, listArgs, err := ppr.buildListQuery(userID, page, limit)
+	payments, err := pr.listByUserID(ctx, pr.db, userID, page, limit)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to build list query: %w", err)
+		return nil, 0, fmt.Errorf("failed to list payments by user's id: %w",
+			handleError(err),
+		)
 	}
 
-	rows, err := ppr.db.QueryContext(ctx, listQuery, listArgs...)
-	if err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return nil, 0, safeErr
-		}
+	return payments, count, nil
+}
 
-		return nil, 0, fmt.Errorf("failed to get list of payments: %w", err)
+func (pr *paymentRepository) listByUserID(ctx context.Context, db DB, userID uuid.UUID, page, limit uint32) ([]*payment.Payment, error) {
+	query, args, err := pr.buildListQuery(userID, page, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
 	}
 	defer rows.Close()
 
-	records, err := ppr.mapRows(rows)
-	if err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return nil, 0, safeErr
-		}
-
-		return nil, 0, fmt.Errorf("failed to map rows: %w", err)
-	}
-
-	return recordsToPayments(records), count, nil
+	return mapRows(rows)
 }
 
-func (ppr *paymentPersistenceRepository) countByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
-	countQuery, countArgs, err := ppr.buildCountQuery(userID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to build count query: %w", err)
-	}
-
-	count, err := ppr.mapCountRow(ppr.db.QueryRowContext(ctx, countQuery, countArgs...))
-	if err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return 0, safeErr
-		}
-
-		return 0, fmt.Errorf("failed to get count of all the rows: %w", err)
-	}
-
-	return count, nil
-}
-
-func (ppr *paymentPersistenceRepository) buildCountQuery(userID uuid.UUID) (string, []any, error) {
-	return ppr.sqlBuilder.Select("count(*)").From("payments_history").Where("user_id = ?", userID).ToSql()
-}
-
-func (ppr *paymentPersistenceRepository) buildListQuery(userID uuid.UUID, page, limit uint32) (string, []any, error) {
+func (pr *paymentRepository) buildListQuery(userID uuid.UUID, page, limit uint32) (string, []any, error) {
 	offset := limit * (page - 1)
-	return ppr.sqlBuilder.Select(
+	return pr.sqlBuilder.Select(
 		"id",
 		"payment_id",
 		"user_id",
@@ -217,243 +226,130 @@ func (ppr *paymentPersistenceRepository) buildListQuery(userID uuid.UUID, page, 
 	).From("payments_history").Limit(uint64(limit)).Offset(uint64(offset)).Where("user_id = ?", userID).OrderBy("created_at DESC").ToSql()
 }
 
-func (ppr *paymentPersistenceRepository) Update(ctx context.Context, paymentID, userID uuid.UUID, updFunc payment.UpdateFunc) (*payment.Payment, error) {
-	ppr.log.Debug("start tx for update payment",
-		slog.String("payment_id", paymentID.String()),
-	)
-
-	tx, err := ppr.startTx(ctx)
+func (pr *paymentRepository) countByUserID(ctx context.Context, db DB, userID uuid.UUID) (int64, error) {
+	query, args, err := pr.buildCountByUserIDQuery(userID)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	defer func() {
-		if err != nil {
-			if err := tx.Rollback(); err != nil {
-				ppr.log.Error("failed to rollback tx", slog.String("error", err.Error()))
-			}
-		}
-	}()
+	return mapCountRow(db.QueryRowContext(ctx, query, args...))
+}
 
-	ppr.log.Debug("get paid until field of user",
-		slog.String("user_id", userID.String()),
-	)
+func (pr *paymentRepository) buildCountByUserIDQuery(userID uuid.UUID) (string, []any, error) {
+	return pr.sqlBuilder.Select("count(*)").From("payments_history").Where("user_id = ?", userID).ToSql()
+}
 
-	paidUntil, err := ppr.getPaidUntilOfUser(ctx, tx, userID)
+// Update is a method that, under the hood,
+// triggers an update request to
+// modify payment fields in the database.
+func (pr *paymentRepository) Update(ctx context.Context, paymentID, userID uuid.UUID, updFunc payment.UpdateFunc) (*payment.Payment, error) {
+	pr.log.Debug("start tx")
+	tx, rollback, err := pr.beginTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to start tx: %w", err)
+	}
+	defer rollback()
+
+	paidUntil, err := pr.getPaidUntil(ctx, tx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get paid until: %w",
+			handleError(err),
+		)
 	}
 
-	updRecord, err := ppr.getPaymentForUpdate(ctx, tx, paymentID)
+	updPayment, err := pr.getForUpdateByPaymentID(ctx, tx, paymentID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get payment for update: %w",
+			handleError(err),
+		)
 	}
 
-	updPayment := recordToPayment(updRecord)
 	newPaidUntil, err := updFunc(ctx, paidUntil, updPayment)
 	if err != nil {
 		return nil, err
 	}
 
 	if paidUntil.Compare(newPaidUntil) != 0 {
-		if err := ppr.updatePaidUntil(ctx, tx, newPaidUntil, userID); err != nil {
-			return nil, err
+		if err := pr.updatePaidUntil(ctx, tx, newPaidUntil, userID); err != nil {
+			return nil, fmt.Errorf("failed to update paid until: %w",
+				handleError(err),
+			)
 		}
 	}
 
-	if err := ppr.updatePayment(ctx, tx, paymentToRecord(updPayment)); err != nil {
-		return nil, err
+	if err := pr.update(ctx, tx, updPayment); err != nil {
+		return nil, fmt.Errorf("failed to update payment: %w",
+			handleError(err),
+		)
 	}
 
 	if err := tx.Commit(); err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return nil, safeErr
-		}
-
 		return nil, fmt.Errorf("failed to commit tx: %w", err)
 	}
 
 	return updPayment, nil
 }
 
-func (ppr *paymentPersistenceRepository) updatePayment(ctx context.Context, tx *sql.Tx, updRecord *paymentRecord) error {
-	updatePaymentQuery, updatePaymentArgs, err := ppr.buildUpdatePaymentQuery(updRecord)
+func (pr *paymentRepository) update(ctx context.Context, db DB, updPayment *payment.Payment) error {
+	record := paymentToRecord(updPayment)
+
+	query, args, err := pr.buildUpdatePaymentQuery(record)
 	if err != nil {
-		return fmt.Errorf("failed to build update payment query: %w", err)
+		return err
 	}
 
-	if _, err := tx.ExecContext(ctx, updatePaymentQuery, updatePaymentArgs...); err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return safeErr
-		}
+	result, err := db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
 
-		return fmt.Errorf("failed to update payment: %w", err)
+	if count, _ := result.RowsAffected(); count == 0 {
+		return payment.ErrPaymentNotFound
 	}
 
 	return nil
 }
 
-func (ppr *paymentPersistenceRepository) getPaymentForUpdate(ctx context.Context, tx *sql.Tx, paymentID uuid.UUID) (*paymentRecord, error) {
-	paymentQuery, paymentArgs, err := ppr.buildSelectQueryForUpdate(paymentID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build select query: %w", err)
-	}
-
-	payment, err := ppr.mapRow(tx.QueryRowContext(ctx, paymentQuery, paymentArgs...))
-	if err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get payment for update: %w", err)
-	}
-
-	return payment, nil
-}
-
-func (ppr *paymentPersistenceRepository) getPaidUntilOfUser(ctx context.Context, tx *sql.Tx, userID uuid.UUID) (time.Time, error) {
-	userQuery, userArgs, err := ppr.buildSelectPaidUntilQuery(userID)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to build select paid until query: %w", err)
-	}
-
-	ppr.log.Debug("exec the select paid until query", slog.String("query", userQuery))
-	paidUntil, err := ppr.mapPaidUntilRow(tx.QueryRowContext(ctx, userQuery, userArgs...))
-	if err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return time.Time{}, safeErr
-		}
-
-		return time.Time{}, fmt.Errorf("failed to get user's paid until field: %w", err)
-	}
-
-	return paidUntil, nil
-}
-
-func (ppr *paymentPersistenceRepository) TakeTrial(ctx context.Context, userID uuid.UUID, updFunc payment.TakeTrialFunc) error {
-	ppr.log.Debug("start tx for update paid until",
-		slog.String("user_id", userID.String()),
-	)
-
-	tx, err := ppr.startTx(ctx)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err != nil {
-			if err := tx.Rollback(); err != nil {
-				ppr.log.Error("failed to rollback tx", slog.String("error", err.Error()))
-			}
-		}
-	}()
-
-	ppr.log.Debug("build the select paid until query",
-		slog.String("user_id", userID.String()),
-	)
-
-	paidUntil, trialUsed, err := ppr.getTrialOfUser(ctx, tx, userID)
-	if err != nil {
-		return err
-	}
-
-	newPaidUntil, err := updFunc(ctx, paidUntil, trialUsed)
-	if err != nil {
-		return err
-	}
-
-	ppr.log.Debug("build update paid until query",
-		slog.String("user_id", userID.String()),
-	)
-
-	if err := ppr.takeTrial(ctx, tx, userID, newPaidUntil); err != nil {
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to commit tx: %w", err)
-	}
-
-	return nil
-}
-
-func (ppr *paymentPersistenceRepository) takeTrial(ctx context.Context, tx *sql.Tx, userID uuid.UUID, newPaidUntil time.Time) error {
-	updateUserQuery, updateUserArgs, err := ppr.buildTakeTrialQuery(userID, newPaidUntil, true)
-	if err != nil {
-		return fmt.Errorf("failed to build update user's paid until query: %w", err)
-	}
-
-	if _, err := tx.ExecContext(ctx, updateUserQuery, updateUserArgs...); err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to update user's paid until: %w", err)
-	}
-
-	return nil
-}
-
-func (ppr *paymentPersistenceRepository) getTrialOfUser(ctx context.Context, tx *sql.Tx, userID uuid.UUID) (time.Time, bool, error) {
-	userQuery, userArgs, err := ppr.buildSelectTrialQuery(userID)
-	if err != nil {
-		return time.Time{}, false, fmt.Errorf("failed to build select paid until query: %w", err)
-	}
-
-	ppr.log.Debug("exec the select paid until query", slog.String("query", userQuery))
-	paidUntil, trialUsed, err := ppr.mapTrialRow(tx.QueryRowContext(ctx, userQuery, userArgs...))
-	if err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return time.Time{}, false, safeErr
-		}
-
-		return time.Time{}, false, fmt.Errorf("failed to get user's paid until field: %w", err)
-	}
-
-	return paidUntil, trialUsed, nil
-}
-
-func (ppr *paymentPersistenceRepository) updatePaidUntil(ctx context.Context, tx *sql.Tx, paidUntil time.Time, userID uuid.UUID) error {
-	updateUserQuery, updateUserArgs, err := ppr.buildUpdatePaidUntilQuery(userID, paidUntil)
-	if err != nil {
-		return fmt.Errorf("failed to build update user's paid until query: %w", err)
-	}
-
-	if _, err := tx.ExecContext(ctx, updateUserQuery, updateUserArgs...); err != nil {
-		if safeErr, ok := ppr.handleError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to update user's paid until: %w", err)
-	}
-
-	return nil
-}
-
-func (ppr *paymentPersistenceRepository) buildUpdatePaymentQuery(updRecord *paymentRecord) (string, []any, error) {
-	return ppr.sqlBuilder.Update("payments_history").SetMap(map[string]any{
+func (pr *paymentRepository) buildUpdatePaymentQuery(updRecord *paymentRecord) (string, []any, error) {
+	return pr.sqlBuilder.Update("payments_history").SetMap(map[string]any{
 		"status_int": updRecord.StatusInt,
 		"updated_at": updRecord.UpdatedAt,
 	}).Where("id = ?", updRecord.ID).ToSql()
 }
 
-func (ppr *paymentPersistenceRepository) buildUpdatePaidUntilQuery(userID uuid.UUID, paidUntil time.Time) (string, []any, error) {
-	return ppr.sqlBuilder.Update("users").Set("paid_until", paidUntil).Where("id = ?", userID).ToSql()
+func (pr *paymentRepository) updatePaidUntil(ctx context.Context, db DB, paidUntil time.Time, userID uuid.UUID) error {
+	query, args, err := pr.buildUpdatePaidUntilQuery(userID, paidUntil)
+	if err != nil {
+		return err
+	}
+
+	result, err := db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	if count, _ := result.RowsAffected(); count == 0 {
+		return payment.ErrUserNotFound
+	}
+
+	return nil
 }
 
-func (ppr *paymentPersistenceRepository) buildTakeTrialQuery(userID uuid.UUID, paidUntil time.Time, trialUsed bool) (string, []any, error) {
-	return ppr.sqlBuilder.Update("users").SetMap(map[string]any{
-		"paid_until": paidUntil,
-		"trial_used": trialUsed,
-	}).Where("id = ?", userID).ToSql()
+func (pr *paymentRepository) buildUpdatePaidUntilQuery(userID uuid.UUID, paidUntil time.Time) (string, []any, error) {
+	return pr.sqlBuilder.Update("users").Set("paid_until", paidUntil).Where("id = ?", userID).ToSql()
 }
 
-func (ppr *paymentPersistenceRepository) buildSelectQueryForUpdate(id uuid.UUID) (string, []any, error) {
-	return ppr.sqlBuilder.Select(
+func (pr *paymentRepository) getForUpdateByPaymentID(ctx context.Context, db DB, id uuid.UUID) (*payment.Payment, error) {
+	query, args, err := pr.buildSelectForUpdateQuery(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (pr *paymentRepository) buildSelectForUpdateQuery(id uuid.UUID) (string, []any, error) {
+	return pr.sqlBuilder.Select(
 		"id",
 		"payment_id",
 		"user_id",
@@ -464,15 +360,111 @@ func (ppr *paymentPersistenceRepository) buildSelectQueryForUpdate(id uuid.UUID)
 	).From("payments_history").Where("payment_id = ?", id).Suffix("FOR UPDATE").ToSql()
 }
 
-func (ppr *paymentPersistenceRepository) buildSelectPaidUntilQuery(userID uuid.UUID) (string, []any, error) {
-	return ppr.sqlBuilder.Select("paid_until").From("users").Suffix("FOR UPDATE").Where("id = ?", userID).ToSql()
+func (pr *paymentRepository) getPaidUntil(ctx context.Context, db DB, userID uuid.UUID) (time.Time, error) {
+	query, args, err := pr.buildSelectPaidUntilQuery(userID)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return mapPaidUntilRow(db.QueryRowContext(ctx, query, args...))
 }
 
-func (ppr *paymentPersistenceRepository) buildSelectTrialQuery(userID uuid.UUID) (string, []any, error) {
-	return ppr.sqlBuilder.Select("paid_until", "trial_used").From("users").Suffix("FOR UPDATE").Where("id = ?", userID).ToSql()
+func (pr *paymentRepository) buildSelectPaidUntilQuery(userID uuid.UUID) (string, []any, error) {
+	return pr.sqlBuilder.Select("paid_until").From("users").Suffix("FOR UPDATE").Where("id = ?", userID).ToSql()
 }
 
-func (ppr *paymentPersistenceRepository) mapPaidUntilRow(row *sql.Row) (time.Time, error) {
+// TakeTrial is a method that updates
+// the user's trial fields in the database.
+func (pr *paymentRepository) TakeTrial(ctx context.Context, userID uuid.UUID, updFunc payment.TakeTrialFunc) error {
+	pr.log.Debug("start tx")
+	tx, rollback, err := pr.beginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start tx: %w", err)
+	}
+	defer rollback()
+
+	paidUntil, trialUsed, err := pr.getTrialOfUser(ctx, tx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get trial of user: %w",
+			handleError(err),
+		)
+	}
+
+	newPaidUntil, err := updFunc(ctx, paidUntil, trialUsed)
+	if err != nil {
+		return err
+	}
+
+	if err := pr.takeTrial(ctx, tx, userID, newPaidUntil); err != nil {
+		return fmt.Errorf("failed to take trial: %w",
+			handleError(err),
+		)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit tx: %w", err)
+	}
+
+	return nil
+}
+
+func (pr *paymentRepository) takeTrial(ctx context.Context, db DB, userID uuid.UUID, paidUntil time.Time) error {
+	query, args, err := pr.buildTakeTrialQuery(userID, paidUntil, true)
+	if err != nil {
+		return err
+	}
+
+	result, err := db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	if count, _ := result.RowsAffected(); count == 0 {
+		return payment.ErrUserNotFound
+	}
+
+	return nil
+}
+
+func (pr *paymentRepository) buildTakeTrialQuery(userID uuid.UUID, paidUntil time.Time, trialUsed bool) (string, []any, error) {
+	return pr.sqlBuilder.Update("users").SetMap(map[string]any{
+		"paid_until": paidUntil,
+		"trial_used": trialUsed,
+	}).Where("id = ?", userID).ToSql()
+}
+
+func (pr *paymentRepository) getTrialOfUser(ctx context.Context, db DB, userID uuid.UUID) (time.Time, bool, error) {
+	query, args, err := pr.buildSelectTrialQuery(userID)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+
+	return mapTrialRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (pr *paymentRepository) buildSelectTrialQuery(userID uuid.UUID) (string, []any, error) {
+	return pr.sqlBuilder.Select("paid_until", "trial_used").From("users").Suffix("FOR UPDATE").Where("id = ?", userID).ToSql()
+}
+
+func (pr *paymentRepository) beginTx(ctx context.Context) (*sql.Tx, func(), error) {
+	tx, err := pr.db.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelReadCommitted,
+		ReadOnly:  false,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tx, func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			pr.log.Error("failed to rollback tx",
+				slog.String("error", err.Error()),
+			)
+		}
+	}, nil
+}
+
+func mapPaidUntilRow(row *sql.Row) (time.Time, error) {
 	var paidUntil time.Time
 	if err := row.Scan(&paidUntil); err != nil {
 		return time.Time{}, err
@@ -485,7 +477,7 @@ func (ppr *paymentPersistenceRepository) mapPaidUntilRow(row *sql.Row) (time.Tim
 	return paidUntil, nil
 }
 
-func (ppr *paymentPersistenceRepository) mapTrialRow(row *sql.Row) (time.Time, bool, error) {
+func mapTrialRow(row *sql.Row) (time.Time, bool, error) {
 	var (
 		paidUntil time.Time
 		trialUsed bool
@@ -504,8 +496,8 @@ func (ppr *paymentPersistenceRepository) mapTrialRow(row *sql.Row) (time.Time, b
 	return paidUntil, trialUsed, nil
 }
 
-func (ppr *paymentPersistenceRepository) mapRows(rows *sql.Rows) ([]*paymentRecord, error) {
-	var records []*paymentRecord
+func mapRows(rows *sql.Rows) ([]*payment.Payment, error) {
+	var payments []*payment.Payment
 	for rows.Next() {
 		var record paymentRecord
 		if err := rows.Scan(
@@ -520,17 +512,17 @@ func (ppr *paymentPersistenceRepository) mapRows(rows *sql.Rows) ([]*paymentReco
 			return nil, err
 		}
 
-		records = append(records, &record)
+		payments = append(payments, recordToPayment(&record))
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return records, nil
+	return payments, nil
 }
 
-func (ppr *paymentPersistenceRepository) mapRow(row *sql.Row) (*paymentRecord, error) {
+func mapRow(row *sql.Row) (*payment.Payment, error) {
 	var record paymentRecord
 	if err := row.Scan(
 		&record.ID,
@@ -548,10 +540,10 @@ func (ppr *paymentPersistenceRepository) mapRow(row *sql.Row) (*paymentRecord, e
 		return nil, err
 	}
 
-	return &record, nil
+	return recordToPayment(&record), nil
 }
 
-func (ppr *paymentPersistenceRepository) mapCountRow(row *sql.Row) (int64, error) {
+func mapCountRow(row *sql.Row) (int64, error) {
 	var count int64
 	if err := row.Scan(&count); err != nil {
 		return 0, err
@@ -564,34 +556,18 @@ func (ppr *paymentPersistenceRepository) mapCountRow(row *sql.Row) (int64, error
 	return count, nil
 }
 
-func (ppr *paymentPersistenceRepository) startTx(ctx context.Context) (*sql.Tx, error) {
-	tx, err := ppr.db.BeginTx(ctx, &sql.TxOptions{
-		Isolation: sql.LevelReadCommitted,
-		ReadOnly:  false,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to start tx: %w", err)
-	}
-
-	return tx, nil
-}
-
-func (ppr *paymentPersistenceRepository) handleError(err error) (error, bool) {
-	switch {
-	case errors.Is(err, context.DeadlineExceeded),
-		errors.Is(err, context.Canceled):
-		return err, true
-	case errors.Is(err, sql.ErrNoRows):
-		return payment.ErrPaymentNotFound, true
+func handleError(err error) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return payment.ErrPaymentNotFound
 	}
 
 	var pqError *pq.Error
 	if errors.As(err, &pqError) {
 		switch pqError.Code {
 		case "23503":
-			return payment.ErrUserNotFound, true
+			return payment.ErrUserNotFound
 		}
 	}
 
-	return err, false
+	return err
 }
