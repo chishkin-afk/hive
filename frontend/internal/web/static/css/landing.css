@@ -22,6 +22,9 @@
 .menu-btn-primary,
 .hero-btn-primary,
 .pricing-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: #1A1A1A;
     background-color: var(--color-accent);
 }
@@ -85,7 +88,7 @@
     padding: 128px 32px;
     width: 100vw;
     height: 100dvh;
-    background-color: var(--color-mobile-menu);
+    background-color: var(--color-overlay);
     backdrop-filter: blur(20px);
     visibility: hidden;
     animation: slide-up .3s;
@@ -541,54 +544,6 @@ section .container {
     opacity: 1;
 }
 
-.cta {
-    padding-top: 16px;
-}
-
-.cta .container {
-    padding: 16px 10vw;
-    background: linear-gradient(45deg, var(--color-accent), var(--color-accent-dark));
-    border-radius: var(--radius-lg);
-}
-
-.cta-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    color: #1A1A1A;
-}
-
-.cta-content h2 {
-    text-align: center;
-    font-size: clamp(14px, 2vw, 24px);
-}
-
-.cta-content p {
-    text-align: center;
-    font-size: clamp(14px, 2vw, 18px);
-}
-
-.cta-btn {
-    font-size: clamp(14px, 2vw, 18px);
-    font-weight: 600;
-    padding: 8px 16px;
-    border-radius: var(--radius-md);
-    color: var(--color-text-primary);
-    background-color: var(--color-bg-primary);
-    transition: color .3s,
-        transform .3s,
-        background-color .3s;
-}
-
-.cta-btn:hover {
-    transform: scale(1.05);
-}
-
-.cta-btn:active {
-    transform: scale(.95);
-}
-
 @media (max-width: 768px) {
 
     .island-actions,
@@ -688,64 +643,6 @@ section .container {
 
     .pricing-card:nth-child(3).visible {
         animation-delay: .2s;
-    }
-}
-
-@keyframes float {
-
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-20px);
-    }
-}
-
-@keyframes slide-up {
-    from {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    to {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-}
-
-@keyframes fade-up {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes fade-scale {
-    from {
-        opacity: 0;
-        transform: scale(0.9);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-@keyframes shimmer {
-    from {
-        left: -100%;
-    }
-
-    to {
-        left: 100%;
     }
 }
 

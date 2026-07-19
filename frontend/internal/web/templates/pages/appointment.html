@@ -1,0 +1,147 @@
+{{define "appointment_extra_head"}}
+<link rel="stylesheet" href="/static/css/appointment.css">
+<link rel="stylesheet" href="/static/css/keyframes.css">
+{{end}}
+
+{{define "appointment_content"}}
+<div class="container">
+    <div class="service-header">
+        <h1 class="service-title">{{ .serviceTitle }}</h1>
+        <p id="serviceDescription" class="service-description">{{ .serviceDescription }}</p>
+        <div class="service-price">
+            <span class="service-amount">{{ .serviceAmount }}</span>
+            <span class="service-currency">₽</span>
+        </div>
+    </div>
+
+    <div class="calendar-container">
+        <div class="calendar-header-wrapper">
+            <span class="month-title" id="monthTitle">Август-Сентябрь</span>
+            <div class="calendar-buttons">
+                <button id="backBtn" class="calendar-btn back-btn">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15 6L9 12L15 18"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button id="forwardBtn" class="calendar-btn forward-btn">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 18L15 12L9 6"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="days-selector" id="daysSelector">
+            <button class="day-card active" data-date="2026-08-28">
+                <span class="day-number">28</span>
+                <span class="day-name">ПТ</span>
+            </button>
+            <button class="day-card weekend" data-date="2026-08-29">
+                <span class="day-number">29</span>
+                <span class="day-name">СБ</span>
+            </button>
+            <button class="day-card weekend" data-date="2026-08-30">
+                <span class="day-number">30</span>
+                <span class="day-name">ВС</span>
+            </button>
+            <button class="day-card inactive" data-date="2026-09-01">
+                <span class="day-number">1</span>
+                <span class="day-name">ПН</span>
+            </button>
+    </div>
+
+    <div class="time-sections">
+        <div class="time-section">
+            <span class="time-section-title">Утро</span>
+            <div class="time-slots">
+                <button class="time-slot" data-time="09:00">09:00</button>
+                <button class="time-slot" data-time="10:00">10:00</button>
+                <button class="time-slot" data-time="10:30">10:30</button>
+                <button class="time-slot" data-time="11:00">11:00</button>
+            </div>
+        </div>
+
+        <div class="time-section">
+            <span class="time-section-title">День</span>
+            <div class="time-slots">
+                <button class="time-slot" data-time="12:00">12:00</button>
+                <button class="time-slot" data-time="12:30">12:30</button>
+                <button class="time-slot" data-time="13:00">13:00</button>
+                <button class="time-slot" data-time="14:00">14:00</button>
+                <button class="time-slot" data-time="14:30">14:30</button>
+            </div>
+        </div>
+
+        <div class="time-section">
+            <span class="time-section-title">Вечер</span>
+            <div class="time-slots">
+                <button class="time-slot" data-time="15:00">15:00</button>
+                <button class="time-slot" data-time="15:30">15:30</button>
+                <button class="time-slot" data-time="16:30">16:30</button>
+                <button class="time-slot" data-time="17:00">17:00</button>
+                <button class="time-slot" data-time="17:30">17:30</button>
+                <button class="time-slot" data-time="18:00">18:00</button>
+                <button class="time-slot" data-time="18:30">18:30</button>
+            </div>
+        </div>
+
+        <div class="time-section">
+            <div class="time-section-title">Ночь</div>
+            <div class="time-slots">
+                <button class="time-slot" data-time="22:00">22:00</button>
+                <button class="time-slot" data-time="05:00">05:00</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="background-circles">
+        <div class="circle-left"></div>
+        <div class="circle-right"></div>
+    </div>
+
+    <div id="confirmationOverlay" class="confirmation-overlay">
+        <div id="confirmation" class="confirmation">
+            <button id="confirmationCloseBtn" class="confirmation-close">✕</button>
+            <h2 class="confirmation-title">Подтверждение записи</h2>
+    
+            <div class="confirmation-body">
+                <div class="confirmation-group">
+                    <span class="group-title">Услуга</span>
+                    <span class="group-content service-title">{{ .serviceTitle }}</span>
+                </div>
+                
+                <div class="confirmation-group">
+                    <span class="group-title">Цена</span>
+                    <div class="group-price">
+                        <span class="service-amount">{{ .serviceAmount }}</span>
+                        <span class="service-currency">₽</span>
+                    </div>
+                </div>
+    
+                <div class="confirmation-group">
+                    <span class="group-title">Дата</span>
+                    <span id="groupDate" class="group-content"></span>
+                </div>
+    
+                <div class="confirmation-group">
+                    <span class="group-title">Время</span>
+                    <span id="groupTime" class="group-content"></span>
+                </div>
+                
+                <div class="confirmation-group">
+                    <span class="group-title">Комментарий</span>
+                    <input type="text" id="groupInput" class="group-input">
+                </div>
+            </div>
+    
+            <button id="confirmationSubmitBtn" class="confirmation-submit">Записаться</button>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "appointment_extra_scripts"}}
+<script src="/static/js/appointment.js"></script>
+{{end}}

@@ -13,6 +13,8 @@
             {{block "landing_extra_head" .}}{{end}}
         {{else if eq .page "auth"}}
             {{block "auth_extra_head" .}}{{end}}
+        {{else if eq .page "appointment"}}
+            {{block "appointment_extra_head" .}}{{end}}
         {{end}}
 
         <script src="/static/js/theme.js"></script>

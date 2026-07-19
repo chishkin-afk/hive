@@ -25,7 +25,6 @@
     align-items: center;
     padding: 32px;
     border-radius: var(--radius-lg);
-    background-color: var(--color-bg-secondary);
 }
 
 .auth-form {
@@ -63,8 +62,8 @@
     width: 100%;
     padding: 8px 16px;
     border-radius: var(--radius-md);
-    background-color: var(--color-bg-tertiary);
-    border: solid 1px transparent;
+    background-color: var(--color-bg-secondary);
+    border: solid 1px var(--color-bg-tertiary);
     transition: border-color .3s;
 }
 
@@ -131,8 +130,8 @@
     width: 18px;
     height: 18px;
     border-radius: 5px;
-    background-color: var(--color-bg-tertiary);
-    border: solid 1px var(--color-text-secondary);
+    background-color: var(--color-bg-secondary);
+    border: solid 1px var(--color-bg-tertiary);
     cursor: pointer;
     flex-shrink: 0;
     transition: background-color .2s,
@@ -188,8 +187,66 @@
     color: var(--color-text-primary);
 }
 
+.background-circles {
+    width: 100%;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.circle-left, .circle-right {
+    position: absolute;
+    width: 512px;
+    height: 512px;
+    border-radius: 100%;
+    filter: blur(128px);
+    opacity: .1;
+    z-index: -1;
+}
+
+.circle-left {
+    top: 0;
+    left: -256px;
+    rotate: 30deg;
+    background-color: var(--color-accent);
+    animation: floatLeft ease-in-out 16s infinite alternate;
+}
+
+.circle-right {
+    bottom: -128px;
+    right: -128px;
+    background-color: hsl(89, 41%, 41%);
+    animation: floatRight ease-in-out 8s infinite alternate;
+    animation-delay: 1s;
+}
+
 @media (max-width: 768px) {
     .form-wrapper {
         width: 100%;
+    }
+
+    .background-circles {
+        display: none;
+    }
+}
+
+@keyframes floatLeft {
+    0% {
+        transform: translateY(0) rotate(0deg);
+    }
+    100% {
+        transform: translateY(-128px) rotate(15deg);
+    }
+}
+
+@keyframes floatRight {
+    0% {
+        transform: translateY(0) rotate(0deg);
+    }
+    100% {
+        transform: translateY(64px) rotate(-15deg);
     }
 }

@@ -1,6 +1,7 @@
 {{define "landing_extra_head"}}
 <link rel="stylesheet" href="/static/css/header.css">
 <link rel="stylesheet" href="/static/css/landing.css">
+<link rel="stylesheet" href="/static/css/keyframes.css">
 <link rel="stylesheet" href="/static/css/footer.css">
 {{end}}
 
@@ -283,17 +284,7 @@
     </div>
 </section>
 
-<!-- <section class="cta">
-        <div class="container">
-            <div class="cta-content">
-                <h2>Хочешь оптимизировать свою работу?</h2>
-                <p>Присоединяйся к Hive уже сегодня и освободи время для важного</p>
-                <a href="/register" class="cta-btn">Попробовать бесплатно</a>
-            </div>
-        </div>
-    </section> -->
-
-{{template "footer" .}}
+{{template "footer_landing" .}}
 {{end}}
 
 {{define "landing_extra_scripts"}}

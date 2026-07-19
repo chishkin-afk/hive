@@ -41,3 +41,12 @@ func (h *handlers) Auth() gin.HandlerFunc {
 		})
 	}
 }
+
+func (h *handlers) Appointment() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.HTML(http.StatusOK, "base", gin.H{
+			"title": "название услуги",
+			"page":  "appointment",
+		})
+	}
+}

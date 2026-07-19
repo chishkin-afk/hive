@@ -1,0 +1,345 @@
+html {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.container {
+    width: 100%;
+    min-height: 100svh;
+    display: flex;
+    padding: 32px;
+    gap: 16px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.service-header, .calendar-container {
+    width: 40%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.service-title {
+    font-weight: 800;
+}
+
+.service-description, .service-price {
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.service-amount {
+    font-size: 18px;
+}
+
+.calendar-header-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.time-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.month-title, .time-section-title {
+    font-weight: 700;
+}
+
+.calendar-buttons {
+    display: flex;
+    gap: 16px;
+}
+
+.calendar-btn svg {
+    width: 24px;
+}
+
+.calendar-btn svg path {
+    stroke: currentColor;
+}
+
+.calendar-btn {
+    display: flex;
+    padding: 8px;
+    color: var(--color-accent);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-secondary);
+    transition: color .3s;
+}
+
+.calendar-btn.inactive {
+    color: var(--color-text-secondary);
+    cursor: default;
+}
+
+.days-selector {
+    display: flex;
+    padding-top: 8px;
+    gap: 8px;
+    border-radius: var(--radius-md);
+    overflow: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.day-card {
+    min-width: 52px;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 16px;
+    color: var(--color-text-primary);
+    border: solid 1px var(--color-bg-tertiary);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-secondary);
+    transition: color .3s,
+        border-color .3s,
+        transform .3s,
+        background-color .3s;
+}
+
+.day-card:hover {
+    border-color: var(--color-accent);
+    transform: translateY(-3px);
+}
+
+.day-card.active {
+    color: #1A1A1A;
+    background-color: var(--color-accent);
+    border-color: var(--color-accent-dark);
+    transform: translateY(-3px);
+    cursor: default;
+}
+
+.day-card.weekend {
+    color: var(--color-error);
+    border-color: var(--color-error);
+}
+
+.day-card.weekend.active {
+    color: #FAFAFA;
+    background-color: var(--color-error);
+}
+
+.day-card.inactive {
+    color: var(--color-text-secondary);
+    border-color: var(--color-text-secondary);
+    cursor: default;
+}
+
+.day-card.inactive:hover {
+    transform: none;
+}
+
+.day-card.inactive.active {
+    color: var(--color-text-primary);
+    background-color: var(--color-text-secondary);
+}
+
+.day-number, .day-name {
+    text-align: center;
+}
+
+.day-number {
+    font-weight: 600;
+}
+
+.day-name {
+    font-weight: 500;
+    font-size: 10px;
+}
+
+.time-slots {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 8px;
+}
+
+.time-slot {
+    color: var(--color-text-primary);
+    text-align: center;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    border: solid 1px var(--color-bg-tertiary);
+    background-color: var(--color-bg-secondary);
+    transition: transform .3s,
+        border-color .3s;
+}
+
+.time-slot:hover {
+    border-color: var(--color-accent);
+    transform: translateY(-3px);
+}
+
+.background-circles {
+    width: 100%;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.circle-left, .circle-right {
+    position: absolute;
+    width: 512px;
+    height: 512px;
+    border-radius: 100%;
+    filter: blur(128px);
+    opacity: .1;
+    z-index: -1;
+}
+
+.circle-left {
+    top: 0;
+    left: -256px;
+    rotate: 30deg;
+    background-color: var(--color-accent);
+    animation: floatLeft ease-in-out 16s infinite alternate;
+}
+
+.circle-right {
+    bottom: -128px;
+    right: -128px;
+    background-color: hsl(89, 41%, 41%);
+    animation: floatRight ease-in-out 8s infinite alternate;
+    animation-delay: 1s;
+}
+
+.confirmation-overlay {
+    width: 100%;
+    min-height: 100lvh;
+    visibility: hidden;
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    padding: 16px;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    transition: visibility .3s;
+}
+
+.confirmation-overlay.open {
+    visibility: visible;
+}
+
+.confirmation-overlay.open .confirmation {
+    animation: slide-down .3s;
+}
+
+.confirmation {
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    padding: 32px;
+    gap: 16px;
+    border-radius: var(--radius-md);
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    animation: slide-up .3s;
+}
+
+.confirmation-close {
+    font-size: 18px;
+    align-self: end;
+    color: var(--color-text-secondary);
+    transition: color .3s;
+}
+
+.confirmation-close:hover {
+    color: var(--color-text-primary);
+}
+
+.confirmation-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.confirmation-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    border: solid 1px var(--color-bg-tertiary);
+    background-color: var(--color-bg-secondary);
+}
+
+.group-title {
+    color: var(--color-text-secondary);
+    font-weight: 700;
+}
+
+.group-content, .group-price {
+    font-weight: 500;
+}
+
+.group-input {
+    color: var(--color-text-primary);
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg-tertiary);
+}
+
+
+.confirmation-submit {
+    color: #1A1A1A;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    background-color: var(--color-accent);
+    transition: transform .3s;
+}
+
+.confirmation-submit:hover {
+    transform: translateY(-3px);
+}
+
+@media (max-width: 768px) {
+    .service-header, .calendar-container {
+        width: 90%;
+    }
+
+    .background-circles {
+        display: none;
+    }
+
+    .time-slots {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    }
+
+    .time-slot {
+        padding: 12px 16px;
+    }
+
+    .confirmation {
+        padding: 16px;
+    }
+}
+
+@keyframes floatLeft {
+    0% {
+        transform: translateY(0) rotate(0deg);
+    }
+    100% {
+        transform: translateY(-128px) rotate(15deg);
+    }
+}
+
+@keyframes floatRight {
+    0% {
+        transform: translateY(0) rotate(0deg);
+    }
+    100% {
+        transform: translateY(64px) rotate(-15deg);
+    }
+}
