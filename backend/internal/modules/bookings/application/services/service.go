@@ -127,7 +127,7 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 		return nil, err
 	}
 
-	if err := bs.upsertClient(ctx, savedBooking.OfferID()); err != nil {
+	if err := bs.upsertClient(ctx, savedBooking.OfferID(), req.StartTime); err != nil {
 		bs.log.Error("failed to upsert client",
 			slog.String("error", err.Error()),
 		)
@@ -770,9 +770,10 @@ func (bs *BookingService) fetchOffer(ctx context.Context, offerID uuid.UUID) (*r
 	return bs.offerService.GetByID(ctx, offerID)
 }
 
-func (bs *BookingService) upsertClient(ctx context.Context, offerID uuid.UUID) error {
+func (bs *BookingService) upsertClient(ctx context.Context, offerID uuid.UUID, visit requests.Time) error {
 	_, err := bs.clientService.Upsert(ctx, &requests.UpsertClient{
 		OfferID: offerID,
+		Visit:   visit,
 	})
 
 	return err
@@ -796,6 +797,10 @@ func (bs *BookingService) storeBookingPersistence(ctx context.Context, userID uu
 		}
 
 		for _, booking := range bookings {
+			if booking.IsCancelled() {
+				continue
+			}
+
 			otherTime := booking.StartTime().In(mskLocation)
 			startOther := otherTime.Hour()*60 + otherTime.Minute()
 			endOther := startOther + int(offer.SlotDurationMinutes) + int(offer.SlotIntervalMinutes)
@@ -832,7 +837,7 @@ func (bs *BookingService) storeBookingPersistence(ctx context.Context, userID uu
 
 func (bs *BookingService) hasBooking(userID uuid.UUID, existingBookings []*booking.Booking) bool {
 	for _, booking := range existingBookings {
-		if booking.UserID() == userID {
+		if booking.UserID() == userID && !booking.IsCancelled() {
 			return true
 		}
 	}
@@ -894,6 +899,11 @@ func (bs *BookingService) getOfferAndCoach(ctx context.Context, offerID uuid.UUI
 func (bs *BookingService) parseStartTime(offer *responses.Offer, startTime *requests.Time) (time.Time, error) {
 	bookingStart, err := time.ParseInLocation(time.DateOnly, startTime.Date, mskLocation)
 	if err != nil {
+		return time.Time{}, errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
+	}
+
+	now := time.Now().In(mskLocation)
+	if now.Compare(bookingStart) > 0 {
 		return time.Time{}, errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
 	}
 
