@@ -23,119 +23,137 @@ type Cache interface {
 	Del(ctx context.Context, key ...string) *redis.IntCmd
 }
 
-type rateCacheRepository struct {
+type rateRepository struct {
 	cfg   *config.Config
 	log   *slog.Logger
 	cache Cache
 }
 
-func New(cfg *config.Config, log *slog.Logger, cache Cache) *rateCacheRepository {
-	return &rateCacheRepository{
+func New(cfg *config.Config, log *slog.Logger, cache Cache) *rateRepository {
+	return &rateRepository{
 		cfg:   cfg,
 		log:   log,
 		cache: cache,
 	}
 }
 
-func (rcr *rateCacheRepository) SaveRate(ctx context.Context, rate *rate.Rate) error {
-	rcr.log.Debug("converting single rate into bytes",
+// Save stores the provided rate in the cache.
+//
+// The cached data expires after the configured TTL. An error is returned if
+// the rate cannot be serialized or the cache write operation fails.
+func (rr *rateRepository) Save(ctx context.Context, rate *rate.Rate) error {
+	rr.log.Debug("saving rate into cache",
 		slog.String("rate_id", rate.ID().String()),
 	)
 
+	if err := rr.save(ctx, rr.cache, rate); err != nil {
+		return fmt.Errorf("failed to save rate into cache: %w",
+			handleError(err),
+		)
+	}
+
+	return nil
+}
+
+func (rr *rateRepository) save(ctx context.Context, cache Cache, rate *rate.Rate) error {
 	bytes, err := rateToBytes(rate)
 	if err != nil {
 		return err
 	}
 
-	rcr.log.Debug("saving rate's bytes into cache",
-		slog.String("rate_id", rate.ID().String()),
+	key := getSingleKey(rate.ID())
+	return cache.Set(ctx, key, bytes, rr.cfg.Cache.RateTTL).Err()
+}
+
+// Get retrieves the cached rate identified by id.
+//
+// It returns the cached rate or an error if the cache lookup or
+// deserialization fails.
+func (rr *rateRepository) Get(ctx context.Context, id uuid.UUID) (*rate.Rate, error) {
+	rr.log.Debug("getting rate by id",
+		slog.String("rate_id", id.String()),
 	)
 
-	if err := rcr.cache.Set(ctx, rcr.getSingleKey(rate.ID()), bytes, rcr.cfg.Cache.RateTTL).Err(); err != nil {
-		if safeErr, ok := rcr.handleError(err); ok {
-			return safeErr
-		}
+	rate, err := rr.get(ctx, rr.cache, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rate by id: %w",
+			handleError(err),
+		)
+	}
 
-		return fmt.Errorf("failed to save single rate into cache: %w", err)
+	return rate, nil
+}
+
+func (rr *rateRepository) get(ctx context.Context, cache Cache, id uuid.UUID) (*rate.Rate, error) {
+	bytes, err := cache.Get(ctx, getSingleKey(id)).Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	return bytesToRate(bytes)
+}
+
+// SaveList caches the provided rates.
+//
+// The cached data expires after the configured TTL. An error is returned if
+// the rates cannot be encoded or the cache write operation fails.
+func (rr *rateRepository) SaveList(ctx context.Context, rates []*rate.Rate) error {
+	rr.log.Debug("saving rate list into cache",
+		slog.Int("len_rates", len(rates)),
+	)
+
+	if err := rr.saveList(ctx, rr.cache, rates); err != nil {
+		return fmt.Errorf("failed to save rate list into cache: %w",
+			handleError(err),
+		)
 	}
 
 	return nil
 }
 
-func (rcr *rateCacheRepository) GetRate(ctx context.Context, id uuid.UUID) (*rate.Rate, error) {
-	rcr.log.Debug("getting single rate by id from cache",
-		slog.String("rate_id", id.String()),
-	)
-
-	bytes, err := rcr.cache.Get(ctx, rcr.getSingleKey(id)).Bytes()
-	if err != nil {
-		if safeErr, ok := rcr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get single rate: %w", err)
-	}
-
-	rcr.log.Debug("converting bytes of rate into domain model",
-		slog.String("rate_id", id.String()),
-	)
-
-	return bytesToRate(bytes)
-}
-
-func (rcr *rateCacheRepository) SaveRates(ctx context.Context, rates []*rate.Rate) error {
-	rcr.log.Debug("converting a list of rates into bytes",
-		slog.Int("len", len(rates)),
-	)
-
+func (rr *rateRepository) saveList(ctx context.Context, cache Cache, rates []*rate.Rate) error {
 	bytes, err := ratesToBytes(rates)
 	if err != nil {
 		return err
 	}
 
-	rcr.log.Debug("saving a list of rates into cache",
-		slog.Int("len", len(rates)),
-	)
-	if err := rcr.cache.Set(ctx, allRatesKey, bytes, rcr.cfg.Cache.RateTTL).Err(); err != nil {
-		if safeErr, ok := rcr.handleError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to save a list of rates into cache: %w", err)
-	}
-
-	return nil
+	return cache.Set(ctx, allRatesKey, bytes, rr.cfg.Cache.RateTTL).Err()
 }
 
-func (rcr *rateCacheRepository) ListRates(ctx context.Context) ([]*rate.Rate, error) {
-	rcr.log.Debug("getting a list of rates from cache")
+// ListRates retrieves the cached list of rates.
+//
+// It returns the cached rates or an error if the cache lookup or
+// deserialization fails.
+func (rr *rateRepository) ListRates(ctx context.Context) ([]*rate.Rate, error) {
+	rr.log.Debug("getting rate list from cache")
 
-	bytes, err := rcr.cache.Get(ctx, allRatesKey).Bytes()
+	list, err := rr.listRates(ctx, rr.cache)
 	if err != nil {
-		if safeErr, ok := rcr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get a list of rates from cache: %w", err)
+		return nil, fmt.Errorf("failed to get rate list: %w",
+			handleError(err),
+		)
 	}
 
-	rcr.log.Debug("converting bytes to a list of rates")
+	return list, nil
+}
+
+func (rr *rateRepository) listRates(ctx context.Context, cache Cache) ([]*rate.Rate, error) {
+	bytes, err := cache.Get(ctx, allRatesKey).Bytes()
+	if err != nil {
+		return nil, err
+	}
 
 	return bytesToRates(bytes)
 }
 
-func (rcr *rateCacheRepository) handleError(err error) (error, bool) {
-	switch {
-	case errors.Is(err, context.DeadlineExceeded),
-		errors.Is(err, context.Canceled):
-		return err, true
-	case errors.Is(err, redis.Nil):
-		return rate.ErrRateNotFound, true
+func handleError(err error) error {
+	if errors.Is(err, redis.Nil) {
+		return rate.ErrRateNotFound
 	}
 
-	return err, false
+	return err
 }
 
-func (rcr *rateCacheRepository) getSingleKey(id uuid.UUID) string {
+func getSingleKey(id uuid.UUID) string {
 	return fmt.Sprintf("rate:%s", id.String())
 }

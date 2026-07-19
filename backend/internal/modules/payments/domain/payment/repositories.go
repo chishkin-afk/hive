@@ -23,9 +23,9 @@ type PaymentPersistenceRepository interface {
 }
 
 type PaymentCacheRepository interface {
-	SavePayment(ctx context.Context, payment *Payment) error
-	DeletePayment(ctx context.Context, id uuid.UUID) error
-	GetPayment(ctx context.Context, id uuid.UUID) (*Payment, error)
+	Save(ctx context.Context, payment *Payment) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	Get(ctx context.Context, id uuid.UUID) (*Payment, error)
 }
 
 var (
