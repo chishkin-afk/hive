@@ -48,8 +48,8 @@ function setupConfirmation() {
     const timeSlots = document.querySelectorAll('.time-slot');
     const overlay = document.getElementById('confirmationOverlay');
     const closeBtn = document.getElementById('confirmationCloseBtn');
-    const groupDate = document.getElementById('groupDate');
-    const groupTime = document.getElementById('groupTime');
+    const dates = document.querySelectorAll('.offer-date');
+    const times = document.querySelectorAll('.offer-time');
     const activeDay = document.querySelector('.day-card.active');
 
     timeSlots.forEach(function(slot) {
@@ -66,8 +66,12 @@ function setupConfirmation() {
                 year: 'numeric'
             });
 
-            groupDate.textContent = formatted;
-            groupTime.textContent = time;
+            dates.forEach(el => {
+                el.textContent = formatted;
+            });
+            times.forEach(el => {
+                el.textContent = time;
+            });
 
             document.body.classList.add('block-scroll');
             overlay.classList.add('open');
@@ -87,3 +91,23 @@ function setupConfirmation() {
     });
 }
 setupConfirmation();
+
+function showStep(stepNumber) {
+    document.querySelectorAll('.confirmation-step').forEach(el => {
+        el.classList.remove('active');
+    });
+    
+    const target = document.getElementById(`step${stepNumber}`);
+    if (target) {
+        target.classList.add('active');
+    }
+}
+
+let currentStep = 1;
+
+function nextStep() {
+    currentStep++;
+    showStep(currentStep);
+}
+
+showStep(1);

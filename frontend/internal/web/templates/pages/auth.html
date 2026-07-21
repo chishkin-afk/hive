@@ -8,7 +8,7 @@
         <p class="error-message" id="errorMessage"></p>
         <p class="success-message" id="successMessage"></p>
 
-        <form class="auth-form {{if ne .action " login"}}active{{end}}" id="registerForm">
+        <form class="auth-form {{if ne .action "login"}}active{{end}}" id="registerForm">
             <h1 class="auth-title">Создать аккаунт</h1>
 
             <div class="form-group">
@@ -65,7 +65,7 @@
             <button type="button" class="submit-btn" id="registerBtn">Создать аккаунт</button>
             <button type="button" class="switch-btn">Уже есть аккаунт?</button>
         </form>
-        <form class="auth-form {{if eq .action " login"}}active{{end}}" id="loginForm">
+        <form class="auth-form {{if eq .action "login"}}active{{end}}" id="loginForm">
             <h1 class="auth-title">Войти</h1>
 
             <div class="form-group">

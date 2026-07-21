@@ -67,6 +67,7 @@ html {
     display: flex;
     padding: 8px;
     color: var(--color-accent);
+    border: solid 1px var(--color-bg-tertiary);
     border-radius: var(--radius-md);
     background-color: var(--color-bg-secondary);
     transition: color .3s;
@@ -235,6 +236,7 @@ html {
 }
 
 .confirmation {
+    max-width: 30%;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
@@ -242,6 +244,7 @@ html {
     gap: 16px;
     border-radius: var(--radius-md);
     overflow-y: auto;
+    overflow-x: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;
     animation: slide-up .3s;
@@ -256,6 +259,21 @@ html {
 
 .confirmation-close:hover {
     color: var(--color-text-primary);
+}
+
+.confirmation-step {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.confirmation-step.active {
+    display: flex;
+}
+
+.confirmation-title {
+    text-align: center;
+    word-break: break-all;
 }
 
 .confirmation-body {
@@ -302,6 +320,36 @@ html {
 
 .confirmation-submit:hover {
     transform: translateY(-3px);
+}
+
+.connect-tg-btn {
+    display: none;
+    align-self: center;
+    align-items: center;
+    padding: 4px 8px;
+    gap: 8px;
+    color: #FAFAFA;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #2AABEE, #229ED9);
+    transition: transform .3s;
+}
+
+.connect-tg-btn.active {
+    display: flex;
+}
+
+.connect-tg-btn:hover {
+    transform: translateY(-3px);
+}
+
+.connect-tg-btn svg {
+    width: 24px;
+}
+
+.connect-tg-btn svg path {
+    fill: currentColor;
 }
 
 @media (max-width: 768px) {
