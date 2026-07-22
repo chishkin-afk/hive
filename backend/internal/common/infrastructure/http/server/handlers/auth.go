@@ -15,6 +15,7 @@ type authService interface {
 	Confirm(ctx context.Context, req *requests.ConfirmUser) (*responses.Token, error)
 	Login(ctx context.Context, req *requests.Login) (*responses.Token, error)
 	Update(ctx context.Context, req *requests.UpdateUser) (*responses.User, error)
+	UnbindTg(ctx context.Context) (*responses.User, error)
 	GetSelfUser(ctx context.Context) (*responses.User, error)
 	GetTgBindingURL(ctx context.Context) (*responses.TgBinding, error)
 	BindTG(ctx context.Context, req *requests.BindTG) (*responses.User, error)
@@ -367,6 +368,33 @@ func (h *HandlerFuncs) ChangePassword() gin.HandlerFunc {
 		}
 
 		resp, err := h.authService.ChangePassword(ctx.Request.Context(), &req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Summary      Unbind the tg from user
+// @Description  Turn off notifications and delete tg's chat id
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  responses.User
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /auth/unbind-tg [patch]
+func (h *HandlerFuncs) UnbindTg() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		resp, err := h.authService.UnbindTg(ctx.Request.Context())
 		if err != nil {
 			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
 				Error: err.Error(),

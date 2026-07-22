@@ -45,6 +45,7 @@ func New(cfg *config.Config,
 				// auth.POST("/lookup", funcs.Lookup())
 				auth.POST("/forget-password", funcs.ForgetPassword())
 				auth.PATCH("/password", funcs.ChangePassword())
+				auth.PATCH("/unbind-tg", funcs.UnbindTg())
 			}
 
 			offers := v1.Group("/offers")

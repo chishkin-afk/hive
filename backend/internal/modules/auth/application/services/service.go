@@ -215,6 +215,46 @@ func (as *AuthService) ChangePassword(ctx context.Context, req *requests.ChangeP
 	return as.generateToken(user.ID())
 }
 
+func (as *AuthService) UnbindTg(ctx context.Context) (*responses.User, error) {
+	userID, err := as.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := as.getUserFromPersistence(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.unbindTg(user); err != nil {
+		return nil, err
+	}
+
+	if err = as.updateUserStore(ctx, user); err != nil {
+		return nil, err
+	}
+
+	if err := as.clearUserCache(ctx, user.ID()); err != nil {
+		as.log.Warn("failed to clear user cache",
+			slog.String("error", err.Error()),
+		)
+	}
+
+	return as.userToDTO(user), nil
+}
+
+func (as *AuthService) unbindTg(updUser *user.User) error {
+	if err := updUser.ChangeNotification(user.NewNotification(false)); err != nil {
+		return errs.NewErrorWithKind(err, errs.KindInternal)
+	}
+
+	if err := updUser.ChangeTgChatID(0); err != nil {
+		return errs.NewErrorWithKind(err, errs.KindInternal)
+	}
+
+	return nil
+}
+
 func (as *AuthService) changePassword(user *user.User, newPassword string) error {
 	if err := user.ChangePassword(newPassword); err != nil {
 		return errs.NewErrorWithKind(err, errs.KindRequest)
