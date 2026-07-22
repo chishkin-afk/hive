@@ -108,6 +108,10 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 		return nil, err
 	}
 
+	if coach.OnVacation {
+		return nil, errs.NewErrorWithKind(errs.ErrCoachOnVacation, errs.KindPermissionDenied)
+	}
+
 	bookingStartTime, err := bs.parseStartTime(offer, &req.StartTime)
 	if err != nil {
 		return nil, err
