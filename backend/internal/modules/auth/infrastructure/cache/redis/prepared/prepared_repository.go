@@ -47,10 +47,8 @@ func (pr *preparedRepository) Prepare(
 		slog.String("prepared_id", preparingUser.ID().String()),
 	)
 
-	if err := pr.checkExisting(ctx, pr.cache, preparingUser.ConfirmedEmail()); err != nil {
-		return fmt.Errorf("failed to check existing of user: %w",
-			handleError(err),
-		)
+	if err := pr.checkExisting(ctx, pr.cache, preparingUser.ConfirmedEmail()); err == nil {
+		return user.ErrUserAlreadyExists
 	}
 
 	pr.log.Debug("setting prepared into cache",

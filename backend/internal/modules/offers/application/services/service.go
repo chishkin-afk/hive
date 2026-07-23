@@ -79,6 +79,12 @@ func (os *OfferService) Update(ctx context.Context, req *requests.UpdateOffer) (
 		return nil, err
 	}
 
+	if err := os.clearOfferCache(ctx, updatedOffer.ID()); err != nil {
+		os.log.Warn("failed to clear offer's cache",
+			slog.String("error", err.Error()),
+		)
+	}
+
 	return os.offerToDTO(updatedOffer), nil
 }
 
@@ -101,6 +107,12 @@ func (os *OfferService) Delete(ctx context.Context, id uuid.UUID) error {
 
 	if err := os.deleteOfferPersistence(ctx, offer.ID()); err != nil {
 		return err
+	}
+
+	if err := os.clearOfferCache(ctx, offer.ID()); err != nil {
+		os.log.Warn("failed to clear offer's cache",
+			slog.String("error", err.Error()),
+		)
 	}
 
 	return nil
@@ -138,6 +150,10 @@ func (os *OfferService) ListByAuthorID(ctx context.Context, id uuid.UUID, page, 
 	}
 
 	return os.listToDTO(list, totalCount, page, limit), nil
+}
+
+func (os *OfferService) clearOfferCache(ctx context.Context, id uuid.UUID) error {
+	return os.offerCache.Del(ctx, id)
 }
 
 func (os *OfferService) getUserID(ctx context.Context) (uuid.UUID, error) {

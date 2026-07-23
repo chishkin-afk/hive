@@ -108,13 +108,21 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 		return nil, err
 	}
 
+	bookingStartTime, err := bs.parseStartTime(offer, &req.StartTime)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := bs.checkPaidUntil(coach, bookingStartTime); err != nil {
+		return nil, err
+	}
+
 	if coach.OnVacation {
 		return nil, errs.NewErrorWithKind(errs.ErrCoachOnVacation, errs.KindPermissionDenied)
 	}
 
-	bookingStartTime, err := bs.parseStartTime(offer, &req.StartTime)
-	if err != nil {
-		return nil, err
+	if !offer.IsActive {
+		return nil, errs.NewErrorWithKind(errs.ErrOfferIsntActive, errs.KindPermissionDenied)
 	}
 
 	schedule, err := bs.getSchedule(ctx, coach.ID, uint8(bookingStartTime.Weekday()))
@@ -145,6 +153,15 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 	)
 
 	return bs.bookingToDTO(savedBooking), nil
+}
+
+func (bs *BookingService) checkPaidUntil(user *responses.User, bookingStartTime time.Time) error {
+	pu := time.Unix(user.PaidUntil, 0).In(mskLocation)
+	if pu.Compare(bookingStartTime) < 0 {
+		return errs.NewErrorWithKind(errs.ErrUserNotPaid, errs.KindRequest)
+	}
+
+	return nil
 }
 
 // GetByID is a method that returns a booking by its ID
@@ -910,7 +927,6 @@ func (bs *BookingService) parseStartTime(offer *responses.Offer, startTime *requ
 	if now.Compare(bookingStart) > 0 {
 		return time.Time{}, errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
 	}
-
 	endTime := int64(startTime.StartTime.Hour)*60 + int64(startTime.StartTime.Minute)
 	endTime += int64(offer.SlotDurationMinutes)
 

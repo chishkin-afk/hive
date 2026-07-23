@@ -5,7 +5,6 @@ import "github.com/google/uuid"
 type CreateBooking struct {
 	OfferID   uuid.UUID `json:"offer_id"`
 	Comment   string    `json:"comment"`
-	Date      string    `json:"date"`
 	StartTime Time      `json:"start_time"`
 }
 

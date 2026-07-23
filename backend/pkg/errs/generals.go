@@ -23,4 +23,5 @@ var (
 	ErrInvalidDays           = errors.New("difference between from to must be more than 1 and less than 14 days")
 	ErrInvalidVisit          = errors.New("invalid time for visit")
 	ErrCoachOnVacation       = errors.New("coach on vacation")
+	ErrOfferIsntActive       = errors.New("offer isn't active")
 )
