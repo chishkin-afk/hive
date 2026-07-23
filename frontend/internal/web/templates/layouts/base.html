@@ -9,6 +9,8 @@
         {{template "auth_content" .}}
     {{else if eq .page "appointment"}}
         {{template "appointment_content" .}}
+    {{else if eq .page "services"}}
+        {{template "services_content" .}}
     {{end}}
 
     {{template "scripts" .}}

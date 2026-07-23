@@ -1,0 +1,74 @@
+{{define "header"}}
+    <header>
+        <div class="header-wrapper">
+            <div class="dynamic-island">
+                <a href="/dashboard">
+                    <svg class="island-logo" aria-hidden="true" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path class="logo-outer" d="M6.07 4.08 C6.50 3.34 7.29 2.88 8.15 2.88 L15.99 2.88 C16.85 2.88 17.64 3.34 18.07 4.08 L21.99 10.87 C22.42 11.61 22.42 12.53 21.99 13.27 L18.07 20.06 C17.64 20.80 16.85 21.26 15.99 21.26 L8.15 21.26 C7.29 21.26 6.50 20.80 6.07 20.06 L2.15 13.27 C1.72 12.53 1.72 11.61 2.15 10.87 L6.07 4.08 Z" 
+                            stroke-width="2.4" />
+                        <path class="logo-inner" d="M9.20 8.22 C9.41 7.85 9.81 7.62 10.23 7.62 L13.77 7.62 C14.20 7.62 14.59 7.85 14.81 8.22 L16.57 11.28 C16.79 11.65 16.79 12.11 16.57 12.48 L14.81 15.54 C14.59 15.91 14.20 16.14 13.77 16.14 L10.23 16.14 C9.81 16.14 9.41 15.91 9.20 15.54 L7.43 12.48 C7.21 12.11 7.21 11.65 7.43 11.28 L9.20 8.22 Z" 
+                            />
+                    </svg>
+                </a>
+
+                <div class="island-links">
+                    <a class="island-link" href="/services">Услуги</a>
+                    <a class="island-link" href="/bookings">Записи</a>
+                    <a class="island-link" href="/profile">Профиль</a>
+                </div>
+
+                <div class="island-divider" role="separator"></div>
+
+                <div class="island-actions">
+                    <a href="/topup" id="paidUntil" class="paid-until">до 31.05.2027</a>
+                </div>
+
+                <button class="burger-btn" id="burgerBtn" aria-label="Меню">
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+
+            <button class="theme-toggle" id="themeToggle" aria-label="Сменить тему">
+                <svg aria-hidden="true" class="sun-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17Z"
+                        stroke-width="2" stroke-linecap="round"/>
+                    <path d="M12 2V3"
+                        stroke-width="2" stroke-linecap="round"/>
+                    <path d="M4.92896 4.92896L5.63606 5.63606"
+                        stroke-width="2" stroke-linecap="round"/>
+                    <path d="M12 21V22"
+                        stroke-width="2" stroke-linecap="round"/>
+                    <path d="M18.364 18.364L19.0711 19.0711"
+                        stroke-width="2" stroke-linecap="round"/>
+                    <path d="M2 12H3"
+                        stroke-width="2" stroke-linecap="round"/>
+                    <path d="M4.92896 19.071L5.63606 18.3639"
+                        stroke-width="2" stroke-linecap="round"/>
+                    <path d="M21 12H22"
+                        stroke-width="2" stroke-linecap="round"/>
+                    <path d="M18.364 5.63605L19.0711 4.92894"
+                        stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <svg aria-hidden="true" class="moon-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20.9999 12.79C20.8426 14.4922 20.2038 16.1144 19.1581 17.4668C18.1125 18.8192 16.7034 19.8458 15.0956 20.4265C13.4878 21.0073 11.7479 21.1181 10.0794 20.7461C8.41092 20.3741 6.8829 19.5345 5.67413 18.3258C4.46536 17.117 3.62584 15.589 3.25381 13.9205C2.88178 12.252 2.99262 10.5121 3.57336 8.9043C4.15411 7.29651 5.18073 5.88737 6.53311 4.84175C7.8855 3.79614 9.5077 3.15731 11.2099 3C10.2133 4.34827 9.73375 6.00945 9.85843 7.68141C9.98312 9.35338 10.7038 10.9251 11.8893 12.1106C13.0748 13.2961 14.6465 14.0168 16.3185 14.1415C17.9905 14.2662 19.6516 13.7866 20.9999 12.79Z"
+                        stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div id="mobileMenuOverflow" class="mobile-menu-overflow">
+            <nav class="mobile-menu">
+                <div class="menu-links">
+                    <a class="menu-link" href="/services">Услуги</a>
+                    <a class="menu-link" href="/bookings">Записи</a>
+                    <a class="menu-link" href="/profile">Профиль</a>
+                </div>
+    
+                <div class="menu-actions">
+                    <a href="/topup" id="menuPaidUntil" class="paid-until">до 31.05.2027</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+{{end}}

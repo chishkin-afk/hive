@@ -232,21 +232,3 @@
         display: none;
     }
 }
-
-@keyframes floatLeft {
-    0% {
-        transform: translateY(0) rotate(0deg);
-    }
-    100% {
-        transform: translateY(-128px) rotate(15deg);
-    }
-}
-
-@keyframes floatRight {
-    0% {
-        transform: translateY(0) rotate(0deg);
-    }
-    100% {
-        transform: translateY(64px) rotate(-15deg);
-    }
-}

@@ -1,0 +1,109 @@
+{{define "services_extra_head"}}
+<link rel="stylesheet" href="/static/css/header.css">
+<link rel="stylesheet" href="/static/css/services.css">
+<link rel="stylesheet" href="/static/css/keyframes.css">
+<link rel="stylesheet" href="/static/css/footer.css">
+{{end}}
+
+{{define "services_content"}}
+{{template "header" .}}
+<div class="container">
+    <div class="services-header">
+        <h1 class="services-title">Твои услуги</h1>
+        <p class="services-subtitle">Можешь настраивать их</p>
+    </div>
+
+    <div class="services-list" id="servicesList">
+        <div class="service-card loading">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-description"></div>
+            <div class="skeleton skeleton-meta"></div>
+        </div>
+   
+        <div class="service-card">
+            <h3 class="service-title">Название</h3>
+            <p class="service-description">Описание</p>
+            <div class="service-meta">
+                <div class="service-duration-wrapper">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 6V12L16 14"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span class="service-duration">30 мин</span>
+                </div>
+                <div class="service-price">
+                    <span class="service-amount">2000</span>
+                    <span class="service-currency">₽</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="pagination" id="pagination">
+        <button class="pagination-btn" id="backBtn">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 6L9 12L15 18"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <div class="pagination-info">
+            <span id="currentPage">—</span> из <span id="totalPages">—</span>
+        </div>
+        <button class="pagination-btn" id="forwardBtn">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 18L15 12L9 6"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+    </div>
+
+    <div id="serviceModalOverlay" class="service-modal-overlay">
+        <div class="service-modal">
+            <div class="service-modal-main">
+                <label>
+                    <span class="service-modal-input-title">Название</span>
+                    <input id="serviceTitle" type="text">
+                </label>
+                <label>
+                    <span class="service-modal-input-title">Описание</span>
+                    <textarea id="serviceDescription"></textarea>
+                </label>
+                <label>
+                    <span class="service-modal-input-title">Цена</span>
+                    <div class="service-modal-input-wrapper">
+                        <input id="servicePrice" type="number">
+                        <span class="service-modal-input-suffix">₽</span>
+                    </div>
+                </label>
+                <label>
+                    <span class="service-modal-input-title">Продолжительность</span>
+                    <div class="service-modal-input-wrapper">
+                        <input id="serviceDuration" type="number">
+                        <span class="service-modal-input-suffix">мин</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="service-divider"></div>
+            
+            <div class="service-modal-buttons">
+                <button id="saveServiceBtn" class="service-modal-btn">Сохранить</button>
+                <button id="suspendServiceBtn" class="service-modal-btn">Приостановить</button>
+                <button id="resumeServiceBtn" class="service-modal-btn">Возобновить</button>
+                <button id="deleteServiceBtn" class="service-modal-btn delete">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="background-circles">
+        <div class="circle-left"></div>
+        <div class="circle-right"></div>
+    </div>
+</div>
+{{end}}
+
+{{define "services_extra_scripts"}}
+<script src="/static/js/services.js"></script>
+{{end}}

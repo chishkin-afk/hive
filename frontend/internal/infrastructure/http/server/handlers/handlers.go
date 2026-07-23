@@ -45,8 +45,20 @@ func (h *handlers) Auth() gin.HandlerFunc {
 func (h *handlers) Appointment() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "base", gin.H{
-			"title": "название услуги",
-			"page":  "appointment",
+			"title":              "название услуги",
+			"serviceTitle":       "название услуги",
+			"serviceDescription": "описание услуги",
+			"serviceAmount":      "стоимость услуги",
+			"page":               "appointment",
+		})
+	}
+}
+
+func (h *handlers) Services() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.HTML(http.StatusOK, "base", gin.H{
+			"title": "Услуги",
+			"page":  "services",
 		})
 	}
 }
