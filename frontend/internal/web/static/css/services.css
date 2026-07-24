@@ -272,7 +272,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    padding: 32px 16px;
+    padding: 128px 16px;
     align-items: center;
     justify-content: center;
     backdrop-filter: blur(8px);
@@ -289,8 +289,9 @@
 
 .service-modal {
     min-width: 40%;
-    max-height: 85vh;
+    max-height: 80vh;
     display: flex;
+    flex-direction: column;
     padding: 16px;
     gap: 16px;
     border: solid 1px var(--color-bg-tertiary);
@@ -302,6 +303,12 @@
     animation: slide-up .3s;
     transition: background-color .3s,
         border-color .3s;
+}
+
+.service-modal-top {
+    width: 100%;
+    display: flex;
+    gap: 16px;
 }
 
 .service-modal-main {
@@ -327,8 +334,8 @@
     border-radius: var(--radius-sm);
     border: solid 1px transparent;
     background-color: var(--color-bg-tertiary);
-    transition: border-color .3s;
-    transition: background-color .3s;
+    transition: border-color .3s,
+        background-color .3s;
 }
 
 .service-modal-main input:focus, .service-modal-main textarea:focus {
@@ -395,6 +402,47 @@
     background-color: var(--color-error);
 }
 
+.service-modal-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.bookings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.booking-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg-tertiary);
+    transition: background-color .3s;
+}
+
+.booking-card-main {
+    display: flex;
+    flex-direction: column;
+}
+
+.booking-cancel-btn {
+    padding: 8px;
+    color: #FAFAFA;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-error);
+    transition: transform .3s;
+}
+
+.booking-cancel-btn:hover {
+    transform: translateY(-3px);    
+}
+
 /* BACKGROUND */
 
 .background-circles {
@@ -455,7 +503,7 @@
         align-items: end;
     }
 
-    .service-modal {
+    .service-modal-top {
         flex-direction: column;
     }
 

@@ -61,38 +61,57 @@
 
     <div id="serviceModalOverlay" class="service-modal-overlay">
         <div class="service-modal">
-            <div class="service-modal-main">
-                <label>
-                    <span class="service-modal-input-title">Название</span>
-                    <input id="serviceTitle" type="text">
-                </label>
-                <label>
-                    <span class="service-modal-input-title">Описание</span>
-                    <textarea id="serviceDescription"></textarea>
-                </label>
-                <label>
-                    <span class="service-modal-input-title">Цена</span>
-                    <div class="service-modal-input-wrapper">
-                        <input id="servicePrice" type="number">
-                        <span class="service-modal-input-suffix">₽</span>
-                    </div>
-                </label>
-                <label>
-                    <span class="service-modal-input-title">Продолжительность</span>
-                    <div class="service-modal-input-wrapper">
-                        <input id="serviceDuration" type="number">
-                        <span class="service-modal-input-suffix">мин</span>
-                    </div>
-                </label>
+            <div class="service-modal-top">
+                <div class="service-modal-main">
+                    <label>
+                        <span class="service-modal-input-title">Название</span>
+                        <input id="serviceTitle" type="text">
+                    </label>
+                    <label>
+                        <span class="service-modal-input-title">Описание</span>
+                        <textarea id="serviceDescription"></textarea>
+                    </label>
+                    <label>
+                        <span class="service-modal-input-title">Цена</span>
+                        <div class="service-modal-input-wrapper">
+                            <input id="servicePrice" type="number">
+                            <span class="service-modal-input-suffix">₽</span>
+                        </div>
+                    </label>
+                    <label>
+                        <span class="service-modal-input-title">Продолжительность</span>
+                        <div class="service-modal-input-wrapper">
+                            <input id="serviceDuration" type="number">
+                            <span class="service-modal-input-suffix">мин</span>
+                        </div>
+                    </label>
+                </div>
+    
+                <div class="service-divider"></div>
+                
+                <div class="service-modal-buttons">
+                    <button id="saveServiceBtn" class="service-modal-btn">Сохранить</button>
+                    <button id="suspendServiceBtn" class="service-modal-btn">Приостановить</button>
+                    <button id="resumeServiceBtn" class="service-modal-btn">Возобновить</button>
+                    <button id="deleteServiceBtn" class="service-modal-btn delete">Удалить</button>
+                </div>
             </div>
 
-            <div class="service-divider"></div>
-            
-            <div class="service-modal-buttons">
-                <button id="saveServiceBtn" class="service-modal-btn">Сохранить</button>
-                <button id="suspendServiceBtn" class="service-modal-btn">Приостановить</button>
-                <button id="resumeServiceBtn" class="service-modal-btn">Возобновить</button>
-                <button id="deleteServiceBtn" class="service-modal-btn delete">Удалить</button>
+            <div class="service-modal-bottom">
+                <h2>Записи</h2>
+
+                <div class="bookings-list">
+                    <div class="booking-card">
+                        <div class="booking-card-main">
+                            <h3>Имя</h3>
+                            <span>Телефон</span>
+                            <span>Дата и время</span>
+                            <p>Комментарий</p>
+                        </div>
+    
+                        <button class="booking-cancel-btn">Отменить</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
