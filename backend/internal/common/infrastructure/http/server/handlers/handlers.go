@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/devathh/hive/backend/internal/common/infrastructure/config"
 	"github.com/devathh/hive/backend/pkg/errs"
 	"github.com/gin-gonic/gin"
 )
 
 type HandlerFuncs struct {
+	cfg             *config.Config
 	authService     authService
 	offerService    offerService
 	clientService   clientService

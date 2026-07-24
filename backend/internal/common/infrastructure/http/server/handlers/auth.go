@@ -64,7 +64,7 @@ func (h *HandlerFuncs) Prepare() gin.HandlerFunc {
 // @Accept       json
 // @Produce      json
 // @Param        request body requests.ConfirmUser true "data for confirming"
-// @Success      200  {object}  responses.Token
+// @Success      204  {null}
 // @Failure      400  {object}  responses.ErrMsg
 // @Failure      403  {object}  responses.ErrMsg
 // @Failure      408  {object}  responses.ErrMsg
@@ -88,7 +88,12 @@ func (h *HandlerFuncs) Confirm() gin.HandlerFunc {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, resp)
+		ctx.SetCookie(
+			"token",
+			resp.Token,
+			int(h.cfg.Authorization.JWT.TokenTTL.Seconds()),
+			"", "", true, true)
+		ctx.Status(http.StatusNoContent)
 	}
 }
 
@@ -123,7 +128,12 @@ func (h *HandlerFuncs) Login() gin.HandlerFunc {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, resp)
+		ctx.SetCookie(
+			"token",
+			resp.Token,
+			int(h.cfg.Authorization.JWT.TokenTTL.Seconds()),
+			"", "", true, true)
+		ctx.Status(http.StatusNoContent)
 	}
 }
 

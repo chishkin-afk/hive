@@ -20,6 +20,7 @@ func New(cfg *config.Config,
 	router.Use(mws...)
 
 	funcs := HandlerFuncs{
+		cfg:             cfg,
 		authService:     authService,
 		bookingService:  bookingService,
 		offerService:    offerService,
