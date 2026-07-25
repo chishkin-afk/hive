@@ -62,3 +62,12 @@ func (h *handlers) Services() gin.HandlerFunc {
 		})
 	}
 }
+
+func (h *handlers) Profile() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.HTML(http.StatusOK, "base", gin.H{
+			"title": "Профиль",
+			"page":  "profile",
+		})
+	}
+}

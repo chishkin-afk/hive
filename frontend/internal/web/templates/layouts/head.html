@@ -17,6 +17,8 @@
             {{block "appointment_extra_head" .}}{{end}}
         {{else if eq .page "services"}}
             {{block "services_extra_head" .}}{{end}}
+        {{else if eq .page "profile"}}
+            {{block "profile_extra_head" .}}{{end}}
         {{end}}
 
         <script src="/static/js/theme.js"></script>

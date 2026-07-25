@@ -130,6 +130,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    animation: fade-up .8s;
 }
 
 .services-subtitle {
@@ -154,6 +155,7 @@
     box-shadow: var(--shadow-lg);
     background-color: var(--color-bg-secondary);
     cursor: pointer;
+    animation: fade-up 1s;
     transition: border-color .3s,
         box-shadow .3s,
         background-color .3s;

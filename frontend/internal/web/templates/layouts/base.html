@@ -11,6 +11,8 @@
         {{template "appointment_content" .}}
     {{else if eq .page "services"}}
         {{template "services_content" .}}
+    {{else if eq .page "profile"}}
+        {{template "profile_content" .}}
     {{end}}
 
     {{template "scripts" .}}

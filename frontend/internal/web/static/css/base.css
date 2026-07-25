@@ -110,3 +110,9 @@ button {
     background-color: hsl(0, 0%, 50%);
     transition: background-color .3s;
 }
+
+@media (max-width: 768px) {
+    ::-webkit-scrollbar {
+        width: auto;
+    }
+}

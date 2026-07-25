@@ -1,0 +1,242 @@
+
+{{define "profile_extra_head"}}
+<link rel="stylesheet" href="/static/css/profile.css">
+<link rel="stylesheet" href="/static/css/header.css">
+<link rel="stylesheet" href="/static/css/keyframes.css">
+<link rel="stylesheet" href="/static/css/footer.css">
+{{end}}
+
+{{define "profile_content"}}
+{{template "header" .}}
+
+<div class="background-circles" aria-hidden="true">
+    <div class="circle-left"></div>
+    <div class="circle-right"></div>
+</div>
+
+<main class="container">
+    <section class="profile-hero">
+        <div class="profile-avatar" id="profileAvatar" aria-label="Аватар профиля">
+            <span class="profile-avatar-initials">АИ</span>
+        </div>
+
+        <div class="profile-hero-info">
+            <h1 class="profile-hero-name">Александр Иванов</h1>
+        </div>
+    </section>
+
+    <section class="profile-layout">
+        <nav class="profile-nav" aria-label="Разделы профиля">
+            <button type="button" class="profile-nav-item active" data-section="personal">
+                Личное
+            </button>
+            <button type="button" class="profile-nav-item" data-section="notifications">
+                Уведомления
+            </button>
+            <button type="button" class="profile-nav-item" data-section="security">
+                Безопасность
+            </button>
+            <button type="button" class="profile-nav-item danger" data-section="danger">
+                Опасная зона
+            </button>
+        </nav>
+
+        <form class="profile-form" id="profileForm" autocomplete="off" novalidate>
+            <div class="profile-sections-wrap">
+                <fieldset class="profile-section" data-section="personal">
+                    <h2 class="profile-section-title">Личная информация</h2>
+
+                    <div class="profile-grid profile-grid-2">
+                        <label class="profile-field">
+                            <span class="profile-field-label">Имя</span>
+                            <input
+                                class="profile-input"
+                                type="text"
+                                name="firstname"
+                                value="Александр"
+                                autocomplete="given-name"
+                                required
+                            >
+                        </label>
+
+                        <label class="profile-field">
+                            <span class="profile-field-label">Фамилия</span>
+                            <input
+                                class="profile-input"
+                                type="text"
+                                name="lastname"
+                                value="Иванов"
+                                autocomplete="family-name"
+                            >
+                        </label>
+
+                        <label class="profile-field">
+                            <span class="profile-field-label">Email</span>
+                            <input
+                                class="profile-input"
+                                type="email"
+                                name="email"
+                                value="alex@hive.ru"
+                                autocomplete="email"
+                                readonly
+                            >
+                        </label>
+
+                        <label class="profile-field">
+                            <span class="profile-field-label">Телефон</span>
+                            <input
+                                class="profile-input"
+                                type="tel"
+                                name="phone"
+                                value="+7 900 123-45-67"
+                                autocomplete="tel"
+                                inputmode="tel"
+                            >
+                        </label>
+                    </div>
+                </fieldset>
+
+                <fieldset class="profile-section" data-section="notifications" hidden>
+                    <h2 class="profile-section-title">Уведомления</h2>
+
+                    <div class="profile-connect">
+                        <div class="profile-connect-body">
+                            <p class="profile-connect-title">Telegram</p>
+                            <p class="profile-connect-text">
+                                Получай уведомления прямо в Telegram.
+                            </p>
+                            <span class="profile-connect-status active">
+                                Подключено
+                            </span>
+                        </div>
+                        <button type="button" class="profile-btn profile-btn-ghost">
+                            Отключить
+                        </button>
+                    </div>
+
+                    <div class="profile-switches">
+                        <label class="profile-switch">
+                            <div class="profile-switch-body">
+                                <p class="profile-switch-title">Уведомления</p>
+                            </div>
+                            <input type="checkbox" name="notify_new_booking" checked>
+                            <span class="profile-switch-mark" aria-hidden="true"></span>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <fieldset class="profile-section" data-section="security" hidden>
+                    <h2 class="profile-section-title">Безопасность</h2>
+
+                    <label class="profile-field">
+                        <span class="profile-field-label">Текущий пароль</span>
+                        <div class="profile-password-wrapper">
+                            <input
+                                class="profile-input"
+                                type="password"
+                                name="current_password"
+                                autocomplete="current-password"
+                            >
+                            <button
+                                type="button"
+                                class="profile-password-toggle"
+                                data-target="current_password"
+                                aria-label="Показать пароль"
+                            >
+                                <svg class="profile-eye-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </label>
+
+                    <div class="profile-grid profile-grid-2">
+                        <label class="profile-field">
+                            <span class="profile-field-label">Новый пароль</span>
+                            <div class="profile-password-wrapper">
+                                <input
+                                    class="profile-input"
+                                    type="password"
+                                    name="new_password"
+                                    autocomplete="new-password"
+                                    minlength="6"
+                                    maxlength="32"
+                                >
+                                <button
+                                    type="button"
+                                    class="profile-password-toggle"
+                                    data-target="new_password"
+                                    aria-label="Показать пароль"
+                                >
+                                    <svg class="profile-eye-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                        <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </label>
+
+                        <label class="profile-field">
+                            <span class="profile-field-label">Повторите пароль</span>
+                            <div class="profile-password-wrapper">
+                                <input
+                                    class="profile-input"
+                                    type="password"
+                                    name="repeat_password"
+                                    autocomplete="new-password"
+                                    minlength="6"
+                                    maxlength="32"
+                                >
+                                <button
+                                    type="button"
+                                    class="profile-password-toggle"
+                                    data-target="repeat_password"
+                                    aria-label="Показать пароль"
+                                >
+                                    <svg class="profile-eye-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                        <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <fieldset class="profile-section danger" data-section="danger" hidden>
+                    <h2 class="profile-section-title danger">Опасная зона</h2>
+
+                    <div class="profile-danger-card">
+                        <div class="profile-danger-body">
+                            <p class="profile-danger-title">Выйти из аккаунта</p>
+                        </div>
+                        <button type="button" class="profile-btn profile-btn-ghost">
+                            Выйти
+                        </button>
+                    </div>
+                </fieldset>
+            </div>
+
+            <div class="profile-form-footer" id="profileFormFooter">
+                <p
+                    id="profileFormMessage"
+                    class="profile-form-message"
+                    role="status"
+                    aria-live="polite"
+                ></p>
+
+                <div class="profile-form-actions">
+                    <button type="submit" class="profile-btn profile-btn-primary" id="profileSaveBtn">
+                        Сохранить
+                    </button>
+                </div>
+            </div>
+        </form>
+    </section>
+</main>
+{{end}}
+
+{{define "profile_extra_scripts"}}
+<script src="/static/js/profile.js" defer></script>
+{{end}}

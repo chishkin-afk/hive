@@ -28,6 +28,7 @@ func New(cfg *config.Config, fs frontendService, mws ...gin.HandlerFunc) *gin.En
 	router.GET("/auth", handlers.Auth())
 	router.GET("/appointment/:offerID", handlers.Appointment())
 	router.GET("/services", handlers.Services())
+	router.GET("/profile", handlers.Profile())
 
 	return router
 }

@@ -7,5 +7,7 @@
         {{block "appointment_extra_scripts" .}}{{end}}
     {{else if eq .page "services"}}
         {{block "services_extra_scripts" .}}{{end}}
+    {{else if eq .page "profile"}}
+        {{block "profile_extra_scripts" .}}{{end}}
     {{end}}
 {{end}}
