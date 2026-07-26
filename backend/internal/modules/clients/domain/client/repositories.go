@@ -10,7 +10,7 @@ import (
 type UpdateFunc func(*Client) error
 
 type ClientPersistenceRepository interface {
-	Save(ctx context.Context, client *Client) (*Client, error)
+	Save(ctx context.Context, client *Client) error
 	Update(ctx context.Context, updFunc UpdateFunc, id uuid.UUID) (*Client, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*Client, error)
 	GetByPairIDs(ctx context.Context, userID, offerID uuid.UUID) (*Client, error)

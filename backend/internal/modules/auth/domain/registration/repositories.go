@@ -6,7 +6,7 @@ import (
 )
 
 type RegistrationPersistenceRepository interface {
-	Save(ctx context.Context, registration *Registration) (*Registration, error)
+	Save(ctx context.Context, registration *Registration) error
 	Count(ctx context.Context, fingerprint string) (int64, error)
 }
 

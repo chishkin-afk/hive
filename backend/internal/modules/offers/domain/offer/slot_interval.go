@@ -12,7 +12,7 @@ var (
 type SlotInterval time.Duration
 
 func (si SlotInterval) Validate() error {
-	if si <= 0 || time.Duration(si) >= 24*time.Hour {
+	if si < 0 || time.Duration(si) >= 24*time.Hour {
 		return ErrInvalidSlotInterval
 	}
 

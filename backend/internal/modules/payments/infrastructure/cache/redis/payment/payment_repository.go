@@ -19,92 +19,105 @@ type Cache interface {
 	Del(ctx context.Context, key ...string) *redis.IntCmd
 }
 
-type paymentCacheRepository struct {
+type paymentRepository struct {
 	cfg   *config.Config
 	log   *slog.Logger
 	cache Cache
 }
 
-func New(cfg *config.Config, log *slog.Logger, cache Cache) *paymentCacheRepository {
-	return &paymentCacheRepository{
+func New(cfg *config.Config, log *slog.Logger, cache Cache) *paymentRepository {
+	return &paymentRepository{
 		cfg:   cfg,
 		log:   log,
 		cache: cache,
 	}
 }
 
-func (pcr *paymentCacheRepository) SavePayment(ctx context.Context, payment *payment.Payment) error {
-	pcr.log.Debug("converting payment into bytes",
+// Save stores the provided payment in the cache.
+//
+// The cached data expires after the configured TTL. An error is returned if
+// the payment cannot be serialized or the cache write operation fails.
+func (pr *paymentRepository) Save(ctx context.Context, payment *payment.Payment) error {
+	pr.log.Debug("saving payment into cache",
 		slog.String("payment_id", payment.ID().String()),
 	)
 
+	if err := pr.save(ctx, pr.cache, payment); err != nil {
+		return fmt.Errorf("failed to save payment into cache: %w",
+			handleError(err),
+		)
+	}
+
+	return nil
+}
+
+func (pr *paymentRepository) save(ctx context.Context, cache Cache, payment *payment.Payment) error {
 	bytes, err := paymentToBytes(payment)
 	if err != nil {
 		return err
 	}
 
-	pcr.log.Debug("saving payment's bytes into cache",
-		slog.String("payment_id", payment.ID().String()),
+	key := getPaymentKey(payment.ID())
+	return cache.Set(ctx, key, bytes, pr.cfg.Cache.PaymentTTL).Err()
+}
+
+// Delete removes the cached payment identified by id.
+//
+// It returns an error if the cache delete operation fails.
+func (pr *paymentRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	pr.log.Debug("deleting payment from cache",
+		slog.String("payment_id", id.String()),
 	)
 
-	if err := pcr.cache.Set(ctx, pcr.getPaymentKey(payment.ID()), bytes, pcr.cfg.Cache.PaymentTTL).Err(); err != nil {
-		if safeErr, ok := pcr.handleError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to save payment into cache: %w", err)
+	if err := pr.delete(ctx, pr.cache, id); err != nil {
+		return fmt.Errorf("failed to delete payment from cache: %w",
+			handleError(err),
+		)
 	}
 
 	return nil
 }
 
-func (pcr *paymentCacheRepository) DeletePayment(ctx context.Context, id uuid.UUID) error {
-	pcr.log.Debug("deleting payment from cache",
-		slog.String("payment_id", id.String()),
-	)
-
-	if err := pcr.cache.Del(ctx, pcr.getPaymentKey(id)).Err(); err != nil {
-		if safeErr, ok := pcr.handleError(err); ok {
-			return safeErr
-		}
-	}
-
-	return nil
+func (pr *paymentRepository) delete(ctx context.Context, cache Cache, id uuid.UUID) error {
+	return cache.Del(ctx, getPaymentKey(id)).Err()
 }
 
-func (pcr *paymentCacheRepository) GetPayment(ctx context.Context, id uuid.UUID) (*payment.Payment, error) {
-	pcr.log.Debug("get bytes of payment from cache",
+// Get retrieves the cached payment identified by id.
+//
+// It returns the cached payment or an error if the cache lookup or
+
+func (pr *paymentRepository) Get(ctx context.Context, id uuid.UUID) (*payment.Payment, error) {
+	pr.log.Debug("getting payment from cache",
 		slog.String("payment_id", id.String()),
 	)
 
-	bytes, err := pcr.cache.Get(ctx, pcr.getPaymentKey(id)).Bytes()
+	payment, err := pr.get(ctx, pr.cache, id)
 	if err != nil {
-		if safeErr, ok := pcr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get payment from cache: %w", err)
+		return nil, fmt.Errorf("failed to get payment from cache: %w",
+			handleError(err),
+		)
 	}
 
-	pcr.log.Debug("converting bytes into payment",
-		slog.String("payment_id", id.String()),
-	)
+	return payment, nil
+}
+
+func (pr *paymentRepository) get(ctx context.Context, cache Cache, id uuid.UUID) (*payment.Payment, error) {
+	bytes, err := cache.Get(ctx, getPaymentKey(id)).Bytes()
+	if err != nil {
+		return nil, err
+	}
 
 	return bytesToPayment(bytes)
 }
 
-func (pcr *paymentCacheRepository) handleError(err error) (error, bool) {
-	switch {
-	case errors.Is(err, context.Canceled),
-		errors.Is(err, context.DeadlineExceeded):
-		return err, true
-	case errors.Is(err, redis.Nil):
-		return payment.ErrPaymentNotFound, true
+func handleError(err error) error {
+	if errors.Is(err, redis.Nil) {
+		return payment.ErrPaymentNotFound
 	}
 
-	return err, false
+	return err
 }
 
-func (pcr *paymentCacheRepository) getPaymentKey(id uuid.UUID) string {
+func getPaymentKey(id uuid.UUID) string {
 	return fmt.Sprintf("payment:%s", id.String())
 }

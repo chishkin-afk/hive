@@ -19,47 +19,57 @@ type DB interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-type schedulePersistenceRepository struct {
+type scheduleRepository struct {
 	log        *slog.Logger
 	db         DB
 	sqlBuilder squirrel.StatementBuilderType
 }
 
-func New(log *slog.Logger, db DB) *schedulePersistenceRepository {
-	return &schedulePersistenceRepository{
+func New(log *slog.Logger, db DB) *scheduleRepository {
+	return &scheduleRepository{
 		log:        log,
 		db:         db,
 		sqlBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
 	}
 }
 
-func (spr *schedulePersistenceRepository) Save(ctx context.Context, schedule *schedule.Schedule) (*schedule.Schedule, error) {
-	spr.log.Debug("converting domain model to record", slog.String("schedule_id", schedule.ID().String()))
-	record, err := scheduleToRecord(schedule)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert schedule: %w", err)
+// Save is a method, which internally executes an INSERT query
+// to save the schedule to the database
+// otherwise, it returns an error.
+func (sr *scheduleRepository) Save(ctx context.Context, schedule *schedule.Schedule) error {
+	sr.log.Debug("saving schedule into db",
+		slog.String("schedule_id", schedule.ID().String()),
+	)
+
+	if err := sr.save(ctx, sr.db, schedule); err != nil {
+		return fmt.Errorf("failed to save schedule into db: %w",
+			handleError(err),
+		)
 	}
 
-	spr.log.Debug("build the sql insert query", slog.String("schedule_id", record.ID.String()))
-	query, args, err := spr.buildInsertQuery(record)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build insert query: %w", err)
-	}
-
-	spr.log.Debug("exec the insert query", slog.String("query", query), slog.Int("len_args", len(args)))
-	if _, err := spr.db.ExecContext(ctx, query, args...); err != nil {
-		if safeErr, ok := spr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to save user into db: %w", err)
-	}
-
-	return recordToSchedule(record)
+	return nil
 }
 
-func (spr *schedulePersistenceRepository) buildInsertQuery(record *scheduleRecord) (string, []any, error) {
-	return spr.sqlBuilder.Insert("schedules").Columns(
+func (sr *scheduleRepository) save(ctx context.Context, db DB, schedule *schedule.Schedule) error {
+	record, err := scheduleToRecord(schedule)
+	if err != nil {
+		return err
+	}
+
+	query, args, err := sr.buildInsertQuery(record)
+	if err != nil {
+		return err
+	}
+
+	if _, err := db.ExecContext(ctx, query, args...); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (sr *scheduleRepository) buildInsertQuery(record *scheduleRecord) (string, []any, error) {
+	return sr.sqlBuilder.Insert("schedules").Columns(
 		"id",
 		"user_id",
 		"day_of_week",
@@ -76,90 +86,78 @@ func (spr *schedulePersistenceRepository) buildInsertQuery(record *scheduleRecor
 	).ToSql()
 }
 
-func (spr *schedulePersistenceRepository) GetSchedulesByUserID(ctx context.Context, userID uuid.UUID) ([]*schedule.Schedule, error) {
-	spr.log.Debug("build the list query by user's id", slog.String("user_id", userID.String()))
-	query, args, err := spr.buildListQuery(userID)
+// ListByUserID is a method that retrieves
+// all schedules based on a user ID
+// otherwise, it returns an error.
+func (sr *scheduleRepository) ListByUserID(ctx context.Context, userID uuid.UUID) ([]*schedule.Schedule, error) {
+	sr.log.Debug("listing schedules by user's id",
+		slog.String("user_id", userID.String()),
+	)
+
+	list, err := sr.listByUserID(ctx, sr.db, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build list query: %w", err)
+		return nil, err
 	}
 
-	spr.log.Debug("exec the list query", slog.String("query", query))
-	rows, err := spr.db.QueryContext(ctx, query, args...)
-	if err != nil {
-		if safeErr, ok := spr.handleError(err); ok {
-			return nil, safeErr
-		}
+	return list, nil
+}
 
-		return nil, fmt.Errorf("failed to get list of schedules: %w", err)
+func (sr *scheduleRepository) listByUserID(ctx context.Context, db DB, userID uuid.UUID) ([]*schedule.Schedule, error) {
+	query, args, err := sr.buildListQuery(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
 	}
 	defer rows.Close()
 
-	spr.log.Debug("map the rows of schedules", slog.String("user_id", userID.String()))
-	records, err := spr.mapRows(rows)
-	if err != nil {
-		if safeErr, ok := spr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to map list of schedules: %w", err)
-	}
-
-	result := make([]*schedule.Schedule, len(records))
-	for i, record := range records {
-		schedule, err := recordToSchedule(&record)
-		if err != nil {
-			return nil, err
-		}
-
-		result[i] = schedule
-	}
-
-	return result, nil
+	return mapRows(rows)
 }
 
-func (spr *schedulePersistenceRepository) buildListQuery(userID uuid.UUID) (string, []any, error) {
-	return spr.sqlBuilder.Select(
+func (sr *scheduleRepository) buildListQuery(userID uuid.UUID) (string, []any, error) {
+	return sr.sqlBuilder.Select(
 		"id",
 		"user_id",
 		"day_of_week",
 		"start_time",
 		"end_time",
 		"breaks",
-	).From("schedules").Where("user_id = ?", userID).ToSql()
+	).From("schedules").Limit(7).Where("user_id = ?", userID).ToSql()
 }
 
-func (spr *schedulePersistenceRepository) GetScheduleByUserID(ctx context.Context, userID uuid.UUID, dayOfWeek uint8) (*schedule.Schedule, error) {
-	spr.log.Debug("build the sql select query by user's id and day_of_week",
+// GetByUserID is a method that returns a schedule
+// based on the user ID and day of the week,
+// or an error otherwise.
+func (sr *scheduleRepository) GetByUserID(ctx context.Context, userID uuid.UUID, dayOfWeek uint8) (*schedule.Schedule, error) {
+	sr.log.Debug("getting schedule by user's id",
 		slog.String("user_id", userID.String()),
-		slog.Uint64("day_of_week", uint64(dayOfWeek)),
-	)
-	query, args, err := spr.buildSelectQueryByUserID(userID, dayOfWeek)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build select query by user's id and day_of_week: %w", err)
-	}
-
-	spr.log.Debug("exec the select query", slog.String("query", query))
-	row := spr.db.QueryRowContext(ctx, query, args...)
-
-	spr.log.Debug("map the row of schedule",
-		slog.String("user_id", userID.String()),
-		slog.Uint64("day_of_week", uint64(dayOfWeek)),
+		slog.Int("day_of_week", int(dayOfWeek)),
 	)
 
-	record, err := spr.mapRow(row)
+	schedule, err := sr.getByUserID(ctx, sr.db, userID, dayOfWeek)
 	if err != nil {
-		if safeErr, ok := spr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get schedule by user's id and day of week: %w", err)
+		return nil, fmt.Errorf("failed to get schedule by user's id: %w",
+			handleError(err),
+		)
 	}
 
-	return recordToSchedule(record)
+	return schedule, nil
 }
 
-func (spr *schedulePersistenceRepository) buildSelectQueryByUserID(userID uuid.UUID, dayOfWeek uint8) (string, []any, error) {
-	return spr.sqlBuilder.Select(
+func (sr *scheduleRepository) getByUserID(ctx context.Context, db DB, userID uuid.UUID, dayOfWeek uint8) (*schedule.Schedule, error) {
+	query, args, err := sr.buildSelectByUserIDQuery(userID, dayOfWeek)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (sr *scheduleRepository) buildSelectByUserIDQuery(userID uuid.UUID, dayOfWeek uint8) (string, []any, error) {
+	return sr.sqlBuilder.Select(
 		"id",
 		"user_id",
 		"day_of_week",
@@ -169,31 +167,35 @@ func (spr *schedulePersistenceRepository) buildSelectQueryByUserID(userID uuid.U
 	).From("schedules").Where("user_id = ? AND day_of_week = ?", userID, dayOfWeek).ToSql()
 }
 
-func (spr *schedulePersistenceRepository) GetScheduleByID(ctx context.Context, id uuid.UUID) (*schedule.Schedule, error) {
-	spr.log.Debug("build the select query by id", slog.String("schedule_id", id.String()))
-	query, args, err := spr.buildSelectQueryByID(id)
+// GetByID is a method that retrieves
+// a schedule from the database using its ID,
+// or an error otherwise
+func (sr *scheduleRepository) GetByID(ctx context.Context, id uuid.UUID) (*schedule.Schedule, error) {
+	sr.log.Debug("getting schedule by id",
+		slog.String("schedule_id", id.String()),
+	)
+
+	schedule, err := sr.getByID(ctx, sr.db, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build select query: %w", err)
+		return nil, fmt.Errorf("failed to get schedule by id: %w",
+			handleError(err),
+		)
 	}
 
-	spr.log.Debug("exec the select query by schedule's id", slog.String("query", query))
-	row := spr.db.QueryRowContext(ctx, query, args...)
-
-	spr.log.Debug("map the row of schedule", slog.String("schedule_id", id.String()))
-	record, err := spr.mapRow(row)
-	if err != nil {
-		if safeErr, ok := spr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get schedule by id: %w", err)
-	}
-
-	return recordToSchedule(record)
+	return schedule, nil
 }
 
-func (spr *schedulePersistenceRepository) buildSelectQueryByID(id uuid.UUID) (string, []any, error) {
-	return spr.sqlBuilder.Select(
+func (sr *scheduleRepository) getByID(ctx context.Context, db DB, id uuid.UUID) (*schedule.Schedule, error) {
+	query, args, err := sr.buildSelectByIDQuery(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (sr *scheduleRepository) buildSelectByIDQuery(id uuid.UUID) (string, []any, error) {
+	return sr.sqlBuilder.Select(
 		"id",
 		"user_id",
 		"day_of_week",
@@ -203,59 +205,38 @@ func (spr *schedulePersistenceRepository) buildSelectQueryByID(id uuid.UUID) (st
 	).From("schedules").Where("id = ?", id).ToSql()
 }
 
-func (spr *schedulePersistenceRepository) Update(ctx context.Context, updSchedule *schedule.Schedule) (*schedule.Schedule, error) {
-	spr.log.Debug("convert upd schedule to record", slog.String("schedule_id", updSchedule.ID().String()))
-	updRecord, err := scheduleToRecord(updSchedule)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert domain into record: %w", err)
+// Update persists changes to an existing schedule.
+//
+// The schedule is matched by its ID, and its mutable fields are updated in the
+// database. An error is returned if the update operation fails.
+func (sr *scheduleRepository) Update(ctx context.Context, updSchedule *schedule.Schedule) error {
+	sr.log.Debug("updating the fields of schedules by id",
+		slog.String("schedule_id", updSchedule.ID().String()),
+	)
+
+	if err := sr.update(ctx, sr.db, updSchedule); err != nil {
+		return fmt.Errorf("failed to update schedule: %w",
+			handleError(err),
+		)
 	}
 
-	spr.log.Debug("build the sql update query", slog.String("schedule_id", updRecord.ID.String()))
-	query, args, err := spr.buildUpdateQuery(updRecord)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build update query: %w", err)
-	}
-
-	spr.log.Debug("exec the sql update query", slog.String("query", query))
-	result, err := spr.db.ExecContext(ctx, query, args...)
-	if err != nil {
-		if safeErr, ok := spr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to update schedule: %w", err)
-	}
-
-	if count, _ := result.RowsAffected(); count == 0 {
-		return nil, schedule.ErrScheduleNotFound
-	}
-
-	return recordToSchedule(updRecord)
+	return nil
 }
 
-func (spr *schedulePersistenceRepository) buildUpdateQuery(updRecord *scheduleRecord) (string, []any, error) {
-	return spr.sqlBuilder.Update("schedules").SetMap(map[string]any{
-		"start_time": updRecord.StartTime,
-		"end_time":   updRecord.EndTime,
-		"breaks":     updRecord.Breaks,
-	}).Where("id = ?", updRecord.ID).ToSql()
-}
-
-func (spr *schedulePersistenceRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	spr.log.Debug("build the sql delete query", slog.String("id", id.String()))
-	query, args, err := spr.buildDeleteQuery(id)
+func (sr *scheduleRepository) update(ctx context.Context, db DB, updSchedule *schedule.Schedule) error {
+	record, err := scheduleToRecord(updSchedule)
 	if err != nil {
-		return fmt.Errorf("failed to build delete query: %w", err)
+		return err
 	}
 
-	spr.log.Debug("exec the delete query", slog.String("query", query))
-	result, err := spr.db.ExecContext(ctx, query, args...)
+	query, args, err := sr.buildUpdateQuery(record)
 	if err != nil {
-		if safeErr, ok := spr.handleError(err); ok {
-			return safeErr
-		}
+		return err
+	}
 
-		return fmt.Errorf("failed to build delete query: %w", err)
+	result, err := db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
 	}
 
 	if count, _ := result.RowsAffected(); count == 0 {
@@ -265,34 +246,75 @@ func (spr *schedulePersistenceRepository) Delete(ctx context.Context, id uuid.UU
 	return nil
 }
 
-func (spr *schedulePersistenceRepository) buildDeleteQuery(id uuid.UUID) (string, []any, error) {
-	return spr.sqlBuilder.Delete("schedules").Where("id = ?", id).ToSql()
+func (sr *scheduleRepository) buildUpdateQuery(updRecord *scheduleRecord) (string, []any, error) {
+	return sr.sqlBuilder.Update("schedules").SetMap(map[string]any{
+		"start_time": updRecord.StartTime,
+		"end_time":   updRecord.EndTime,
+		"breaks":     updRecord.Breaks,
+	}).Where("id = ?", updRecord.ID).ToSql()
 }
 
-func (spr *schedulePersistenceRepository) handleError(err error) (error, bool) {
-	switch {
-	case errors.Is(err, context.Canceled),
-		errors.Is(err, context.DeadlineExceeded):
-		return err, true
-	case errors.Is(err, sql.ErrNoRows):
-		return schedule.ErrScheduleNotFound, true
+// Delete permanently removes the schedule with the specified ID.
+//
+// If no schedule with the given ID exists, the behavior depends on the
+// underlying database implementation. An error is returned only if the
+// delete operation fails.
+func (sr *scheduleRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	sr.log.Debug("deleting schedule by id",
+		slog.String("schedule_id", id.String()),
+	)
+
+	if err := sr.delete(ctx, sr.db, id); err != nil {
+		return fmt.Errorf("failed to delete schedule by id: %w",
+			handleError(err),
+		)
+	}
+
+	return nil
+}
+
+func (sr *scheduleRepository) delete(ctx context.Context, db DB, id uuid.UUID) error {
+	query, args, err := sr.buildDeleteQuery(id)
+	if err != nil {
+		return err
+	}
+
+	result, err := db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	if count, _ := result.RowsAffected(); count == 0 {
+		return schedule.ErrScheduleNotFound
+	}
+
+	return nil
+}
+
+func (sr *scheduleRepository) buildDeleteQuery(id uuid.UUID) (string, []any, error) {
+	return sr.sqlBuilder.Delete("schedules").Where("id = ?", id).ToSql()
+}
+
+func handleError(err error) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return schedule.ErrScheduleNotFound
 	}
 
 	var pqError *pq.Error
 	if errors.As(err, &pqError) {
 		switch pqError.Code {
 		case "23505":
-			return schedule.ErrScheduleAlreadyExists, true
+			return schedule.ErrScheduleAlreadyExists
 		case "23503":
-			return schedule.ErrUserNotFound, true
+			return schedule.ErrUserNotFound
 		}
 	}
 
-	return err, false
+	return err
 }
 
-func (spr *schedulePersistenceRepository) mapRows(rows *sql.Rows) ([]scheduleRecord, error) {
-	var records []scheduleRecord
+func mapRows(rows *sql.Rows) ([]*schedule.Schedule, error) {
+	var schedules []*schedule.Schedule
 	for rows.Next() {
 		var record scheduleRecord
 		if err := rows.Scan(
@@ -306,17 +328,22 @@ func (spr *schedulePersistenceRepository) mapRows(rows *sql.Rows) ([]scheduleRec
 			return nil, err
 		}
 
-		records = append(records, record)
+		schedule, err := recordToSchedule(&record)
+		if err != nil {
+			return nil, err
+		}
+
+		schedules = append(schedules, schedule)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return records, nil
+	return schedules, nil
 }
 
-func (spr *schedulePersistenceRepository) mapRow(row *sql.Row) (*scheduleRecord, error) {
+func mapRow(row *sql.Row) (*schedule.Schedule, error) {
 	var record scheduleRecord
 	if err := row.Scan(
 		&record.ID,
@@ -333,5 +360,5 @@ func (spr *schedulePersistenceRepository) mapRow(row *sql.Row) (*scheduleRecord,
 		return nil, err
 	}
 
-	return &record, nil
+	return recordToSchedule(&record)
 }

@@ -163,8 +163,7 @@ func (s *ScheduleService) getUserID(ctx context.Context) (uuid.UUID, error) {
 }
 
 func (s *ScheduleService) storeOfferPersistence(ctx context.Context, schedule *schedule.Schedule) (*schedule.Schedule, error) {
-	savedSchedule, err := s.schedulePersistence.Save(ctx, schedule)
-	if err != nil {
+	if err := s.schedulePersistence.Save(ctx, schedule); err != nil {
 		s.log.Error("failed to save schedule into db",
 			slog.String("error", err.Error()),
 			slog.String("schedule_id", schedule.ID().String()),
@@ -173,7 +172,7 @@ func (s *ScheduleService) storeOfferPersistence(ctx context.Context, schedule *s
 		return nil, s.handleRepoError(err)
 	}
 
-	return savedSchedule, nil
+	return schedule, nil
 }
 
 func (s *ScheduleService) createSchedule(req *requests.CreateSchedule, userID uuid.UUID) (*schedule.Schedule, error) {
@@ -217,7 +216,7 @@ func (s *ScheduleService) createSchedule(req *requests.CreateSchedule, userID uu
 }
 
 func (s *ScheduleService) listSchedulesFromCache(ctx context.Context, userID uuid.UUID) ([]*schedule.Schedule, bool) {
-	list, err := s.scheduleCache.GetSchedules(ctx, userID)
+	list, err := s.scheduleCache.Get(ctx, userID)
 	if err != nil {
 		if !errors.Is(err, schedule.ErrScheduleNotFound) {
 			s.log.Warn("failed to get schedules from cache",
@@ -245,7 +244,7 @@ func (s *ScheduleService) schedulesToDTO(schedules []*schedule.Schedule) *respon
 }
 
 func (s *ScheduleService) listSchedulesFromPersistence(ctx context.Context, userID uuid.UUID) ([]*schedule.Schedule, error) {
-	list, err := s.schedulePersistence.GetSchedulesByUserID(ctx, userID)
+	list, err := s.schedulePersistence.ListByUserID(ctx, userID)
 	if err != nil {
 		s.log.Error("failed to get schedules from db",
 			slog.String("error", err.Error()),
@@ -259,11 +258,11 @@ func (s *ScheduleService) listSchedulesFromPersistence(ctx context.Context, user
 }
 
 func (s *ScheduleService) storeScheduleCache(ctx context.Context, list []*schedule.Schedule, userID uuid.UUID) error {
-	return s.scheduleCache.SaveSchedules(ctx, userID, list)
+	return s.scheduleCache.Save(ctx, userID, list)
 }
 
 func (s *ScheduleService) getScheduleFromPersistence(ctx context.Context, userID uuid.UUID, dayOfWeek uint8) (*schedule.Schedule, error) {
-	schedule, err := s.schedulePersistence.GetScheduleByUserID(ctx, userID, dayOfWeek)
+	schedule, err := s.schedulePersistence.GetByUserID(ctx, userID, dayOfWeek)
 	if err != nil {
 		s.log.Error("failed to get schedule from db",
 			slog.String("error", err.Error()),
@@ -278,7 +277,7 @@ func (s *ScheduleService) getScheduleFromPersistence(ctx context.Context, userID
 }
 
 func (s *ScheduleService) getSchedulePersistenceByID(ctx context.Context, id uuid.UUID) (*schedule.Schedule, error) {
-	schedule, err := s.schedulePersistence.GetScheduleByID(ctx, id)
+	schedule, err := s.schedulePersistence.GetByID(ctx, id)
 	if err != nil {
 		s.log.Error("failed to get schedule by id",
 			slog.String("error", err.Error()),
@@ -363,8 +362,7 @@ func (s *ScheduleService) applyChanges(updSchedule *schedule.Schedule, req *requ
 }
 
 func (s *ScheduleService) updateSchedulePersistence(ctx context.Context, updSchedule *schedule.Schedule) (*schedule.Schedule, error) {
-	updatedSchedule, err := s.schedulePersistence.Update(ctx, updSchedule)
-	if err != nil {
+	if err := s.schedulePersistence.Update(ctx, updSchedule); err != nil {
 		s.log.Error("failed to update schedule in db",
 			slog.String("error", err.Error()),
 			slog.String("schedule_id", updSchedule.ID().String()),
@@ -373,11 +371,11 @@ func (s *ScheduleService) updateSchedulePersistence(ctx context.Context, updSche
 		return nil, s.handleRepoError(err)
 	}
 
-	return updatedSchedule, nil
+	return updSchedule, nil
 }
 
 func (s *ScheduleService) clearSchedulesCache(ctx context.Context, userID uuid.UUID) error {
-	return s.scheduleCache.DeleteSchedules(ctx, userID)
+	return s.scheduleCache.Delete(ctx, userID)
 }
 
 func (s *ScheduleService) deleteSchedulePersistence(ctx context.Context, id uuid.UUID) error {

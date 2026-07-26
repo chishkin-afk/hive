@@ -9,6 +9,8 @@ service:
   sending_duration: 1m
   tg_bot_url: https://t.me/hiveeeeeeeeeeeebot
   retry_count: 3
+  change_password_ttl: 2m
+  change_password_url: http://localhost:8091/reset/
 
 middlewares:
   rate_limit:

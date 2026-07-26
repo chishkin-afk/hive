@@ -15,10 +15,13 @@ type authService interface {
 	Confirm(ctx context.Context, req *requests.ConfirmUser) (*responses.Token, error)
 	Login(ctx context.Context, req *requests.Login) (*responses.Token, error)
 	Update(ctx context.Context, req *requests.UpdateUser) (*responses.User, error)
+	UnbindTg(ctx context.Context) (*responses.User, error)
 	GetSelfUser(ctx context.Context) (*responses.User, error)
 	GetTgBindingURL(ctx context.Context) (*responses.TgBinding, error)
 	BindTG(ctx context.Context, req *requests.BindTG) (*responses.User, error)
 	Lookup(ctx context.Context, req *requests.Lookup) (*responses.LookupUsers, error)
+	ForgetPassword(ctx context.Context, req *requests.ForgetPassword) error
+	ChangePassword(ctx context.Context, req *requests.ChangePassword) (*responses.Token, error)
 }
 
 // @Summary      Prepare the user
@@ -61,7 +64,7 @@ func (h *HandlerFuncs) Prepare() gin.HandlerFunc {
 // @Accept       json
 // @Produce      json
 // @Param        request body requests.ConfirmUser true "data for confirming"
-// @Success      200  {object}  responses.Token
+// @Success      204  {null}
 // @Failure      400  {object}  responses.ErrMsg
 // @Failure      403  {object}  responses.ErrMsg
 // @Failure      408  {object}  responses.ErrMsg
@@ -85,7 +88,12 @@ func (h *HandlerFuncs) Confirm() gin.HandlerFunc {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, resp)
+		ctx.SetCookie(
+			"token",
+			resp.Token,
+			int(h.cfg.Authorization.JWT.TokenTTL.Seconds()),
+			"", "", true, true)
+		ctx.Status(http.StatusNoContent)
 	}
 }
 
@@ -120,7 +128,12 @@ func (h *HandlerFuncs) Login() gin.HandlerFunc {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, resp)
+		ctx.SetCookie(
+			"token",
+			resp.Token,
+			int(h.cfg.Authorization.JWT.TokenTTL.Seconds()),
+			"", "", true, true)
+		ctx.Status(http.StatusNoContent)
 	}
 }
 
@@ -296,6 +309,102 @@ func (h *HandlerFuncs) Lookup() gin.HandlerFunc {
 		}
 
 		resp, err := h.authService.Lookup(ctx.Request.Context(), &req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Summary      Send the change password url
+// @Description  Send the change password url
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Success      202  {null}
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /auth/forget-password [post]
+func (h *HandlerFuncs) ForgetPassword() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req requests.ForgetPassword
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		if err := h.authService.ForgetPassword(ctx.Request.Context(), &req); err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.Status(http.StatusAccepted)
+	}
+}
+
+// @Summary      Change the password's field
+// @Description  Change the password's field by reset token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  responses.Token
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /auth/password [patch]
+func (h *HandlerFuncs) ChangePassword() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req requests.ChangePassword
+		if err := ctx.BindJSON(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		resp, err := h.authService.ChangePassword(ctx.Request.Context(), &req)
+		if err != nil {
+			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
+				Error: err.Error(),
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, resp)
+	}
+}
+
+// @Summary      Unbind the tg from user
+// @Description  Turn off notifications and delete tg's chat id
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  responses.User
+// @Failure      400  {object}  responses.ErrMsg
+// @Failure      401  {object}  responses.ErrMsg
+// @Failure      403  {object}  responses.ErrMsg
+// @Failure      404  {object}  responses.ErrMsg
+// @Failure      500  {object}  responses.ErrMsg
+// @Security     BearerAuth
+// @Router       /auth/unbind-tg [patch]
+func (h *HandlerFuncs) UnbindTg() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		resp, err := h.authService.UnbindTg(ctx.Request.Context())
 		if err != nil {
 			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
 				Error: err.Error(),

@@ -79,6 +79,12 @@ func (os *OfferService) Update(ctx context.Context, req *requests.UpdateOffer) (
 		return nil, err
 	}
 
+	if err := os.clearOfferCache(ctx, updatedOffer.ID()); err != nil {
+		os.log.Warn("failed to clear offer's cache",
+			slog.String("error", err.Error()),
+		)
+	}
+
 	return os.offerToDTO(updatedOffer), nil
 }
 
@@ -101,6 +107,12 @@ func (os *OfferService) Delete(ctx context.Context, id uuid.UUID) error {
 
 	if err := os.deleteOfferPersistence(ctx, offer.ID()); err != nil {
 		return err
+	}
+
+	if err := os.clearOfferCache(ctx, offer.ID()); err != nil {
+		os.log.Warn("failed to clear offer's cache",
+			slog.String("error", err.Error()),
+		)
 	}
 
 	return nil
@@ -140,6 +152,10 @@ func (os *OfferService) ListByAuthorID(ctx context.Context, id uuid.UUID, page, 
 	return os.listToDTO(list, totalCount, page, limit), nil
 }
 
+func (os *OfferService) clearOfferCache(ctx context.Context, id uuid.UUID) error {
+	return os.offerCache.Del(ctx, id)
+}
+
 func (os *OfferService) getUserID(ctx context.Context) (uuid.UUID, error) {
 	raw := ctx.Value(contextvalue.KeyUserID)
 	if raw == nil {
@@ -170,8 +186,7 @@ func (os *OfferService) buildNewOffer(req *requests.CreateOffer, userID uuid.UUI
 }
 
 func (os *OfferService) storeOfferPersistence(ctx context.Context, offer *offer.Offer) (*offer.Offer, error) {
-	savedOffer, err := os.offerPersistence.Save(ctx, offer)
-	if err != nil {
+	if err := os.offerPersistence.Save(ctx, offer); err != nil {
 		os.log.Error("failed to save offer into db",
 			slog.String("error", err.Error()),
 			slog.String("offer_id", offer.ID().String()),
@@ -180,7 +195,7 @@ func (os *OfferService) storeOfferPersistence(ctx context.Context, offer *offer.
 		return nil, os.handleRepoError(err)
 	}
 
-	return savedOffer, nil
+	return offer, nil
 }
 
 func (os *OfferService) offerToDTO(offer *offer.Offer) *responses.Offer {
@@ -262,8 +277,7 @@ func (os *OfferService) applyChanges(updOffer *offer.Offer, req *requests.Update
 }
 
 func (os *OfferService) updateOfferPersistence(ctx context.Context, updOffer *offer.Offer) (*offer.Offer, error) {
-	updatedOffer, err := os.offerPersistence.Update(ctx, updOffer)
-	if err != nil {
+	if err := os.offerPersistence.Update(ctx, updOffer); err != nil {
 		os.log.Error("failed to update persistence offer",
 			slog.String("error", err.Error()),
 			slog.String("offer_id", updOffer.ID().String()),
@@ -272,7 +286,7 @@ func (os *OfferService) updateOfferPersistence(ctx context.Context, updOffer *of
 		return nil, os.handleRepoError(err)
 	}
 
-	return updatedOffer, nil
+	return updOffer, nil
 }
 
 func (os *OfferService) deleteOfferPersistence(ctx context.Context, id uuid.UUID) error {

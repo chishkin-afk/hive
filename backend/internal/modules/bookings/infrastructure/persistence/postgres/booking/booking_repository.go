@@ -18,17 +18,21 @@ type DB interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
+type WithTx interface {
+	DB
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
-type bookingPersistenceRepository struct {
+type bookingRepository struct {
 	log        *slog.Logger
-	db         DB
+	db         WithTx
 	sqlBuilder squirrel.StatementBuilderType
 }
 
-func New(log *slog.Logger, db DB) *bookingPersistenceRepository {
-	return &bookingPersistenceRepository{
+func New(log *slog.Logger, db WithTx) *bookingRepository {
+	return &bookingRepository{
 		log:        log,
 		db:         db,
 		sqlBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
@@ -39,105 +43,61 @@ func New(log *slog.Logger, db DB) *bookingPersistenceRepository {
 // then requests the coach's offer ID, and calls the callback function with these arguments.
 // If the callback function does not return an error, it saves the user.
 // Everything happens within a transaction
-func (bpr *bookingPersistenceRepository) Save(ctx context.Context, offerID uuid.UUID, startTime, endTime time.Time, cbFunc booking.CreateFunc) (*booking.Booking, error) {
-	bpr.log.Debug("start the transaction to save booking",
-		slog.String("offer_id", offerID.String()),
-	)
-
-	tx, err := bpr.db.BeginTx(ctx, &sql.TxOptions{
-		Isolation: sql.LevelReadCommitted,
-		ReadOnly:  false,
-	})
+func (br *bookingRepository) Save(ctx context.Context, offerID uuid.UUID, startTime, endTime time.Time, cbFunc booking.CreateFunc) (*booking.Booking, error) {
+	br.log.Debug("start tx")
+	tx, rollback, err := br.beginTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start tx: %w", err)
 	}
-	defer func() {
-		if err != nil {
-			if err := tx.Rollback(); err != nil {
-				bpr.log.Error("failed to rollback tx", slog.String("error", err.Error()))
-			}
-		}
-	}()
+	defer rollback()
 
-	records, err := bpr.getListAllPerDay(ctx, tx, offerID, startTime, endTime)
-	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
+	br.log.Debug("listing all bookings per day",
+		slog.String("offer_id", offerID.String()),
+	)
 
-		return nil, fmt.Errorf("failed to count bookings per day: %w", err)
-	}
-
-	// Call the main validation function (with business-logic)
-	booking, err := cbFunc(ctx, bpr.getBookings(records))
+	bookings, err := br.listAllPerDay(ctx, tx, offerID, startTime, endTime)
 	if err != nil {
 		return nil, err
 	}
 
-	record, err := bpr.insertTx(ctx, tx, bookingToRecord(booking))
+	booking, err := cbFunc(ctx, bookings)
 	if err != nil {
 		return nil, err
+	}
+
+	br.log.Debug("saving booking into db",
+		slog.String("booking_id", booking.ID().String()),
+	)
+
+	if err := br.save(ctx, tx, booking); err != nil {
+		return nil, fmt.Errorf("failed to save booking into db: %w",
+			handleError(err),
+		)
 	}
 
 	if err := tx.Commit(); err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
 		return nil, fmt.Errorf("failed to commit tx: %w", err)
 	}
 
-	return recordToBooking(record), nil
+	return booking, nil
 }
 
-func (bpr *bookingPersistenceRepository) getBookings(records []*bookingRecord) []*booking.Booking {
-	bookings := make([]*booking.Booking, len(records))
-
-	for i, record := range records {
-		bookings[i] = recordToBooking(record)
-	}
-
-	return bookings
-}
-
-func (bpr *bookingPersistenceRepository) insertTx(ctx context.Context, tx *sql.Tx, record *bookingRecord) (*bookingRecord, error) {
-	bpr.log.Debug("build the insert query", slog.String("booking_id", record.ID.String()))
-	insertQuery, insertArgs, err := bpr.buildInsertQuery(record)
+func (br *bookingRepository) save(ctx context.Context, db DB, booking *booking.Booking) error {
+	record := bookingToRecord(booking)
+	query, args, err := br.buildInsertQuery(record)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build insert query: %w", err)
+		return err
 	}
 
-	bpr.log.Debug("exec the insert query", slog.String("query", insertQuery))
-	if _, err := tx.ExecContext(ctx, insertQuery, insertArgs...); err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to save booking into db: %w", err)
+	if _, err := db.ExecContext(ctx, query, args...); err != nil {
+		return err
 	}
 
-	return record, nil
+	return nil
 }
 
-func (bpr *bookingPersistenceRepository) getListAllPerDay(ctx context.Context, tx *sql.Tx, offerID uuid.UUID, startTime, endTime time.Time) ([]*bookingRecord, error) {
-	bpr.log.Debug("build count query per day")
-	query, args, err := bpr.buildListAllPerDay(offerID, startTime, endTime)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build list all per day query: %w", err)
-	}
-
-	bpr.log.Debug("exec the list all per day query", slog.String("query", query))
-	rows, err := tx.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return bpr.mapRows(rows)
-}
-
-func (bpr *bookingPersistenceRepository) buildInsertQuery(record *bookingRecord) (string, []any, error) {
-	return bpr.sqlBuilder.Insert("bookings").Columns(
+func (br *bookingRepository) buildInsertQuery(record *bookingRecord) (string, []any, error) {
+	return br.sqlBuilder.Insert("bookings").Columns(
 		"id",
 		"offer_id",
 		"user_id",
@@ -158,66 +118,74 @@ func (bpr *bookingPersistenceRepository) buildInsertQuery(record *bookingRecord)
 	).ToSql()
 }
 
-// ListByOfferID returns a list of all bookings for a specific offer.
-// It is important to check whether the user is the author of the offer before doing so
-func (bpr *bookingPersistenceRepository) ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) ([]*booking.Booking, int64, error) {
-	bpr.log.Debug("build the count query by offer's id", slog.String("offer_id", offerID.String()))
-	countQuery, countArgs, err := bpr.buildCountQueryByOfferID(offerID)
+func (br *bookingRepository) listAllPerDay(
+	ctx context.Context,
+	db DB,
+	offerID uuid.UUID,
+	startTime,
+	endTime time.Time,
+) ([]*booking.Booking, error) {
+	query, args, err := br.buildListAllPerTime(
+		offerID,
+		startTime,
+		endTime,
+	)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to build count query: %w", err)
+		return nil, err
 	}
 
-	bpr.log.Debug("exec the count query", slog.String("query", countQuery))
-	count, err := bpr.mapCountRow(bpr.db.QueryRowContext(ctx, countQuery, countArgs...))
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, 0, safeErr
-		}
-
-		return nil, 0, fmt.Errorf("failed to count all bookings: %w", err)
-	}
-
-	bpr.log.Debug("build the list query", slog.String("offer_id", offerID.String()))
-	listQuery, listArgs, err := bpr.buildListByOfferIDQuery(offerID, page, limit)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to build list query: %w", err)
-	}
-
-	bpr.log.Debug("exec the list query", slog.String("query", listQuery))
-	rows, err := bpr.db.QueryContext(ctx, listQuery, listArgs...)
-	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, 0, safeErr
-		}
-
-		return nil, 0, fmt.Errorf("failed to get list of bookings: %w", err)
+		return nil, err
 	}
 	defer rows.Close()
 
-	records, err := bpr.mapRows(rows)
+	return mapRows(rows)
+}
+
+// ListByOfferID returns a list of all bookings for a specific offer.
+// It is important to check whether
+// the user is the author of the offer before doing so
+func (br *bookingRepository) ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) ([]*booking.Booking, int64, error) {
+	br.log.Debug("counting booking by offer's id",
+		slog.String("offer_id", offerID.String()),
+	)
+
+	count, err := br.countByOfferID(ctx, br.db, offerID)
 	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, 0, safeErr
-		}
-
-		return nil, 0, fmt.Errorf("failed to map rows: %w", err)
+		return nil, 0, fmt.Errorf("failed to count bookings: %w",
+			handleError(err),
+		)
 	}
 
-	bookings := make([]*booking.Booking, len(records))
-	for i, record := range records {
-		bookings[i] = recordToBooking(record)
+	bookings, err := br.listByOfferID(ctx, br.db, offerID, page, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list bookings by offer's id: %w",
+			handleError(err),
+		)
 	}
 
-	return bookings, int64(count), nil
+	return bookings, count, nil
 }
 
-func (bpr *bookingPersistenceRepository) buildCountQueryByOfferID(offerID uuid.UUID) (string, []any, error) {
-	return bpr.buildRawCountQuery().Where("offer_id = ?", offerID).ToSql()
+func (br *bookingRepository) listByOfferID(ctx context.Context, db DB, offerID uuid.UUID, page, limit uint32) ([]*booking.Booking, error) {
+	query, args, err := br.buildListByOfferIDQuery(offerID, page, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return mapRows(rows)
 }
 
-func (bpr *bookingPersistenceRepository) buildListByOfferIDQuery(offerID uuid.UUID, page, limit uint32) (string, []any, error) {
+func (br *bookingRepository) buildListByOfferIDQuery(offerID uuid.UUID, page, limit uint32) (string, []any, error) {
 	offset := limit * (page - 1)
-	return bpr.sqlBuilder.Select(
+	return br.sqlBuilder.Select(
 		"id",
 		"offer_id",
 		"user_id",
@@ -229,66 +197,65 @@ func (bpr *bookingPersistenceRepository) buildListByOfferIDQuery(offerID uuid.UU
 	).From("bookings").Limit(uint64(limit)).Offset(uint64(offset)).Where("offer_id = ?", offerID).ToSql()
 }
 
-// ListByUserID is a function that returns a list of all bookings for a specific user.
+func (br *bookingRepository) countByOfferID(ctx context.Context, db DB, offerID uuid.UUID) (int64, error) {
+	query, args, err := br.buildCountByOfferIDQuery(offerID)
+	if err != nil {
+		return 0, nil
+	}
+
+	return mapCountRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (br *bookingRepository) buildCountByOfferIDQuery(offerID uuid.UUID) (string, []any, error) {
+	return br.sqlBuilder.Select("count(*)").
+		From("bookings").
+		Where("offer_id = ?", offerID).
+		ToSql()
+}
+
+// ListByUserID is a function that returns
+// a list of all bookings for a specific user.
 // The UserID should be taken from the token
-func (bpr *bookingPersistenceRepository) ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*booking.Booking, int64, error) {
-	bpr.log.Debug("build the count query", slog.String("user_id", userID.String()))
-	countQuery, countArgs, err := bpr.buildCountQueryByUserID(userID)
+func (br *bookingRepository) ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*booking.Booking, int64, error) {
+	br.log.Debug("counting bookings by user's id",
+		slog.String("user_id", userID.String()),
+	)
+
+	count, err := br.countByUserID(ctx, br.db, userID)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to build count query: %w", err)
+		return nil, 0, fmt.Errorf("failed to count bookings by user's id: %w",
+			handleError(err),
+		)
 	}
 
-	bpr.log.Debug("exec the count query", slog.String("query", countQuery))
-	count, err := bpr.mapCountRow(bpr.db.QueryRowContext(ctx, countQuery, countArgs...))
+	bookings, err := br.listByUserID(ctx, br.db, userID, page, limit)
 	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, 0, safeErr
-		}
-
-		return nil, 0, fmt.Errorf("failed to count bookings by user's id: %w", err)
+		return nil, 0, fmt.Errorf("failed to list bookings by user's id: %w",
+			handleError(err),
+		)
 	}
 
-	bpr.log.Debug("build the list query by user id", slog.String("user_id", userID.String()))
-	listQuery, listArgs, err := bpr.buildListByUserIDQuery(userID, page, limit)
+	return bookings, count, nil
+}
+
+func (br *bookingRepository) listByUserID(ctx context.Context, db DB, userID uuid.UUID, page, limit uint32) ([]*booking.Booking, error) {
+	query, args, err := br.buildListByUserIDQuery(userID, page, limit)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to build list query: %w", err)
+		return nil, err
 	}
 
-	bpr.log.Debug("exec the list query", slog.String("query", listQuery))
-	rows, err := bpr.db.QueryContext(ctx, listQuery, listArgs...)
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, 0, safeErr
-		}
-
-		return nil, 0, fmt.Errorf("failed to get list of bookings: %w", err)
+		return nil, err
 	}
 	defer rows.Close()
 
-	records, err := bpr.mapRows(rows)
-	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, 0, safeErr
-		}
-
-		return nil, 0, fmt.Errorf("failed to map rows: %w", err)
-	}
-
-	bookings := make([]*booking.Booking, len(records))
-	for i, record := range records {
-		bookings[i] = recordToBooking(record)
-	}
-
-	return bookings, int64(count), nil
+	return mapRows(rows)
 }
 
-func (bpr *bookingPersistenceRepository) buildCountQueryByUserID(userID uuid.UUID) (string, []any, error) {
-	return bpr.buildRawCountQuery().Where("user_id = ?", userID).ToSql()
-}
-
-func (bpr *bookingPersistenceRepository) buildListByUserIDQuery(userID uuid.UUID, page, limit uint32) (string, []any, error) {
+func (br *bookingRepository) buildListByUserIDQuery(userID uuid.UUID, page, limit uint32) (string, []any, error) {
 	offset := limit * (page - 1)
-	return bpr.sqlBuilder.Select(
+	return br.sqlBuilder.Select(
 		"id",
 		"offer_id",
 		"user_id",
@@ -300,92 +267,57 @@ func (bpr *bookingPersistenceRepository) buildListByUserIDQuery(userID uuid.UUID
 	).From("bookings").Limit(uint64(limit)).Offset(uint64(offset)).Where("user_id = ?", userID).ToSql()
 }
 
-// ListAllByOfferID returns all future bookings for the offer
-func (bpr *bookingPersistenceRepository) ListAllByOfferID(ctx context.Context, offerID uuid.UUID) ([]*booking.Booking, error) {
-	bpr.log.Debug("build the list all of bookings by offer id query", slog.String("offer_id", offerID.String()))
-	query, args, err := bpr.buildListAllQuery(offerID)
+func (br *bookingRepository) countByUserID(ctx context.Context, db DB, userID uuid.UUID) (int64, error) {
+	query, args, err := br.buildCountByUserIDQuery(userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build list all query: %w", err)
+		return 0, err
 	}
 
-	bpr.log.Debug("exec the list all query", slog.String("query", query))
-	rows, err := bpr.db.QueryContext(ctx, query, args...)
+	return mapCountRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (br *bookingRepository) buildCountByUserIDQuery(userID uuid.UUID) (string, []any, error) {
+	return br.sqlBuilder.Select("count(*)").
+		From("bookings").
+		Where("user_id = ?", userID).
+		ToSql()
+}
+
+// ListAllPerTime is a function that returns
+// a list of all bookings (with a limit)
+// in a specified period, otherwise an error
+func (br *bookingRepository) ListAllPerTime(ctx context.Context, offerID uuid.UUID, startTime, endTime time.Time) ([]*booking.Booking, error) {
+	br.log.Debug("listing all bookings per time",
+		slog.String("offer_id", offerID.String()),
+	)
+
+	bookings, err := br.listAllPerTime(ctx, br.db, offerID, startTime, endTime)
 	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get list of all future bookings: %w", err)
-	}
-	defer rows.Close()
-
-	records, err := bpr.mapRows(rows)
-	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to map rows: %w", err)
-	}
-
-	bookings := make([]*booking.Booking, len(records))
-	for i, record := range records {
-		bookings[i] = recordToBooking(record)
+		return nil, fmt.Errorf("failed to list bookings per time: %w",
+			handleError(err),
+		)
 	}
 
 	return bookings, nil
 }
 
-func (bpr *bookingPersistenceRepository) buildListAllQuery(offerID uuid.UUID) (string, []any, error) {
-	return bpr.sqlBuilder.Select(
-		"id",
-		"offer_id",
-		"user_id",
-		"comment",
-		"start_time",
-		"is_cancelled",
-		"created_at",
-		"updated_at",
-	).From("bookings").Limit(100000).Where("start_time >= NOW() AND offer_id = ?", offerID).ToSql()
-}
-
-func (bpr *bookingPersistenceRepository) ListAllPerTime(ctx context.Context, offerID uuid.UUID, startTime, endTime time.Time) ([]*booking.Booking, error) {
-	bpr.log.Debug("build the list all query per time")
-	query, args, err := bpr.buildListAllPerDay(offerID, startTime, endTime)
+func (br *bookingRepository) listAllPerTime(ctx context.Context, db DB, offerID uuid.UUID, startTime, endTime time.Time) ([]*booking.Booking, error) {
+	query, args, err := br.buildListAllPerTime(offerID, startTime, endTime)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build list all query: %w", err)
+		return nil, err
 	}
 
-	bpr.log.Debug("exec the query", slog.String("query", query))
-	rows, err := bpr.db.QueryContext(ctx, query, args...)
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get list of all bookings: %w", err)
+		return nil, err
 	}
 	defer rows.Close()
 
-	records, err := bpr.mapRows(rows)
-	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to map rows: %w", err)
-	}
-
-	result := make([]*booking.Booking, len(records))
-	for i, record := range records {
-		result[i] = recordToBooking(record)
-	}
-
-	return result, nil
+	return mapRows(rows)
 }
 
-func (bpr *bookingPersistenceRepository) buildListAllPerDay(offerID uuid.UUID, startTime, endTime time.Time) (string, []any, error) {
-	return bpr.sqlBuilder.Select(
+func (br *bookingRepository) buildListAllPerTime(offerID uuid.UUID, startTime, endTime time.Time) (string, []any, error) {
+	return br.sqlBuilder.Select(
 		"id",
 		"offer_id",
 		"user_id",
@@ -397,31 +329,32 @@ func (bpr *bookingPersistenceRepository) buildListAllPerDay(offerID uuid.UUID, s
 	).From("bookings").Limit(1000).Where("offer_id = ? AND start_time >= ? AND start_time < ?", offerID, startTime, endTime).ToSql()
 }
 
-// GetByID returns a single booking by its ID.
-// It is important to check whether this record belongs to a userID
-// or whether the offer owns a userID
-func (bpr *bookingPersistenceRepository) GetByID(ctx context.Context, id uuid.UUID) (*booking.Booking, error) {
-	bpr.log.Debug("build the select query", slog.String("booking_id", id.String()))
-	query, args, err := bpr.buildSelectByIDQuery(id)
+func (br *bookingRepository) GetByID(ctx context.Context, id uuid.UUID) (*booking.Booking, error) {
+	br.log.Debug("getting booking by id",
+		slog.String("booking_id", id.String()),
+	)
+
+	booking, err := br.getByID(ctx, br.db, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build select by id query: %w", err)
+		return nil, fmt.Errorf("failed to get booking by id: %w",
+			handleError(err),
+		)
 	}
 
-	bpr.log.Debug("exec the select by id query", slog.String("query", query))
-	record, err := bpr.mapRow(bpr.db.QueryRowContext(ctx, query, args...))
-	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get booking by id: %w", err)
-	}
-
-	return recordToBooking(record), nil
+	return booking, nil
 }
 
-func (bpr *bookingPersistenceRepository) buildSelectByIDQuery(id uuid.UUID) (string, []any, error) {
-	return bpr.sqlBuilder.Select(
+func (br *bookingRepository) getByID(ctx context.Context, db DB, id uuid.UUID) (*booking.Booking, error) {
+	query, args, err := br.buildSelectByIDQuery(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (br *bookingRepository) buildSelectByIDQuery(id uuid.UUID) (string, []any, error) {
+	return br.sqlBuilder.Select(
 		"id",
 		"offer_id",
 		"user_id",
@@ -433,79 +366,67 @@ func (bpr *bookingPersistenceRepository) buildSelectByIDQuery(id uuid.UUID) (str
 	).From("bookings").Where("id = ?", id).ToSql()
 }
 
-// Update is a function that updates a record (for example, the isCancelled field).
-// It receives a booking's ID and calls updFunc, then saves the changes
-func (bpr *bookingPersistenceRepository) Update(ctx context.Context, id uuid.UUID, updFunc booking.UpdateFunc) (*booking.Booking, error) {
-	tx, err := bpr.db.BeginTx(ctx, &sql.TxOptions{
-		Isolation: sql.LevelReadCommitted,
-		ReadOnly:  false,
-	})
+// Update is a function that updates a record
+// (for example, the isCancelled field).
+// It receives a booking's ID and
+// calls updFunc, then saves the changes
+func (br *bookingRepository) Update(ctx context.Context, id uuid.UUID, updFunc booking.UpdateFunc) (*booking.Booking, error) {
+	br.log.Debug("start tx")
+	tx, rollback, err := br.beginTx(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start tx: %w", err)
+		return nil, err
 	}
-	defer func() {
-		if err != nil {
-			if err := tx.Rollback(); err != nil {
-				bpr.log.Error("failed to rollback tx", slog.String("error", err.Error()))
-			}
-		}
-	}()
+	defer rollback()
 
-	bpr.log.Debug("build the select by id query for update")
-	selectQuery, selectArgs, err := bpr.buildSelectByIDQueryForUpdate(id)
+	br.log.Debug("getting booking for update",
+		slog.String("booking_id", id.String()),
+	)
+
+	booking, err := br.getByIDForUpdate(ctx, tx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build select query: %w", err)
-	}
-
-	bpr.log.Debug("exec the select query", slog.String("query", selectQuery))
-	record, err := bpr.mapRow(tx.QueryRow(selectQuery, selectArgs...))
-	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get booking for update: %w", err)
+		return nil, fmt.Errorf("failed to get booking by id: %w",
+			handleError(err),
+		)
 	}
 
-	bpr.log.Debug("call the upd function", slog.String("booking_id", record.ID.String()))
-	updBooking := recordToBooking(record)
-	if err := updFunc(ctx, updBooking); err != nil {
+	if err := updFunc(ctx, booking); err != nil {
 		return nil, err
 	}
 
-	bpr.log.Debug("build update query", slog.String("booking_id", updBooking.ID().String()))
-	updateQuery, updateArgs, err := bpr.buildUpdateQuery(bookingToRecord(updBooking))
-	if err != nil {
-		return nil, fmt.Errorf("failed to build update query: %w", err)
-	}
-
-	bpr.log.Debug("exec the update query", slog.String("query", updateQuery))
-	result, err := tx.ExecContext(ctx, updateQuery, updateArgs...)
-	if err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to update booking: %w", err)
-	}
-
-	if count, _ := result.RowsAffected(); count == 0 {
-		return nil, booking.ErrBookingNotFound
+	if err := br.update(ctx, tx, booking); err != nil {
+		return nil, fmt.Errorf("failed to update booking: %w",
+			handleError(err),
+		)
 	}
 
 	if err := tx.Commit(); err != nil {
-		if safeErr, ok := bpr.handleError(err); ok {
-			return nil, safeErr
-		}
-
 		return nil, fmt.Errorf("failed to commit tx: %w", err)
 	}
 
-	return updBooking, nil
+	return booking, nil
 }
 
-func (bpr *bookingPersistenceRepository) buildUpdateQuery(record *bookingRecord) (string, []any, error) {
-	return bpr.sqlBuilder.Update("bookings").SetMap(map[string]any{
+func (br *bookingRepository) update(ctx context.Context, db DB, updBooking *booking.Booking) error {
+	record := bookingToRecord(updBooking)
+	query, args, err := br.buildUpdateQuery(record)
+	if err != nil {
+		return err
+	}
+
+	result, err := db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	if count, _ := result.RowsAffected(); count == 0 {
+		return booking.ErrBookingNotFound
+	}
+
+	return nil
+}
+
+func (br *bookingRepository) buildUpdateQuery(record *bookingRecord) (string, []any, error) {
+	return br.sqlBuilder.Update("bookings").SetMap(map[string]any{
 		"comment":      record.Comment,
 		"start_time":   record.StartTime,
 		"is_cancelled": record.IsCancelled,
@@ -513,8 +434,17 @@ func (bpr *bookingPersistenceRepository) buildUpdateQuery(record *bookingRecord)
 	}).Where("id = ?", record.ID).ToSql()
 }
 
-func (bpr *bookingPersistenceRepository) buildSelectByIDQueryForUpdate(id uuid.UUID) (string, []any, error) {
-	return bpr.sqlBuilder.Select(
+func (br *bookingRepository) getByIDForUpdate(ctx context.Context, db DB, id uuid.UUID) (*booking.Booking, error) {
+	query, args, err := br.buildSelectByIDForUpdateQuery(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (br *bookingRepository) buildSelectByIDForUpdateQuery(id uuid.UUID) (string, []any, error) {
+	return br.sqlBuilder.Select(
 		"id",
 		"offer_id",
 		"user_id",
@@ -526,8 +456,26 @@ func (bpr *bookingPersistenceRepository) buildSelectByIDQueryForUpdate(id uuid.U
 	).From("bookings").Where("id = ?", id).Suffix("FOR UPDATE").ToSql()
 }
 
-func (bpr *bookingPersistenceRepository) mapRows(rows *sql.Rows) ([]*bookingRecord, error) {
-	var records []*bookingRecord
+func (br *bookingRepository) beginTx(ctx context.Context) (*sql.Tx, func(), error) {
+	tx, err := br.db.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelReadCommitted,
+		ReadOnly:  false,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tx, func() {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			br.log.Error("failed to rollback tx",
+				slog.String("error", err.Error()),
+			)
+		}
+	}, nil
+}
+
+func mapRows(rows *sql.Rows) ([]*booking.Booking, error) {
+	var bookings []*booking.Booking
 	for rows.Next() {
 		var record bookingRecord
 		if err := rows.Scan(
@@ -543,17 +491,17 @@ func (bpr *bookingPersistenceRepository) mapRows(rows *sql.Rows) ([]*bookingReco
 			return nil, err
 		}
 
-		records = append(records, &record)
+		bookings = append(bookings, recordToBooking(&record))
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return records, nil
+	return bookings, nil
 }
 
-func (bpr *bookingPersistenceRepository) mapRow(row *sql.Row) (*bookingRecord, error) {
+func mapRow(row *sql.Row) (*booking.Booking, error) {
 	var record bookingRecord
 	if err := row.Scan(
 		&record.ID,
@@ -572,11 +520,11 @@ func (bpr *bookingPersistenceRepository) mapRow(row *sql.Row) (*bookingRecord, e
 		return nil, err
 	}
 
-	return &record, nil
+	return recordToBooking(&record), nil
 }
 
-func (bpr *bookingPersistenceRepository) mapCountRow(row *sql.Row) (int, error) {
-	var count int
+func mapCountRow(row *sql.Row) (int64, error) {
+	var count int64
 	if err := row.Scan(&count); err != nil {
 		return 0, err
 	}
@@ -584,28 +532,20 @@ func (bpr *bookingPersistenceRepository) mapCountRow(row *sql.Row) (int, error) 
 	return count, nil
 }
 
-func (bpr *bookingPersistenceRepository) buildRawCountQuery() squirrel.SelectBuilder {
-	return bpr.sqlBuilder.Select("count(*)").From("bookings")
-}
-
-func (bpr *bookingPersistenceRepository) handleError(err error) (error, bool) {
-	switch {
-	case errors.Is(err, context.DeadlineExceeded),
-		errors.Is(err, context.Canceled):
-		return err, true
-	case errors.Is(err, sql.ErrNoRows):
-		return booking.ErrBookingNotFound, true
+func handleError(err error) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return booking.ErrBookingNotFound
 	}
 
 	var pqErr *pq.Error
 	if errors.As(err, &pqErr) {
 		switch pqErr.Code {
 		case "23505":
-			return booking.ErrBookingAlreadyExists, true
+			return booking.ErrBookingAlreadyExists
 		case "23503":
-			return booking.ErrInvalidOfferID, true
+			return booking.ErrInvalidOfferID
 		}
 	}
 
-	return err, false
+	return err
 }

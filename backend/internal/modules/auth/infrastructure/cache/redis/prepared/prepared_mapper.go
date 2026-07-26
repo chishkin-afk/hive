@@ -7,7 +7,7 @@ import (
 	"github.com/devathh/hive/backend/internal/modules/auth/domain/user"
 )
 
-func domainToPreparedBytes(domain *user.User, generatedPassword string, code int) ([]byte, error) {
+func preparedToBytes(domain *user.User, generatedPassword string, code int) ([]byte, error) {
 	return json.Marshal(preparedUserRecord{
 		User: userRecord{
 			ID:             domain.ID(),
@@ -64,11 +64,11 @@ func lastSendToBytes(at time.Time) ([]byte, error) {
 	})
 }
 
-func bytesToLastSendRecord(bytes []byte) (*LastSend, error) {
+func bytesToLastSendRecord(bytes []byte) (time.Time, error) {
 	var record LastSend
 	if err := json.Unmarshal(bytes, &record); err != nil {
-		return nil, err
+		return time.Time{}, err
 	}
 
-	return &record, nil
+	return record.At, nil
 }

@@ -14,7 +14,7 @@ type (
 )
 
 type PaymentPersistenceRepository interface {
-	Save(ctx context.Context, payment *Payment) (*Payment, error)
+	Save(ctx context.Context, payment *Payment) error
 	GetByID(ctx context.Context, paymentID uuid.UUID) (*Payment, error)
 	GetByPaymentID(ctx context.Context, paymentID uuid.UUID) (*Payment, error)
 	ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*Payment, int64, error)
@@ -23,9 +23,9 @@ type PaymentPersistenceRepository interface {
 }
 
 type PaymentCacheRepository interface {
-	SavePayment(ctx context.Context, payment *Payment) error
-	DeletePayment(ctx context.Context, id uuid.UUID) error
-	GetPayment(ctx context.Context, id uuid.UUID) (*Payment, error)
+	Save(ctx context.Context, payment *Payment) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	Get(ctx context.Context, id uuid.UUID) (*Payment, error)
 }
 
 var (

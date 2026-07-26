@@ -20,44 +20,52 @@ type DB interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-type offerPersistenceRepository struct {
+type offerRepository struct {
 	log        *slog.Logger
 	db         DB
 	sqlBuilder squirrel.StatementBuilderType
 }
 
-func New(log *slog.Logger, db DB) *offerPersistenceRepository {
-	return &offerPersistenceRepository{
+func New(log *slog.Logger, db DB) *offerRepository {
+	return &offerRepository{
 		log:        log,
 		db:         db,
 		sqlBuilder: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar),
 	}
 }
 
-func (opr *offerPersistenceRepository) Save(ctx context.Context, offer *offer.Offer) (*offer.Offer, error) {
-	opr.log.Debug("converting domain into record", slog.String("offer_id", offer.ID().String()))
-	record := domainToRecord(offer)
+// Save is a method that saves the offer to the database
+// otherwise, it returns a safe error.
+func (or *offerRepository) Save(ctx context.Context, offer *offer.Offer) error {
+	or.log.Debug("saving offer into db",
+		slog.String("offer_id", offer.ID().String()),
+	)
 
-	opr.log.Debug("build the sql insert query")
-	query, args, err := opr.buildInsertQuery(record)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build sql insert query: %w", err)
+	if err := or.save(ctx, or.db, offer); err != nil {
+		return fmt.Errorf("failed to save offer into db: %w",
+			handleError(err),
+		)
 	}
 
-	opr.log.Debug("exec the sql insert query", slog.String("offer_id", offer.ID().String()))
-	if _, err := opr.db.ExecContext(ctx, query, args...); err != nil {
-		if safeErr, ok := opr.normalizeError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to save offer into db: %w", err)
-	}
-
-	return recordToDomain(record), nil
+	return nil
 }
 
-func (opr *offerPersistenceRepository) buildInsertQuery(record *offerRecord) (string, []any, error) {
-	return opr.sqlBuilder.Insert("offers").Columns(
+func (or *offerRepository) save(ctx context.Context, db DB, offer *offer.Offer) error {
+	record := domainToRecord(offer)
+	query, args, err := or.buildInsertQuery(record)
+	if err != nil {
+		return err
+	}
+
+	if _, err := db.ExecContext(ctx, query, args...); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (or *offerRepository) buildInsertQuery(record *offerRecord) (string, []any, error) {
+	return or.sqlBuilder.Insert("offers").Columns(
 		"id",
 		"author_id",
 		"title",
@@ -82,35 +90,44 @@ func (opr *offerPersistenceRepository) buildInsertQuery(record *offerRecord) (st
 	).ToSql()
 }
 
-func (opr *offerPersistenceRepository) Update(ctx context.Context, updOffer *offer.Offer) (*offer.Offer, error) {
-	opr.log.Debug("converting upd domain into record", slog.String("offer_id", updOffer.ID().String()))
-	record := domainToRecord(updOffer)
+// Update is a method that updates
+// the mutable fields of an offer in the database
+// otherwise, it returns an error.
+func (or *offerRepository) Update(ctx context.Context, updOffer *offer.Offer) error {
+	or.log.Debug("updating offer by id",
+		slog.String("offer_id", updOffer.ID().String()),
+	)
 
-	opr.log.Debug("build the sql update query")
-	query, args, err := opr.buildUpdateQuery(record)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build sql update query: %w", err)
+	if err := or.update(ctx, or.db, updOffer); err != nil {
+		return fmt.Errorf("failed to update offer by id: %w",
+			handleError(err),
+		)
 	}
 
-	opr.log.Debug("exec the sql update query", slog.String("offer_id", updOffer.ID().String()))
-	result, err := opr.db.ExecContext(ctx, query, args...)
-	if err != nil {
-		if safeErr, ok := opr.normalizeError(err); ok {
-			return nil, safeErr
-		}
+	return nil
+}
 
-		return nil, fmt.Errorf("failed to update offer in db: %w", err)
+func (or *offerRepository) update(ctx context.Context, db DB, updOffer *offer.Offer) error {
+	record := domainToRecord(updOffer)
+	query, args, err := or.buildUpdateQuery(record)
+	if err != nil {
+		return err
+	}
+
+	result, err := db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
 	}
 
 	if count, _ := result.RowsAffected(); count == 0 {
-		return nil, offer.ErrOfferNotFound
+		return offer.ErrOfferNotFound
 	}
 
-	return recordToDomain(record), nil
+	return nil
 }
 
-func (opr *offerPersistenceRepository) buildUpdateQuery(record *offerRecord) (string, []any, error) {
-	return opr.sqlBuilder.Update("offers").SetMap(map[string]any{
+func (or *offerRepository) buildUpdateQuery(record *offerRecord) (string, []any, error) {
+	return or.sqlBuilder.Update("offers").SetMap(map[string]any{
 		"title":                 record.Title,
 		"description":           record.Description,
 		"price":                 record.Price,
@@ -121,67 +138,70 @@ func (opr *offerPersistenceRepository) buildUpdateQuery(record *offerRecord) (st
 	}).Where("id = ?", record.ID).ToSql()
 }
 
-func (opr *offerPersistenceRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	opr.log.Debug("build the sql delete query", slog.String("offer_id", id.String()))
-	query, args, err := opr.buildDeleteQuery(id)
-	if err != nil {
-		return fmt.Errorf("failed to build sql delete query: %w", err)
-	}
+// Delete is a method that
+// removes an offer by ID.
+func (or *offerRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	or.log.Debug("deleting offer from db",
+		slog.String("offer_id", id.String()),
+	)
 
-	opr.log.Debug("exec the sql delete query", slog.String("offer_id", id.String()))
-	result, err := opr.db.ExecContext(ctx, query, args...)
-	if err != nil {
-		if safeErr, ok := opr.normalizeError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to delete offer: %w", err)
-	}
-
-	if count, _ := result.RowsAffected(); count == 0 {
-		return offer.ErrOfferNotFound
+	if err := or.delete(ctx, or.db, id); err != nil {
+		return fmt.Errorf("failed to delete offer from db: %w",
+			handleError(err),
+		)
 	}
 
 	return nil
 }
 
-func (opr *offerPersistenceRepository) buildDeleteQuery(id uuid.UUID) (string, []any, error) {
-	return opr.sqlBuilder.Update("offers").Set(
+func (or *offerRepository) delete(ctx context.Context, db DB, id uuid.UUID) error {
+	query, args, err := or.buildDeleteQuery(id)
+	if err != nil {
+		return err
+	}
+
+	if _, err := db.ExecContext(ctx, query, args...); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (or *offerRepository) buildDeleteQuery(id uuid.UUID) (string, []any, error) {
+	return or.sqlBuilder.Update("offers").Set(
 		"deleted_at", time.Now().UTC(),
 	).Where("id = ?", id).ToSql()
 }
 
-func (opr *offerPersistenceRepository) GetByID(ctx context.Context, id uuid.UUID) (*offer.Offer, error) {
-	opr.log.Debug("build the sql select query by id", slog.String("offer_id", id.String()))
-	query, args, err := opr.buildSelectQuery(id)
+// Get is a method that returns an offer
+// from the db by its ID,
+// or otherwise returns an error.
+func (or *offerRepository) GetByID(ctx context.Context, id uuid.UUID) (*offer.Offer, error) {
+	or.log.Debug("getting offer by id",
+		slog.String("offer_id", id.String()),
+	)
+
+	offer, err := or.get(ctx, or.db, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build sql select query: %w", err)
+		return nil, fmt.Errorf("failed to get offer by id: %w",
+			handleError(err),
+		)
 	}
 
-	opr.log.Debug("exec the sql select query by id", slog.String("offer_id", id.String()))
-	row := opr.db.QueryRowContext(ctx, query, args...)
-	if err := row.Err(); err != nil {
-		if safeErr, ok := opr.normalizeError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to get offer by id: %w", err)
-	}
-
-	record, err := opr.mapRow(row)
-	if err != nil {
-		if safeErr, ok := opr.normalizeError(err); ok {
-			return nil, safeErr
-		}
-
-		return nil, fmt.Errorf("failed to map row: %w", err)
-	}
-
-	return recordToDomain(record), nil
+	return offer, nil
 }
 
-func (opr *offerPersistenceRepository) buildSelectQuery(id uuid.UUID) (string, []any, error) {
-	return opr.sqlBuilder.Select(
+func (or *offerRepository) get(ctx context.Context, db DB, id uuid.UUID) (*offer.Offer, error) {
+	query, args, err := or.buildSelectQuery(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (or *offerRepository) buildSelectQuery(id uuid.UUID) (string, []any, error) {
+	return or.sqlBuilder.Select(
 		"id",
 		"author_id",
 		"title",
@@ -195,66 +215,53 @@ func (opr *offerPersistenceRepository) buildSelectQuery(id uuid.UUID) (string, [
 	).From("offers").Where("id = ? AND deleted_at is NULL", id).ToSql()
 }
 
-func (opr *offerPersistenceRepository) ListByAuthorID(ctx context.Context, authorID uuid.UUID, page, limit uint32) ([]*offer.Offer, uint64, error) {
-	opr.log.Debug("build the sql count query", slog.String("author_id", authorID.String()))
-	countQuery, countArgs, err := opr.buildCountQuery(authorID)
+// ListByAuthorID is a method that
+// returns paginated offers by author ID,
+// or an error otherwise.
+func (or *offerRepository) ListByAuthorID(ctx context.Context, authorID uuid.UUID, page, limit uint32) ([]*offer.Offer, int64, error) {
+	or.log.Debug("counting all the offers by author id",
+		slog.String("author_id", authorID.String()),
+	)
+
+	count, err := or.countByAuthorID(ctx, or.db, authorID)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to build count query: %w", err)
+		return nil, 0, fmt.Errorf("failed to count by author id: %w",
+			handleError(err),
+		)
 	}
 
-	totalCount, err := opr.count(ctx, countQuery, countArgs...)
+	or.log.Debug("listing offers by author id",
+		slog.String("author_id", authorID.String()),
+	)
+
+	list, err := or.listByAuthorID(ctx, or.db, authorID, page, limit)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to get total count of offers: %w", err)
+		return nil, 0, fmt.Errorf("failed to list offers by author id: %w",
+			handleError(err),
+		)
 	}
 
-	opr.log.Debug("build the sql list query", slog.String("author_id", authorID.String()))
-	listQuery, listArgs, err := opr.buildListQuery(authorID, page, limit)
+	return list, count, nil
+}
+
+func (or *offerRepository) listByAuthorID(ctx context.Context, db DB, authorID uuid.UUID, page, limit uint32) ([]*offer.Offer, error) {
+	query, args, err := or.buildListQuery(authorID, page, limit)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to build sql list query: %w", err)
+		return nil, err
 	}
 
-	opr.log.Debug("exec the sql list query", slog.String("author_id", authorID.String()))
-	rows, err := opr.db.QueryContext(ctx, listQuery, listArgs...)
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
-		if safeErr, ok := opr.normalizeError(err); ok {
-			return nil, 0, safeErr
-		}
-
-		return nil, 0, fmt.Errorf("failed to get list of offers: %w", err)
+		return nil, err
 	}
 	defer rows.Close()
 
-	records, err := opr.mapRows(rows)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to map rows: %w", err)
-	}
-
-	result := make([]*offer.Offer, len(records))
-	for idx, record := range records {
-		result[idx] = recordToDomain(record)
-	}
-
-	return result, totalCount, nil
+	return mapRows(rows)
 }
 
-func (opr *offerPersistenceRepository) count(ctx context.Context, query string, args ...any) (uint64, error) {
-	var count uint64
-	if err := opr.db.QueryRowContext(ctx, query, args...).Scan(
-		&count,
-	); err != nil {
-		return 0, err
-	}
-
-	return count, nil
-}
-
-func (opr *offerPersistenceRepository) buildCountQuery(authorID uuid.UUID) (string, []any, error) {
-	return opr.sqlBuilder.Select("count(*)").From("offers").Where("author_id = ? AND deleted_at is NULL", authorID).ToSql()
-}
-
-func (opr *offerPersistenceRepository) buildListQuery(authorID uuid.UUID, page, limit uint32) (string, []any, error) {
+func (or *offerRepository) buildListQuery(authorID uuid.UUID, page, limit uint32) (string, []any, error) {
 	offset := limit * (page - 1)
-	return opr.sqlBuilder.Select(
+	return or.sqlBuilder.Select(
 		"id",
 		"author_id",
 		"title",
@@ -269,7 +276,29 @@ func (opr *offerPersistenceRepository) buildListQuery(authorID uuid.UUID, page, 
 		Where("author_id = ? AND deleted_at is NULL", authorID).ToSql()
 }
 
-func (opr *offerPersistenceRepository) mapRow(row *sql.Row) (*offerRecord, error) {
+func (or *offerRepository) countByAuthorID(ctx context.Context, db DB, authorID uuid.UUID) (int64, error) {
+	query, args, err := or.buildCountQuery(authorID)
+	if err != nil {
+		return 0, err
+	}
+
+	return mapCountRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (or *offerRepository) buildCountQuery(authorID uuid.UUID) (string, []any, error) {
+	return or.sqlBuilder.Select("count(*)").From("offers").Where("author_id = ? AND deleted_at is NULL", authorID).ToSql()
+}
+
+func mapCountRow(row *sql.Row) (int64, error) {
+	var count int64
+	if err := row.Scan(&count); err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func mapRow(row *sql.Row) (*offer.Offer, error) {
 	var record offerRecord
 	if err := row.Scan(
 		&record.ID,
@@ -286,11 +315,11 @@ func (opr *offerPersistenceRepository) mapRow(row *sql.Row) (*offerRecord, error
 		return nil, err
 	}
 
-	return &record, nil
+	return recordToDomain(&record), nil
 }
 
-func (opr *offerPersistenceRepository) mapRows(rows *sql.Rows) ([]*offerRecord, error) {
-	var records []*offerRecord
+func mapRows(rows *sql.Rows) ([]*offer.Offer, error) {
+	var offers []*offer.Offer
 	for rows.Next() {
 		var record offerRecord
 		if err := rows.Scan(
@@ -308,32 +337,28 @@ func (opr *offerPersistenceRepository) mapRows(rows *sql.Rows) ([]*offerRecord, 
 			return nil, err
 		}
 
-		records = append(records, &record)
+		offers = append(offers, recordToDomain(&record))
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return records, nil
+	return offers, nil
 }
 
-func (opr *offerPersistenceRepository) normalizeError(err error) (error, bool) {
-	switch {
-	case errors.Is(err, context.DeadlineExceeded),
-		errors.Is(err, context.Canceled):
-		return err, true
-	case errors.Is(err, sql.ErrNoRows):
-		return offer.ErrOfferNotFound, true
+func handleError(err error) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return offer.ErrOfferNotFound
 	}
 
 	var pqError *pq.Error
 	if errors.As(err, &pqError) {
 		switch pqError.Code {
 		case "23503":
-			return offer.ErrAuthorNotFound, true
+			return offer.ErrAuthorNotFound
 		}
 	}
 
-	return err, false
+	return err
 }

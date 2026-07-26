@@ -10,21 +10,22 @@ import (
 
 func New(cfg *config.Config,
 	authService authService,
+	bookingService bookingService,
 	offerService offerService,
 	clientService clientService,
 	scheduleService scheduleService,
-	bookingService bookingService,
 	paymentService paymentService,
 	mws ...gin.HandlerFunc) *gin.Engine {
 	router := getRouter(cfg)
 	router.Use(mws...)
 
 	funcs := HandlerFuncs{
+		cfg:             cfg,
 		authService:     authService,
+		bookingService:  bookingService,
 		offerService:    offerService,
 		clientService:   clientService,
 		scheduleService: scheduleService,
-		bookingService:  bookingService,
 		paymentService:  paymentService,
 	}
 
@@ -43,6 +44,9 @@ func New(cfg *config.Config,
 				auth.GET("/tgbinding", funcs.GetTgBindingURL())
 				auth.POST("/tgbinding", funcs.BindTG())
 				// auth.POST("/lookup", funcs.Lookup())
+				auth.POST("/forget-password", funcs.ForgetPassword())
+				auth.PATCH("/password", funcs.ChangePassword())
+				auth.PATCH("/unbind-tg", funcs.UnbindTg())
 			}
 
 			offers := v1.Group("/offers")
@@ -78,6 +82,7 @@ func New(cfg *config.Config,
 				bookings.GET("/booking/:id", funcs.GetBookingByID())
 				bookings.GET("/bookings", funcs.ListBookings())       // ?limit=&page=&offer_id=?
 				bookings.GET("/slots/:offerID", funcs.GetFreeSlots()) // ?date=2026-06-18
+				bookings.GET("/days/:offerID", funcs.GetAllDays())    // ?from=2026-06-18&to=2026-06-19
 			}
 
 			payments := v1.Group("/payments")

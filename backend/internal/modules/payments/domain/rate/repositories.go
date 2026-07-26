@@ -16,9 +16,9 @@ type RatePersistenceRepository interface {
 }
 
 type RateCacheRepository interface {
-	SaveRate(ctx context.Context, rate *Rate) error
-	GetRate(ctx context.Context, id uuid.UUID) (*Rate, error)
-	SaveRates(ctx context.Context, rates []*Rate) error
+	Save(ctx context.Context, rate *Rate) error
+	Get(ctx context.Context, id uuid.UUID) (*Rate, error)
+	SaveList(ctx context.Context, rates []*Rate) error
 	ListRates(ctx context.Context) ([]*Rate, error)
 }
 

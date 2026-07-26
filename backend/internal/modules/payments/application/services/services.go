@@ -300,8 +300,7 @@ func (ps *PaymentService) createPayment(ctx context.Context, userID uuid.UUID, r
 }
 
 func (ps *PaymentService) storePaymentPersistence(ctx context.Context, payment *payment.Payment) (*payment.Payment, error) {
-	savedPayment, err := ps.paymentPersistence.Save(ctx, payment)
-	if err != nil {
+	if err := ps.paymentPersistence.Save(ctx, payment); err != nil {
 		ps.log.Error("failed to save payment into db",
 			slog.String("error", err.Error()),
 			slog.String("payment_id", payment.ID().String()),
@@ -310,7 +309,7 @@ func (ps *PaymentService) storePaymentPersistence(ctx context.Context, payment *
 		return nil, ps.handleRepoError(err)
 	}
 
-	return savedPayment, nil
+	return payment, nil
 }
 
 func (ps *PaymentService) unconfirmedPaymentToDTO(payment *payment.Payment, url string) *responses.UnconfirmedPayment {
@@ -424,11 +423,11 @@ func (ps *PaymentService) listToDTO(list []*payment.Payment, totalCount int64, p
 }
 
 func (ps *PaymentService) storePaymentCache(ctx context.Context, payment *payment.Payment) error {
-	return ps.paymentCache.SavePayment(ctx, payment)
+	return ps.paymentCache.Save(ctx, payment)
 }
 
 func (ps *PaymentService) getPaymentFromCache(ctx context.Context, id uuid.UUID) (*payment.Payment, bool) {
-	cachedPayment, err := ps.paymentCache.GetPayment(ctx, id)
+	cachedPayment, err := ps.paymentCache.Get(ctx, id)
 	if err != nil {
 		if !errors.Is(err, payment.ErrPaymentNotFound) {
 			ps.log.Warn("failed to get payment from cache",
@@ -448,7 +447,7 @@ func (ps *PaymentService) getPaymentFromCache(ctx context.Context, id uuid.UUID)
 }
 
 func (ps *PaymentService) clearPaymentCache(ctx context.Context, id uuid.UUID) error {
-	return ps.paymentCache.DeletePayment(ctx, id)
+	return ps.paymentCache.Delete(ctx, id)
 }
 
 func (ps *PaymentService) getPaymentFromPersistence(ctx context.Context, id uuid.UUID) (*payment.Payment, error) {
@@ -507,7 +506,7 @@ func (ps *PaymentService) rateToDTO(rate *rate.Rate) *responses.Rate {
 }
 
 func (ps *PaymentService) storeRatesCache(ctx context.Context, rates []*rate.Rate) error {
-	return ps.rateCache.SaveRates(ctx, rates)
+	return ps.rateCache.SaveList(ctx, rates)
 }
 
 func (ps *PaymentService) listRatesFromCache(ctx context.Context) ([]*rate.Rate, bool) {
@@ -530,11 +529,11 @@ func (ps *PaymentService) listRatesFromCache(ctx context.Context) ([]*rate.Rate,
 }
 
 func (ps *PaymentService) storeRateCache(ctx context.Context, rate *rate.Rate) error {
-	return ps.rateCache.SaveRate(ctx, rate)
+	return ps.rateCache.Save(ctx, rate)
 }
 
 func (ps *PaymentService) getRateFromCache(ctx context.Context, id uuid.UUID) (*rate.Rate, bool) {
-	cachedRate, err := ps.rateCache.GetRate(ctx, id)
+	cachedRate, err := ps.rateCache.Get(ctx, id)
 	if err != nil {
 		if !errors.Is(err, rate.ErrRateNotFound) {
 			ps.log.Warn("failed to get rate from cache by id",

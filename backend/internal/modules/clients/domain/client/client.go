@@ -24,6 +24,7 @@ type Client struct {
 func New(
 	userID uuid.UUID,
 	offerID uuid.UUID,
+	visit time.Time,
 ) (*Client, error) {
 	if userID == uuid.Nil {
 		return nil, ErrInvalidUserID
@@ -39,7 +40,7 @@ func New(
 		userID:    userID,
 		offerID:   offerID,
 		visits:    1,
-		lastVisit: now,
+		lastVisit: visit.UTC(),
 		createdAt: now,
 	}, nil
 }
@@ -62,9 +63,9 @@ func From(
 	}
 }
 
-func (c *Client) AddVisit() {
+func (c *Client) AddVisit(visit time.Time) {
 	c.visits++
-	c.lastVisit = time.Now().UTC()
+	c.lastVisit = visit.UTC()
 }
 
 func (c *Client) ID() uuid.UUID {

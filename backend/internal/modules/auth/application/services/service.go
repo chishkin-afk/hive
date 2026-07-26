@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -20,14 +21,21 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	ResetPassword = `
+Ваша ссылка для сброса пароля: %s?token=%s
+`
+)
+
 type JWTManager interface {
-	Generate(userID uuid.UUID) (string, error)
+	Generate(userID uuid.UUID, ttl time.Duration) (string, error)
+	GenerateResetToken(userID uuid.UUID, ttl time.Duration) (string, error)
 	Validate(tokenString string) (uuid.UUID, error)
+	ValidateReset(resetToken string) (uuid.UUID, error)
 }
 
 type SMTPClient interface {
-	SendCode(ctx context.Context, code int, to []string) error
-	SendPassword(ctx context.Context, password string, to []string) error
+	Notify(ctx context.Context, body string, to []string) error
 }
 
 type AuthService struct {
@@ -146,24 +154,169 @@ func (as *AuthService) Confirm(ctx context.Context, req *requests.ConfirmUser) (
 		return nil, err
 	}
 
-	savedUser, err := as.storePreparedUserDB(ctx, preparedUser)
-	if err != nil {
+	if err = as.storePreparedUserDB(ctx, preparedUser); err != nil {
 		return nil, err
 	}
 
-	if err := as.clearPreparedCache(ctx, savedUser.ConfirmedEmail()); err != nil {
+	if err := as.clearPreparedCache(ctx, preparedUser.ConfirmedEmail()); err != nil {
 		as.log.Warn("failed to clear prepared user's cache",
 			slog.String("error", err.Error()),
 		)
 	}
 
-	if err := as.saveFingerprint(ctx, fp, savedUser.ID()); err != nil {
+	if err := as.saveFingerprint(ctx, fp, preparedUser.ID()); err != nil {
 		as.log.Warn("failed to save fingerprint",
 			slog.String("error", err.Error()),
 		)
 	}
 
-	return as.generateToken(savedUser.ID())
+	return as.generateToken(preparedUser.ID())
+}
+
+func (as *AuthService) ForgetPassword(ctx context.Context, req *requests.ForgetPassword) error {
+	email, err := as.validateEmail(req.Email)
+	if err != nil {
+		return err
+	}
+
+	user, err := as.getUserByEmailFromPersistence(ctx, email)
+	if err != nil {
+		return err
+	}
+
+	token, err := as.generateChangeToken(user)
+	if err != nil {
+		return err
+	}
+
+	go as.sendChangeURL(context.Background(), user.ConfirmedEmail(), token)
+	return nil
+}
+
+func (as *AuthService) ChangePassword(ctx context.Context, req *requests.ChangePassword) (*responses.Token, error) {
+	userID, err := as.validateResetToken(req.ResetToken)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := as.getUserFromPersistence(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.changePassword(user, req.NewPassword); err != nil {
+		return nil, err
+	}
+
+	if err = as.updateUserStore(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return as.generateToken(user.ID())
+}
+
+func (as *AuthService) UnbindTg(ctx context.Context) (*responses.User, error) {
+	userID, err := as.getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := as.getUserFromPersistence(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := as.unbindTg(user); err != nil {
+		return nil, err
+	}
+
+	if err = as.updateUserStore(ctx, user); err != nil {
+		return nil, err
+	}
+
+	if err := as.clearUserCache(ctx, user.ID()); err != nil {
+		as.log.Warn("failed to clear user cache",
+			slog.String("error", err.Error()),
+		)
+	}
+
+	return as.userToDTO(user), nil
+}
+
+func (as *AuthService) unbindTg(updUser *user.User) error {
+	if err := updUser.ChangeNotification(user.NewNotification(false)); err != nil {
+		return errs.NewErrorWithKind(err, errs.KindInternal)
+	}
+
+	if err := updUser.ChangeTgChatID(0); err != nil {
+		return errs.NewErrorWithKind(err, errs.KindInternal)
+	}
+
+	return nil
+}
+
+func (as *AuthService) changePassword(user *user.User, newPassword string) error {
+	if err := user.ChangePassword(newPassword); err != nil {
+		return errs.NewErrorWithKind(err, errs.KindRequest)
+	}
+
+	return nil
+}
+
+func (as *AuthService) sendChangeURL(ctx context.Context, email user.Email, token string) {
+	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := as.smtpClient.Notify(ctxTimeout, fmt.Sprintf(
+		ResetPassword,
+		as.cfg.Service.ChangePasswordURL,
+		token,
+	), []string{email.String()}); err != nil {
+		as.log.Error("failed to send reset url for user",
+			slog.String("error", err.Error()),
+		)
+	}
+}
+
+func (as *AuthService) generateChangeToken(user *user.User) (string, error) {
+	token, err := as.jwt.GenerateResetToken(user.ID(), as.cfg.Service.ChangePasswordTTL)
+	if err != nil {
+		as.log.Error("failed to generate jwt token",
+			slog.String("error", err.Error()),
+			slog.String("user_id", user.ID().String()),
+		)
+
+		return "", errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
+	}
+
+	return token, nil
+}
+
+func (as *AuthService) validateResetToken(resetToken string) (uuid.UUID, error) {
+	userID, err := as.jwt.ValidateReset(resetToken)
+	if err != nil {
+		as.log.Error("failed to validate reset token",
+			slog.String("error", err.Error()),
+		)
+
+		return uuid.Nil, errs.NewErrorWithKind(errs.ErrInvalidToken, errs.KindRequest)
+	}
+
+	return userID, nil
+}
+
+func (as *AuthService) getUserByEmailFromPersistence(ctx context.Context, email user.Email) (*user.User, error) {
+	user, err := as.userPersistence.GetByEmail(ctx, email)
+	if err != nil {
+		as.log.Error("failed to get user from persistence by email",
+			slog.String("error", err.Error()),
+			slog.String("email", email.String()),
+		)
+
+		return nil, as.handleRepoError(err)
+	}
+
+	return user, nil
 }
 
 // Login is a method that find user in db
@@ -199,16 +352,15 @@ func (as *AuthService) Update(ctx context.Context, req *requests.UpdateUser) (*r
 		return nil, err
 	}
 
-	updatedUser, err := as.updateUserStore(ctx, updUser)
-	if err != nil {
+	if err = as.updateUserStore(ctx, updUser); err != nil {
 		return nil, err
 	}
 
-	if err := as.clearUserCache(ctx, updatedUser.ID()); err != nil {
+	if err := as.clearUserCache(ctx, updUser.ID()); err != nil {
 		as.log.Warn("failed to clear user's cache", slog.String("error", err.Error()))
 	}
 
-	return as.userToDTO(updatedUser), nil
+	return as.userToDTO(updUser), nil
 }
 
 // GetSelfUser is a method that find user in db (or cache)
@@ -289,16 +441,15 @@ func (as *AuthService) BindTG(ctx context.Context, req *requests.BindTG) (*respo
 		return nil, err
 	}
 
-	updatedUser, err := as.updateUserStore(ctx, updUser)
-	if err != nil {
+	if err := as.updateUserStore(ctx, updUser); err != nil {
 		return nil, err
 	}
 
-	if err := as.clearUserCache(ctx, updatedUser.ID()); err != nil {
+	if err := as.clearUserCache(ctx, updUser.ID()); err != nil {
 		as.log.Warn("failed to clear user's cache", slog.String("error", err.Error()))
 	}
 
-	return as.userToDTO(updatedUser), nil
+	return as.userToDTO(updUser), nil
 }
 
 func (as *AuthService) Lookup(ctx context.Context, req *requests.Lookup) (*responses.LookupUsers, error) {
@@ -353,7 +504,7 @@ func (as *AuthService) validateIDs(ids []uuid.UUID) error {
 }
 
 func (as *AuthService) storeLastSendTime(ctx context.Context, at time.Time, email user.Email) error {
-	if err := as.preparedCache.SaveLastSend(ctx, email, at); err != nil {
+	if err := as.preparedCache.SetLastSend(ctx, email, at); err != nil {
 		as.log.Error("failed to store last send time",
 			slog.String("error", err.Error()),
 		)
@@ -388,7 +539,7 @@ func (as *AuthService) checkLastSendTime(ctx context.Context, email user.Email) 
 }
 
 func (as *AuthService) clearTgBindingCache(ctx context.Context, bindingID uuid.UUID) error {
-	if err := as.tgBindingCache.Delete(ctx, bindingID); err != nil {
+	if err := as.tgBindingCache.Del(ctx, bindingID); err != nil {
 		as.log.Error("failed to clear tg binding's cache",
 			slog.String("error", err.Error()),
 			slog.String("binding_id", bindingID.String()),
@@ -400,7 +551,7 @@ func (as *AuthService) clearTgBindingCache(ctx context.Context, bindingID uuid.U
 }
 
 func (as *AuthService) getBindingFromCache(ctx context.Context, bindingID uuid.UUID) (*tgbinding.TgBinding, error) {
-	tgBinding, err := as.tgBindingCache.GetByID(ctx, bindingID)
+	tgBinding, err := as.tgBindingCache.Get(ctx, bindingID)
 	if err != nil {
 		as.log.Error("failed to get binding from cache",
 			slog.String("error", err.Error()),
@@ -423,7 +574,7 @@ func (as *AuthService) bindingToDTO(tgBinding *tgbinding.TgBinding) *responses.T
 }
 
 func (as *AuthService) storeBindingCache(ctx context.Context, tgBinding *tgbinding.TgBinding) error {
-	if err := as.tgBindingCache.Save(ctx, tgBinding); err != nil {
+	if err := as.tgBindingCache.Set(ctx, tgBinding); err != nil {
 		as.log.Error("failed to save tg binding's cache",
 			slog.String("binding_id", tgBinding.ID().String()),
 			slog.String("error", err.Error()),
@@ -596,18 +747,17 @@ func (as *AuthService) resolvePreparedUser(ctx context.Context, requestedCode in
 	return preparedUser, nil
 }
 
-func (as *AuthService) storePreparedUserDB(ctx context.Context, user *user.User) (*user.User, error) {
-	savedUser, err := as.userPersistence.Save(ctx, user)
-	if err != nil {
+func (as *AuthService) storePreparedUserDB(ctx context.Context, user *user.User) error {
+	if err := as.userPersistence.Save(ctx, user); err != nil {
 		as.log.Error("failed to save user into db",
 			slog.String("user_id", user.ID().String()),
 			slog.String("error", err.Error()),
 		)
 
-		return nil, as.handleRepoError(err)
+		return as.handleRepoError(err)
 	}
 
-	return savedUser, nil
+	return nil
 }
 
 func (as *AuthService) clearPreparedCache(ctx context.Context, email user.Email) error {
@@ -620,7 +770,7 @@ func (as *AuthService) saveFingerprint(ctx context.Context, fp string, userID uu
 		return err
 	}
 
-	if _, err := as.registrationPersistence.Save(ctx, registration); err != nil {
+	if err := as.registrationPersistence.Save(ctx, registration); err != nil {
 		as.log.Error("failed to save registration into db",
 			slog.String("error", err.Error()),
 			slog.String("fingerprint", fp),
@@ -664,7 +814,7 @@ func (as *AuthService) getFingerprint(ctx context.Context) (string, error) {
 }
 
 func (as *AuthService) generateToken(userID uuid.UUID) (*responses.Token, error) {
-	token, err := as.jwt.Generate(userID)
+	token, err := as.jwt.Generate(userID, as.cfg.Authorization.JWT.TokenTTL)
 	if err != nil {
 		as.log.Error("failed to generate jwt token of user", slog.String("error", err.Error()))
 		return nil, errs.NewErrorWithKind(errs.ErrInternalServer, errs.KindInternal)
@@ -762,18 +912,17 @@ func (as *AuthService) applyUserChanges(updUser *user.User, req *requests.Update
 	return nil
 }
 
-func (as *AuthService) updateUserStore(ctx context.Context, user *user.User) (*user.User, error) {
-	updatedUser, err := as.userPersistence.Update(ctx, user)
-	if err != nil {
+func (as *AuthService) updateUserStore(ctx context.Context, user *user.User) error {
+	if err := as.userPersistence.Update(ctx, user); err != nil {
 		as.log.Error("failed to update user into db",
 			slog.String("user_id", user.ID().String()),
 			slog.String("error", err.Error()),
 		)
 
-		return nil, as.handleRepoError(err)
+		return as.handleRepoError(err)
 	}
 
-	return updatedUser, nil
+	return nil
 }
 
 func (as *AuthService) clearUserCache(ctx context.Context, id uuid.UUID) error {
@@ -810,7 +959,7 @@ func (as *AuthService) generateSecureCode() (int, error) {
 }
 
 func (as *AuthService) sendPassword(ctx context.Context, email user.Email, password string) error {
-	if err := as.smtpClient.SendPassword(ctx, password, []string{email.String()}); err != nil {
+	if err := as.smtpClient.Notify(ctx, fmt.Sprintf("ваш сгенерированный пароль: %s", password), []string{email.String()}); err != nil {
 		return err
 	}
 
@@ -818,7 +967,7 @@ func (as *AuthService) sendPassword(ctx context.Context, email user.Email, passw
 }
 
 func (as *AuthService) sendCode(ctx context.Context, email user.Email, code int) error {
-	if err := as.smtpClient.SendCode(ctx, code, []string{email.String()}); err != nil {
+	if err := as.smtpClient.Notify(ctx, fmt.Sprintf("Ваш код подтверждения: %d", code), []string{email.String()}); err != nil {
 		return err
 	}
 

@@ -19,74 +19,103 @@ type Cache interface {
 	Del(ctx context.Context, key ...string) *redis.IntCmd
 }
 
-type clientCacheRepository struct {
+type clientRepository struct {
 	cfg   *config.Config
 	log   *slog.Logger
 	cache Cache
 }
 
-func New(cfg *config.Config, log *slog.Logger, cache Cache) *clientCacheRepository {
-	return &clientCacheRepository{
+func New(cfg *config.Config, log *slog.Logger, cache Cache) *clientRepository {
+	return &clientRepository{
 		cfg:   cfg,
 		log:   log,
 		cache: cache,
 	}
 }
 
-func (ccr *clientCacheRepository) Save(ctx context.Context, client *client.Client) error {
-	bytes, err := clientToBytes(client)
-	if err != nil {
-		return fmt.Errorf("failed to convert client into bytes: %w", err)
-	}
+// Save is a method that saves
+// the client to the cache as bytes
+// otherwise, an error occurs.
+func (cr *clientRepository) Save(ctx context.Context, client *client.Client) error {
+	cr.log.Debug("saving client into cache",
+		slog.String("client_id", client.ID().String()),
+	)
 
-	if err := ccr.cache.Set(ctx, ccr.getClientKey(client.ID()), bytes, ccr.cfg.Cache.ClientTTL).Err(); err != nil {
-		if safeErr, ok := ccr.handleError(err); ok {
-			return safeErr
-		}
-
-		return fmt.Errorf("failed to set client into cache: %w", err)
+	if err := cr.save(ctx, cr.cache, client); err != nil {
+		return fmt.Errorf("failed to save client: %w",
+			handleError(err),
+		)
 	}
 
 	return nil
 }
 
-func (ccr *clientCacheRepository) GetByID(ctx context.Context, id uuid.UUID) (*client.Client, error) {
-	bytes, err := ccr.cache.Get(ctx, ccr.getClientKey(id)).Bytes()
+func (cr *clientRepository) save(ctx context.Context, cache Cache, client *client.Client) error {
+	bytes, err := clientToBytes(client)
 	if err != nil {
-		if safeErr, ok := ccr.handleError(err); ok {
-			return nil, safeErr
-		}
+		return err
+	}
 
-		return nil, fmt.Errorf("failed to get client from cache: %w", err)
+	key := getClientKey(client.ID())
+	return cache.Set(ctx, key, bytes, cr.cfg.Cache.ClientTTL).Err()
+}
+
+// GetByID is a method that returns
+// a client from the cache,
+// or otherwise an error.
+func (cr *clientRepository) GetByID(ctx context.Context, id uuid.UUID) (*client.Client, error) {
+	cr.log.Debug("getting client from cache",
+		slog.String("client_id", id.String()),
+	)
+
+	client, err := cr.get(ctx, cr.cache, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client from cache: %w",
+			handleError(err),
+		)
+	}
+
+	return client, nil
+}
+
+func (cr *clientRepository) get(ctx context.Context, cache Cache, id uuid.UUID) (*client.Client, error) {
+	bytes, err := cache.Get(ctx, getClientKey(id)).Bytes()
+	if err != nil {
+		return nil, err
 	}
 
 	return bytesToClient(bytes)
 }
 
-func (ccr *clientCacheRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	if err := ccr.cache.Del(ctx, ccr.getClientKey(id)).Err(); err != nil {
-		if safeErr, ok := ccr.handleError(err); ok {
-			return safeErr
-		}
+// Delete`is a method that removes
+// a client from the cache
+// otherwise, it returns an error.
+func (cr *clientRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	cr.log.Debug("deleting client from cache",
+		slog.String("client_id", id.String()),
+	)
 
-		return fmt.Errorf("failed to delete client from cache: %w", err)
+	if err := cr.delete(ctx, cr.cache, id); err != nil {
+		return fmt.Errorf("failed to delete client from cache: %w",
+			handleError(err),
+		)
 	}
 
 	return nil
 }
 
-func (ccr *clientCacheRepository) getClientKey(id uuid.UUID) string {
+func (cr *clientRepository) delete(ctx context.Context, cache Cache, id uuid.UUID) error {
+	return cache.Del(ctx, getClientKey(id)).Err()
+}
+
+func getClientKey(id uuid.UUID) string {
 	return fmt.Sprintf("client:%s", id.String())
 }
 
-func (ccr *clientCacheRepository) handleError(err error) (error, bool) {
-	switch {
-	case errors.Is(err, context.DeadlineExceeded),
-		errors.Is(err, context.Canceled):
-		return err, true
-	case errors.Is(err, redis.Nil):
-		return client.ErrClientNotFound, true
+func handleError(err error) error {
+	if errors.Is(err, redis.Nil) {
+		return client.ErrClientNotFound
 	}
 
-	return err, false
+	return err
 }

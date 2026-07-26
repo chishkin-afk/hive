@@ -23,10 +23,18 @@ func NewAuthMiddleware(jm jwtManager, authRequire map[string]bool) gin.HandlerFu
 			return
 		}
 
-		token, _ := strings.CutPrefix(ctx.GetHeader("Authorization"), "Bearer ")
+		raw, err := ctx.Cookie("token")
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, &responses.ErrMsg{
+				Error: "invalid cookie token",
+			})
+			return
+		}
+
+		token, _ := strings.CutPrefix(raw, "Bearer ")
 		if token == "" {
 			ctx.AbortWithStatusJSON(http.StatusBadRequest, &responses.ErrMsg{
-				Error: "invalid authorization's header",
+				Error: "invalid cookie token",
 			})
 			return
 		}

@@ -23,15 +23,35 @@ type JWTManager struct {
 	cfg     *config.Config
 }
 
-func (jm *JWTManager) Generate(userID uuid.UUID) (string, error) {
+func (jm *JWTManager) Generate(userID uuid.UUID, ttl time.Duration) (string, error) {
 	now := time.Now().UTC()
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, &customClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "hivecrm",
 			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(jm.cfg.Authorization.JWT.TokenTTL)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 			Subject:   "hiveuser",
+		},
+	})
+
+	signedToken, err := token.SignedString(jm.private)
+	if err != nil {
+		return "", err
+	}
+
+	return signedToken, nil
+}
+
+func (jm *JWTManager) GenerateResetToken(userID uuid.UUID, ttl time.Duration) (string, error) {
+	now := time.Now().UTC()
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, &resetClaims{
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "hivecrm",
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
+			Subject:   "hive-reset-user",
 		},
 	})
 
@@ -56,6 +76,25 @@ func (jm *JWTManager) Validate(tokenString string) (uuid.UUID, error) {
 	}
 
 	if claims, ok := token.Claims.(*customClaims); ok {
+		return claims.UserID, nil
+	}
+
+	return uuid.Nil, ErrInvalidToken
+}
+
+func (jm *JWTManager) ValidateReset(resetToken string) (uuid.UUID, error) {
+	token, err := jwt.ParseWithClaims(resetToken, &resetClaims{}, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, ErrInvalidToken
+		}
+
+		return jm.public, nil
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if claims, ok := token.Claims.(*resetClaims); ok {
 		return claims.UserID, nil
 	}
 

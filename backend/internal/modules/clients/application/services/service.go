@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
 	"github.com/devathh/hive/backend/internal/common/application/dtos/requests"
 	"github.com/devathh/hive/backend/internal/common/application/dtos/responses"
@@ -12,6 +13,16 @@ import (
 	"github.com/devathh/hive/backend/pkg/errs"
 	"github.com/google/uuid"
 )
+
+var mskLocation *time.Location
+
+func init() {
+	var err error
+	mskLocation, err = time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		panic("failed to load MSK timezone: " + err.Error())
+	}
+}
 
 type ClientService struct {
 	log               *slog.Logger
@@ -40,16 +51,42 @@ func (cs *ClientService) Upsert(ctx context.Context, req *requests.UpsertClient)
 		return nil, err
 	}
 
+	visit, err := cs.parseVisitTime(&req.Visit)
+	if err != nil {
+		return nil, err
+	}
+
 	updClient, notFound, err := cs.getClientByPairIDs(ctx, userID, req.OfferID)
 	if err != nil && !notFound {
 		return nil, err
 	}
 
 	if !notFound {
-		return cs.updateClient(ctx, updClient)
+		return cs.updateClient(ctx, updClient, visit)
 	}
 
-	return cs.createClient(ctx, userID, req.OfferID)
+	return cs.createClient(ctx, userID, req.OfferID, visit)
+}
+
+func (cs *ClientService) parseVisitTime(req *requests.Time) (time.Time, error) {
+	visit, err := time.ParseInLocation(time.DateOnly, req.Date, mskLocation)
+	if err != nil {
+		return time.Time{}, errs.NewErrorWithKind(errs.ErrInvalidVisit, errs.KindRequest)
+	}
+
+	now := time.Now().In(mskLocation)
+	if now.Compare(visit) > 0 {
+		return time.Time{}, errs.NewErrorWithKind(errs.ErrInvalidVisit, errs.KindRequest)
+	}
+
+	return time.Date(
+		visit.Year(),
+		visit.Month(),
+		visit.Day(),
+		int(req.StartTime.Hour),
+		int(req.StartTime.Minute),
+		0, 0, mskLocation,
+	), nil
 }
 
 // GetByID is a method that
@@ -138,9 +175,9 @@ func (cs *ClientService) getClientByPairIDs(ctx context.Context, userID, offerID
 	return foundClient, false, nil
 }
 
-func (cs *ClientService) updateClient(ctx context.Context, updClient *client.Client) (*responses.Client, error) {
+func (cs *ClientService) updateClient(ctx context.Context, updClient *client.Client, visit time.Time) (*responses.Client, error) {
 	updatedClient, err := cs.clientPersistence.Update(ctx, func(c *client.Client) error {
-		c.AddVisit()
+		c.AddVisit(visit)
 		return nil
 	}, updClient.ID())
 	if err != nil {
@@ -162,14 +199,13 @@ func (cs *ClientService) updateClient(ctx context.Context, updClient *client.Cli
 	return cs.clientToDTO(updatedClient), nil
 }
 
-func (cs *ClientService) createClient(ctx context.Context, userID, offerID uuid.UUID) (*responses.Client, error) {
-	client, err := client.New(userID, offerID)
+func (cs *ClientService) createClient(ctx context.Context, userID, offerID uuid.UUID, visit time.Time) (*responses.Client, error) {
+	client, err := client.New(userID, offerID, visit)
 	if err != nil {
 		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
 	}
 
-	savedClient, err := cs.clientPersistence.Save(ctx, client)
-	if err != nil {
+	if err := cs.clientPersistence.Save(ctx, client); err != nil {
 		cs.log.Error("failed to save client into db",
 			slog.String("user_id", userID.String()),
 			slog.String("offer_id", offerID.String()),
@@ -178,7 +214,7 @@ func (cs *ClientService) createClient(ctx context.Context, userID, offerID uuid.
 		return nil, cs.handleRepoError(err)
 	}
 
-	return cs.clientToDTO(savedClient), nil
+	return cs.clientToDTO(client), nil
 }
 
 func (cs *ClientService) getClientFromCache(ctx context.Context, id uuid.UUID) (*client.Client, bool) {
