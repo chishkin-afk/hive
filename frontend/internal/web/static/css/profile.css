@@ -720,6 +720,10 @@
         gap: 20px;
     }
 
+    .profile-nav-item.active, .profile-nav-item:hover {
+        transform: none;
+    }
+
     .profile-hero {
         flex-direction: column;
         text-align: center;
@@ -735,11 +739,15 @@
     }
 
     .profile-connect,
-    .profile-danger-card,
-    .profile-switch {
+    .profile-danger-card {
         flex-direction: column;
         align-items: stretch;
         text-align: center;
+    }
+
+    .profile-switch {
+        flex-direction: row;
+        align-items: center;
     }
 
     .profile-danger-card .profile-danger-title,
