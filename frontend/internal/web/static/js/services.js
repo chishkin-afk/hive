@@ -14,6 +14,7 @@ menuLinks.forEach(link => {
     link.addEventListener('click', toggleMobileMenu);
 });
 
+const createServiceBtn = document.getElementById('createServiceBtn');
 const services = document.querySelectorAll('.service-card');
 services.forEach(el => {
     el.addEventListener('click', () => {
@@ -21,12 +22,14 @@ services.forEach(el => {
 
         document.body.classList.add('block-scroll');
         overlay.classList.add('open');
+        createServiceBtn.classList.add('hide');
 
 
         overlay.addEventListener('mousedown', function(e) {
         if (e.target === this) {
             document.body.classList.remove('block-scroll');
             overlay.classList.remove('open');
+            createServiceBtn.classList.remove('hide');
         }
     });
     })

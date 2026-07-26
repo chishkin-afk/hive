@@ -120,7 +120,7 @@
     min-height: 100svh;
     display: flex;
     flex-direction: column;
-    padding: 16px;
+    padding: 128px 16px 64px 16px;
     gap: 16px;
     justify-content: center;
     align-items: center;
@@ -483,6 +483,53 @@
     animation-delay: 1s;
 }
 
+/* CREATE SERVICE */
+
+.create-service-btn {
+    position: fixed;
+    padding: 18px;
+    bottom: 64px;
+    right: 64px;
+    display: flex;
+    align-items: center;
+    box-shadow: var(--shadow-lg);
+    border: solid 1px var(--color-bg-tertiary);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg-secondary);
+    transition: background-color .3s,
+        border-color .3s,
+        visibility .3s,
+        opacity .3s,
+        box-shadow .3s;
+}
+
+.create-service-btn.hide {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.create-service-btn:hover {
+    box-shadow: var(--shadow-md);
+    background-color: var(--color-bg-hover);
+}
+
+.create-service-btn span {
+    position: absolute;
+    width: 2px;
+    height: 18px;
+    border-radius: var(--radius-fl);
+    background-color: var(--color-text-secondary);
+    transition: background-color .3s;
+}
+
+.create-service-btn:hover span {
+    background-color: var(--color-text-primary);
+}
+
+.create-service-btn span:first-child {
+    transform: rotate(90deg);
+}
+
 @media (max-width: 768px) {   
     .island-actions {
         display: none;
@@ -512,6 +559,10 @@
     .service-divider {
         width: 100%;
         height: 1px;
+    }
+
+    .create-service-btn {
+        padding: 24px;
     }
 
     .background-circles {
