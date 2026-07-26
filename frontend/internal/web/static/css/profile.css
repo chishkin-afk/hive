@@ -464,7 +464,7 @@
     font-weight: 700;
 }
 
-.profile-connect-text {
+.profile-connect-text, .profile-danger-text {
     color: var(--color-text-secondary);
     font-size: 13px;
 }
@@ -569,7 +569,12 @@
     border-radius: var(--radius-md);
     border: 1px solid var(--color-error);
     background-color: transparent;
-    transition: background-color .3s;
+    transition: background-color .3s,
+}
+
+.profile-danger-card:hover {
+    border-color: var(--color-error);
+    transform: none;
 }
 
 .profile-danger-body {
