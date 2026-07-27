@@ -21,7 +21,7 @@ type authService interface {
 	BindTG(ctx context.Context, req *requests.BindTG) (*responses.User, error)
 	Lookup(ctx context.Context, req *requests.Lookup) (*responses.LookupUsers, error)
 	ForgetPassword(ctx context.Context, req *requests.ForgetPassword) error
-	ChangePassword(ctx context.Context, req *requests.ChangePassword) (*responses.Token, error)
+	ChangePassword(ctx context.Context, req *requests.ChangePassword) error
 }
 
 // @Summary      Prepare the user
@@ -132,7 +132,7 @@ func (h *HandlerFuncs) Login() gin.HandlerFunc {
 			"token",
 			resp.Token,
 			int(h.cfg.Authorization.JWT.TokenTTL.Seconds()),
-			"", "", true, true)
+			"", "", false, true)
 		ctx.Status(http.StatusNoContent)
 	}
 }
@@ -377,7 +377,7 @@ func (h *HandlerFuncs) ChangePassword() gin.HandlerFunc {
 			return
 		}
 
-		resp, err := h.authService.ChangePassword(ctx.Request.Context(), &req)
+		err := h.authService.ChangePassword(ctx.Request.Context(), &req)
 		if err != nil {
 			ctx.JSON(h.getCodeFromError(err), &responses.ErrMsg{
 				Error: err.Error(),
@@ -385,7 +385,7 @@ func (h *HandlerFuncs) ChangePassword() gin.HandlerFunc {
 			return
 		}
 
-		ctx.JSON(http.StatusOK, resp)
+		ctx.Status(http.StatusNoContent)
 	}
 }
 

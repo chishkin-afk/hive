@@ -24,7 +24,6 @@ type UpdateUser struct {
 	Firstname    *string            `json:"firstname"`
 	Lastname     *string            `json:"lastname"`
 	PhoneNumber  *string            `json:"phone_number"`
-	Password     *string            `json:"password"`
 	OnVacation   *bool              `json:"on_vacation"`
 	Notification UpdateNotification `json:"notification"`
 }

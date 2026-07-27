@@ -193,26 +193,26 @@ func (as *AuthService) ForgetPassword(ctx context.Context, req *requests.ForgetP
 	return nil
 }
 
-func (as *AuthService) ChangePassword(ctx context.Context, req *requests.ChangePassword) (*responses.Token, error) {
+func (as *AuthService) ChangePassword(ctx context.Context, req *requests.ChangePassword) error {
 	userID, err := as.validateResetToken(req.ResetToken)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	user, err := as.getUserFromPersistence(ctx, userID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := as.changePassword(user, req.NewPassword); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err = as.updateUserStore(ctx, user); err != nil {
-		return nil, err
+		return err
 	}
 
-	return as.generateToken(user.ID())
+	return nil
 }
 
 func (as *AuthService) UnbindTg(ctx context.Context) (*responses.User, error) {
@@ -883,11 +883,6 @@ func (as *AuthService) applyUserChanges(updUser *user.User, req *requests.Update
 	}
 	if req.PhoneNumber != nil {
 		if err := updUser.ChangePhoneNumber(user.PhoneNumber(*req.PhoneNumber)); err != nil {
-			return errs.NewErrorWithKind(err, errs.KindRequest)
-		}
-	}
-	if req.Password != nil {
-		if err := updUser.ChangePassword(*req.Password); err != nil {
 			return errs.NewErrorWithKind(err, errs.KindRequest)
 		}
 	}
