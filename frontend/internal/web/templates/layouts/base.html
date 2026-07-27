@@ -13,6 +13,8 @@
         {{template "services_content" .}}
     {{else if eq .page "profile"}}
         {{template "profile_content" .}}
+    {{else if eq .page "topup"}}
+        {{template "topup_content" .}}
     {{end}}
 
     {{template "scripts" .}}
