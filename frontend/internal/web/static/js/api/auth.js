@@ -208,4 +208,4 @@ class AuthApi extends Api {
     }
 }
 
-const authAPI = new Auth('/auth')
+const authAPI = new AuthApi('/auth')

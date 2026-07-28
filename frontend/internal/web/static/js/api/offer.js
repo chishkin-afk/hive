@@ -130,4 +130,4 @@ class OfferApi extends Api {
     }
 }
 
-const offerAPI = new Offer('/offers')
+const offerAPI = new OfferApi('/offers')
