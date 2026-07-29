@@ -3,7 +3,7 @@ package schedule
 import "errors"
 
 var (
-	ErrInvalidBreak = errors.New("interval beetween break's must be more than 5 minutes")
+	ErrInvalidBreak = errors.New("invalid break")
 	ErrBreakOverlap = errors.New("some breaks is overlap")
 )
 

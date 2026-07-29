@@ -1,3 +1,9 @@
+/**
+ * @typedef {Object} DayTime
+ * @property {number} hour
+ * @property {number} minute
+ */
+
 // Api is a main class of api's
 class Api {
     constructor(extendsUrn) {

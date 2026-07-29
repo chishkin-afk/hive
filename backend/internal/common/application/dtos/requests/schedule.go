@@ -13,7 +13,7 @@ type UpdateSchedule struct {
 	ScheduleID    uuid.UUID `json:"schedule_id"`
 	StartTime     *DayTime  `json:"start_time"`
 	EndTime       *DayTime  `json:"end_time"`
-	DoUpdateBreak bool      `json:"do_update_breaks"`
+	DoUpdateBreak bool      `json:"do_update_break"`
 	Breaks        []Break   `json:"breaks"`
 }
 

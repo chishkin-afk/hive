@@ -206,13 +206,19 @@ func (s *ScheduleService) createSchedule(req *requests.CreateSchedule, userID uu
 		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
 	}
 
-	return schedule.New(
+	schedule, err := schedule.New(
 		userID,
 		req.DayOfWeek,
 		startTime,
 		endTime,
 		breaks,
 	)
+
+	if err != nil {
+		return nil, errs.NewErrorWithKind(err, errs.KindRequest)
+	}
+
+	return schedule, nil
 }
 
 func (s *ScheduleService) listSchedulesFromCache(ctx context.Context, userID uuid.UUID) ([]*schedule.Schedule, bool) {

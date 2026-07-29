@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	ErrInvalidSchedule  = errors.New("times of schedule must be more than 5")
+	ErrInvalidSchedule  = errors.New("times of schedule must be more than 5 minutes")
 	ErrInvalidDayOfWeek = errors.New("invalid day of week")
 	ErrInvalidUserID    = errors.New("invalid user's id")
 )
