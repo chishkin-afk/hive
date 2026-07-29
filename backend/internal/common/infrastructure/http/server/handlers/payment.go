@@ -272,7 +272,7 @@ func (h *HandlerFuncs) GetRateByID() gin.HandlerFunc {
 // @Failure      404  {object}  responses.ErrMsg
 // @Failure      500  {object}  responses.ErrMsg
 // @Security     BearerAuth
-// @Router       /payments/take-trial [post]
+// @Router       /payments/take-trial [patch]
 func (h *HandlerFuncs) TakeTrial() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if err := h.paymentService.TakeTrial(ctx.Request.Context()); err != nil {

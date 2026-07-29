@@ -183,7 +183,7 @@ func (di *DIContainer) Handler() *gin.Engine {
 				"GET:/api/v1/bookings/booking/:id":      true,
 				"GET:/api/v1/bookings/bookings":         true,
 				"POST:/api/v1/payments/payment":         true,
-				"GET:/api/v1/payments/payments":         true,
+				"GET:/api/v1/payments/user":             true,
 				"GET:/api/v1/payments/payment/:id":      true,
 				"PATCH:/api/v1/payments/take-trial":     true,
 			}),
