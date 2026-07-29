@@ -21,8 +21,8 @@
  */
 
 class ScheduleApi extends Api {
-    constructor(offerUrn) {
-        super(offerUrn)
+    constructor(scheduleUrn) {
+        super(scheduleUrn)
     }
 
     /**

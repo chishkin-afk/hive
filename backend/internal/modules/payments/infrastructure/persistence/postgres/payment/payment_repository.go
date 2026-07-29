@@ -443,7 +443,7 @@ func (pr *paymentRepository) getTrialOfUser(ctx context.Context, db DB, userID u
 }
 
 func (pr *paymentRepository) buildSelectTrialQuery(userID uuid.UUID) (string, []any, error) {
-	return pr.sqlBuilder.Select("paid_until", "trial_used").From("users").Suffix("FOR UPDATE").Where("id = ?", userID).ToSql()
+	return pr.sqlBuilder.Select("paid_until", "trial_used").From("users").Where("id = ?", userID).Suffix("FOR UPDATE").ToSql()
 }
 
 func (pr *paymentRepository) beginTx(ctx context.Context) (*sql.Tx, func(), error) {

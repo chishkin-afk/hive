@@ -445,7 +445,7 @@ func (bs *BookingService) validateAllDaysRequest(from, to time.Time) (time.Time,
 func (bs *BookingService) slotsToDTO(slots []responses.DayTime, date time.Time) *responses.Slots {
 	year, month, day := date.Date()
 	return &responses.Slots{
-		Date:  fmt.Sprintf("%d-%s-%d", year, month.String(), day),
+		Date:  fmt.Sprintf("%d-%02d-%02d", year, month, day),
 		Times: slots,
 	}
 }
@@ -704,6 +704,10 @@ func (bs *BookingService) listByUserID(ctx context.Context, userID uuid.UUID, pa
 }
 
 func (bs *BookingService) lookupUsers(ctx context.Context, list []*booking.Booking) (*responses.LookupUsers, error) {
+	if len(list) == 0 {
+		return &responses.LookupUsers{}, nil
+	}
+
 	req := requests.Lookup{
 		IDs: make([]uuid.UUID, len(list)),
 	}

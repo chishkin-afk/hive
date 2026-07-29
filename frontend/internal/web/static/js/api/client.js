@@ -25,8 +25,7 @@ class ClientApi extends Api {
      * @param {string} offerId 
      * @param {Object} visit
      * @param {string} visit.date
-     * @param {number} visit.startTime.hour
-     * @param {number} visit.startTime.minute
+     * @param {DayTime} visit.startTime
      * @returns {Promise<Client>}
      */
     async upsert(offerId, visit) {
@@ -37,10 +36,7 @@ class ClientApi extends Api {
                 offer_id: offerId,
                 visit: {
                     date: visit?.date,
-                    start_time: {
-                        hour: visit?.startTime?.hour,
-                        minute: visit?.startTime?.minute
-                    }
+                    start_time: visit?.startTime
                 }
             }
         )

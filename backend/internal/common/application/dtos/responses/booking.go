@@ -42,6 +42,6 @@ type Days struct {
 }
 
 type Day struct {
-	Time     int64 `json:"unix"`
+	Time     int64 `json:"time"`
 	IsActive bool  `json:"is_active"` // true if it has free slots & < paid until
 }
