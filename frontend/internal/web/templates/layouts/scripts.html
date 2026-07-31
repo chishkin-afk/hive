@@ -11,5 +11,7 @@
         {{block "profile_extra_scripts" .}}{{end}}
     {{else if eq .page "topup"}}
         {{block "topup_extra_scripts" .}}{{end}}
+    {{else if eq .page "bookings"}}
+        {{block "bookings_extra_scripts" .}}{{end}}
     {{end}}
 {{end}}

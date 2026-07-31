@@ -21,6 +21,8 @@
             {{block "profile_extra_head" .}}{{end}}
         {{else if eq .page "topup"}}
             {{block "topup_extra_head" .}}{{end}}
+        {{else if eq .page "bookings"}}
+            {{block "bookings_extra_head" .}}{{end}}
         {{end}}
 
         <script src="/static/js/theme.js"></script>
