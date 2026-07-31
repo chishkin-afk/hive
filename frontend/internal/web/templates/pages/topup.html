@@ -1,0 +1,111 @@
+{{define "topup_extra_head"}}
+<link rel="stylesheet" href="/static/css/topup.css">
+<link rel="stylesheet" href="/static/css/header.css">
+<link rel="stylesheet" href="/static/css/keyframes.css">
+{{end}}
+
+{{define "topup_content"}}
+{{template "header" .}}
+
+<div class="background-circles" aria-hidden="true">
+    <div class="circle-left"></div>
+    <div class="circle-right"></div>
+</div>
+
+<div class="container">
+    <section class="topup-header">
+        <h1>Тарифы</h1>
+        <p class="topup-subtitle">Продление и история платежей</p>
+    </section>
+
+    <section class="plans-section">
+        <div class="section-head">
+            <h2 class="section-name">Тарифы для продления</h2>
+            <p class="section-hint">Чем дольше период — тем дешевле день</p>
+        </div>
+
+        <div class="plans-grid" aria-label="Тарифные планы">
+            <article class="plan-card plan-card-skeleton" aria-hidden="true">
+                <div class="skeleton skeleton-name"></div>
+                <div class="skeleton skeleton-price"></div>
+                <div class="skeleton skeleton-period"></div>
+                <div class="skeleton skeleton-daily"></div>
+                <div class="skeleton skeleton-button"></div>
+            </article>
+
+            <article class="plan-card plan-card-skeleton" aria-hidden="true">
+                <div class="skeleton skeleton-name"></div>
+                <div class="skeleton skeleton-price"></div>
+                <div class="skeleton skeleton-period"></div>
+                <div class="skeleton skeleton-daily"></div>
+                <div class="skeleton skeleton-button"></div>
+            </article>
+
+            <article class="plan-card" data-days="360" data-price="3999">
+                <h3 class="plan-name">Босс</h3>
+                <p class="plan-price">
+                    <span class="plan-amount">3999</span><span class="plan-currency">₽</span>
+                </p>
+                <p class="plan-period">360 дней</p>
+                <p class="plan-daily">~11 ₽ в день</p>
+                <button type="button" class="plan-btn">Выбрать тариф</button>
+            </article>
+        </div>
+    </section>
+
+    <section class="history-section">
+        <div class="section-head">
+            <h2 class="section-name">История платежей</h2>
+        </div>
+
+        <div class="history-list" id="historyList">
+            <div class="history-row">
+                <span class="history-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 3H18V21L15 19L12 21L9 19L6 21V3Z"
+                            stroke-width="2" stroke-linejoin="round"/>
+                        <path d="M9 8H15M9 12H15"
+                            stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </span>
+
+                <div class="history-main">
+                    <p class="history-title">Босс</p>
+                    <p class="history-date">15.07.2026</p>
+                </div>
+
+                <span class="history-side">
+                    <span class="history-amount">3999</span>
+                    <span class="history-badge">Оплачен</span>
+                </span>
+            </div>
+
+            <div class="history-row skeleton">
+                <span class="history-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 3H18V21L15 19L12 21L9 19L6 21V3Z"
+                            stroke-width="2" stroke-linejoin="round"/>
+                        <path d="M9 8H15M9 12H15"
+                            stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </span>
+
+                <div class="history-main">
+                    <p class="history-title skel-title"></p>
+                    <p class="history-date skel-date"></p>
+                </div>
+
+                <span class="history-side">
+                    <span class="history-amount skel-amount"></span>
+                    <span class="history-badge skel-badge"></span>
+                </span>
+            </div>
+        </div>
+    </section>
+</div>
+{{end}}
+
+{{define "topup_extra_scripts"}}
+<script src="/static/js/topup.js" defer></script>
+<script src="/static/js/header.js" defer></script>
+{{end}}

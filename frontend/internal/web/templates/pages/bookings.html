@@ -1,0 +1,85 @@
+{{define "bookings_extra_head"}}
+<link rel="stylesheet" href="/static/css/header.css">
+<link rel="stylesheet" href="/static/css/bookings.css">
+<link rel="stylesheet" href="/static/css/keyframes.css">
+{{end}}
+
+{{define "bookings_content"}}
+{{template "header" .}}
+
+<div class="background-circles" aria-hidden="true">
+    <div class="circle-left"></div>
+    <div class="circle-right"></div>
+</div>
+
+<div class="container">
+    <section class="bookings-header">
+        <h1>Записи</h1>
+    </section>
+
+    <section class="bookings-section">
+        <div class="bookings-list" id="bookingsList">
+            <div class="booking-card booking-card-skeleton">
+                <div class="booking-date skeleton">
+                </div>
+
+                <div class="booking-main">
+                    <div class="booking-top">
+                        <h2 class="booking-title skeleton-text"></h2>
+                    </div>
+                    <p class="booking-comment skeleton-text"></p>
+                </div>
+            </div>
+
+            <div class="booking-card" data-booking-id="">
+                <div class="booking-date">
+                    <span class="booking-date-day">ВТ</span>
+                    <span class="booking-date-month">МАЙ</span>
+                    <span class="booking-date-time">19:30</span>
+                </div>
+
+                <div class="booking-main">
+                    <div class="booking-top">
+                        <h2 class="booking-title">Название</h2>
+                    </div>
+                    <p class="booking-comment">Комментарий</p>
+                </div>
+
+                <div class="booking-side">
+                    <div class="booking-actions">
+                        <a href="/appointment" class="booking-btn booking-btn-reschedule">Перенести</a>
+                        <button type="button" class="booking-btn booking-btn-cancel danger">Отменить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bookings-empty" id="bookingsEmpty">
+            <p class="bookings-empty-title">Записей пока нет</p>
+        </div>
+    </section>
+</div>
+
+<div class="cancel-overlay" id="cancelOverlay" aria-hidden="true">
+    <div
+        class="cancel-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cancelTitle"
+        aria-describedby="cancelText"
+    >
+        <h2 class="cancel-title" id="cancelTitle">Отменить запись?</h2>
+        <p class="cancel-text" id="cancelText"></p>
+
+        <div class="cancel-actions">
+            <button type="button" class="modal-btn" id="cancelClose">Назад</button>
+            <button type="button" class="modal-btn danger" id="cancelConfirm">Да</button>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "bookings_extra_scripts"}}
+<script src="/static/js/bookings.js" defer></script>
+<script src="/static/js/header.js" defer></script>
+{{end}}

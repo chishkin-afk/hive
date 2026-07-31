@@ -150,6 +150,7 @@
                     <button id="saveServiceBtn" class="service-modal-btn">Сохранить</button>
                     <button id="suspendServiceBtn" class="service-modal-btn">Приостановить</button>
                     <button id="resumeServiceBtn" class="service-modal-btn">Возобновить</button>
+                    <button id="copyURLServiceBtn" class="service-modal-btn">Ссылка</button>
                     <button id="deleteServiceBtn" class="service-modal-btn delete">Удалить</button>
                 </div>
             </div>
@@ -173,6 +174,43 @@
         </div>
     </div>
 
+    <div id="serviceCreateModalOverlay" class="service-modal-overlay">
+        <div class="service-modal">
+            <div class="service-modal-top">
+                <div class="service-modal-main">
+                    <label>
+                        <span class="service-modal-input-title">Название</span>
+                        <input id="serviceTitle" type="text">
+                    </label>
+                    <label>
+                        <span class="service-modal-input-title">Описание</span>
+                        <textarea id="serviceDescription"></textarea>
+                    </label>
+                    <label>
+                        <span class="service-modal-input-title">Цена</span>
+                        <div class="service-modal-input-wrapper">
+                            <input id="servicePrice" type="number">
+                            <span class="service-modal-input-suffix">₽</span>
+                        </div>
+                    </label>
+                    <label>
+                        <span class="service-modal-input-title">Продолжительность</span>
+                        <div class="service-modal-input-wrapper">
+                            <input id="serviceDuration" type="number">
+                            <span class="service-modal-input-suffix">мин</span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="service-divider"></div>
+                
+                <div class="service-modal-buttons">
+                    <button id="saveServiceBtn" class="service-modal-btn">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <button id="createServiceBtn" class="create-service-btn">
         <span></span>
         <span></span>
@@ -186,5 +224,6 @@
 {{end}}
 
 {{define "services_extra_scripts"}}
-<script src="/static/js/services.js"></script>
+<script src="/static/js/services.js" defer></script>
+<script src="/static/js/header.js" defer></script>
 {{end}}

@@ -103,7 +103,7 @@
                         <div class="profile-connect-body">
                             <p class="profile-connect-title">Telegram</p>
                             <p class="profile-connect-text">
-                                Получай уведомления прямо в Telegram.
+                                Получай уведомления прямо в Telegram
                             </p>
                             <span class="profile-connect-status active">
                                 Подключено
@@ -207,6 +207,17 @@
                 <fieldset class="profile-section danger" data-section="danger" hidden>
                     <h2 class="profile-section-title danger">Опасная зона</h2>
 
+                    <label class="profile-danger-card profile-switch">
+                        <div class="profile-danger-body">
+                            <p class="profile-danger-title">Отключить записи</p>
+                            <p class="profile-danger-text">
+                                Эта функция запретит создавать клиентам новые запси
+                            </p>
+                        </div>
+                        <input type="checkbox">
+                        <span class="profile-switch-mark" aria-hidden="true"></span>
+                    </label>
+
                     <div class="profile-danger-card">
                         <div class="profile-danger-body">
                             <p class="profile-danger-title">Выйти из аккаунта</p>
@@ -239,4 +250,5 @@
 
 {{define "profile_extra_scripts"}}
 <script src="/static/js/profile.js" defer></script>
+<script src="/static/js/header.js" defer></script>
 {{end}}

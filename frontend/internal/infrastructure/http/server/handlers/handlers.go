@@ -71,3 +71,21 @@ func (h *handlers) Profile() gin.HandlerFunc {
 		})
 	}
 }
+
+func (h *handlers) Topup() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.HTML(http.StatusOK, "base", gin.H{
+			"title": "Тарифы",
+			"page":  "topup",
+		})
+	}
+}
+
+func (h *handlers) Bookings() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.HTML(http.StatusOK, "base", gin.H{
+			"title": "Записи",
+			"page":  "bookings",
+		})
+	}
+}
