@@ -8,16 +8,6 @@
     align-items: center;
 }
 
-.error-message {
-    color: var(--color-error);
-    font-weight: 500;
-}
-
-.success-message {
-    color: var(--color-success);
-    font-weight: 500;
-}
-
 .form-wrapper {
     width: 500px;
     display: flex;
@@ -40,6 +30,13 @@
 
 .auth-title {
     align-self: center;
+}
+
+.confirm-hint {
+    color: var(--color-text-secondary);
+    text-align: center;
+    font-size: 14px;
+    margin-bottom: 4px;
 }
 
 .form-group {
@@ -75,13 +72,13 @@
     border-color: var(--color-accent);
 }
 
-.password-wrapper .form-input {
-    padding-right: 48px;
-}
-
 .password-wrapper {
     position: relative;
     display: flex;
+}
+
+.password-wrapper .form-input {
+    padding-right: 48px;
 }
 
 .password-toggle {
@@ -138,7 +135,7 @@
         border-color .2s;
 }
 
-.checkbox-label input:checked+.checkmark {
+.checkbox-label input:checked + .checkmark {
     background-color: var(--color-accent);
     border-color: var(--color-accent-dark);
 }
@@ -175,6 +172,7 @@
     transform: translateY(-3px) scale(0.97);
 }
 
+/* Только кнопки переключения форм ("Уже есть аккаунт?", "Нет аккаунта?") */
 .switch-btn {
     color: var(--color-text-secondary);
     width: fit-content;
@@ -185,6 +183,27 @@
 
 .switch-btn:hover {
     color: var(--color-text-primary);
+}
+
+/* Второстепенные кнопки (resend, cancel в форме подтверждения) */
+.secondary-btn {
+    color: var(--color-text-secondary);
+    width: fit-content;
+    align-self: center;
+    margin-top: 8px;
+    transition: color .3s;
+}
+
+.secondary-btn:hover {
+    color: var(--color-text-primary);
+}
+
+.secondary-btn.disabled,
+.secondary-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    pointer-events: none;
+    color: var(--color-text-secondary);
 }
 
 .background-circles {
@@ -231,4 +250,60 @@
     .background-circles {
         display: none;
     }
+}
+
+
+/* ===== УВЕДОМЛЕНИЯ ===== */
+.notification-toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    padding: 14px 28px;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    font-size: 14px;
+    z-index: 9999;
+    opacity: 0;
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    box-shadow: var(--shadow-lg);
+    max-width: 90%;
+    text-align: center;
+    pointer-events: none;
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+}
+
+.notification-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.notification-toast.error {
+    color: var(--color-error);
+}
+
+.notification-toast.success {
+    color: var(--color-success);
+}
+
+.notification-toast.info {
+    color: var(--color-text-secondary);
+}
+
+/* ===== ВАЛИДАЦИЯ НА ЛЕТУ ===== */
+.form-input.error {
+    border-color: var(--color-error) !important;
+    background-color: rgba(224, 94, 82, 0.08) !important;
+}
+
+.form-input.success {
+    border-color: var(--color-success) !important;
+    background-color: rgba(60, 221, 116, 0.08) !important;
+}
+
+.checkbox-label .checkmark.error {
+    border-color: var(--color-error) !important;
+    background-color: rgba(224, 94, 82, 0.08) !important;
 }
