@@ -18,6 +18,7 @@ COPY --from=builder /app/docs/ ./docs/
 COPY --from=builder /app/migrations/ ./migrations/
 
 RUN chmod +x /app/hiveback
+RUN apk add --no-cache tzdata
 
 EXPOSE 8090
 

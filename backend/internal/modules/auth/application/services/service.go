@@ -125,7 +125,7 @@ func (as *AuthService) ResendCode(ctx context.Context, req *requests.ResendCode)
 		return nil, err
 	}
 
-	newSendTime := time.Now().UTC()
+	newSendTime := time.Now().Add(as.cfg.Service.SendingDuration).UTC()
 	if err := as.storeLastSendTime(ctx, newSendTime, preparedUser.ConfirmedEmail()); err != nil {
 		return nil, err
 	}
