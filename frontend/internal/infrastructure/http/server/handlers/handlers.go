@@ -89,3 +89,14 @@ func (h *handlers) Bookings() gin.HandlerFunc {
 		})
 	}
 }
+
+func (h *handlers) Reset() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		token := ctx.Query("token")
+		ctx.HTML(http.StatusOK, "base", gin.H{
+			"title":       "Смена пароля",
+			"page":        "reset",
+			"reset_token": token,
+		})
+	}
+}

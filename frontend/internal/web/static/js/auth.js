@@ -24,7 +24,7 @@ function clearFieldErrors(formSelector) {
 }
 
 function showForm(formId) {
-    ['loginForm', 'registerForm', 'confirmForm'].forEach(id => $(id).classList.toggle('active', id === formId));
+    ['loginForm', 'registerForm', 'confirmForm', 'forgotForm'].forEach(id => $(id).classList.toggle('active', id === formId));
 }
 
 function unlockResendBtn() {
@@ -75,7 +75,7 @@ function setupLiveValidation() {
         { id: 'regEmail',    test: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), emptyIsOk: false },
         { id: 'regPassword', test: (v) => v.length >= 6,                            emptyIsOk: true  },
         { id: 'regFirstname',test: (v) => v.length >= 3,                            emptyIsOk: false },
-        { id: 'regLastname', test: (v) => v.length > 0,                             emptyIsOk: true  },
+        { id: 'regLastname', test: (v) => v.length >= 3,                            emptyIsOk: true  },
         { id: 'regPhone',    test: (v) => /^(\+7|8)\d{10}$/.test(v.replace(/[\s\-\(\)]/g, '')), emptyIsOk: true },
     ];
 
@@ -138,7 +138,6 @@ const ERROR_MAP = [
     { field: null,        match: (s) => s === 409,                                                     text: 'Пользователь с таким email уже существует.' },
     { field: null,        match: (s) => s === 401,                                                     text: 'Неверный email или пароль.' },
     { field: null,        match: (s) => s === 403,                                                     text: 'Доступ запрещён. Возможно, аккаунт не подтверждён.' },
-    { field: null,        match: (s) => s === 404,                                                     text: 'Пользователь не найден.' },
     { field: null,        match: (s) => s === 429,                                                     text: 'Слишком много попыток. Подождите немного.' },
     { field: null,        match: (s) => s >= 500,                                                      text: 'Ошибка на сервере. Попробуйте позже.' },
     { field: 'regEmail',  match: (s, m) => m.includes('email') || m.includes('e-mail'),                 text: 'Неверный формат email.' },
@@ -149,9 +148,22 @@ const ERROR_MAP = [
     { field: 'regEmail',  match: (s, m) => m.includes('exist') || m.includes('существует') || m.includes('занят'), text: 'Пользователь с таким email уже существует.' },
 ];
 
-function formatError(err) {
+// 404 различается по контексту
+const CONTEXT_404 = {
+    login:   { field: 'loginEmail', text: 'Пользователь с таким email не найден.' },
+    confirm: { field: 'confirmCode', text: 'Неверный код подтверждения.' },
+    forgot:  { field: 'forgotEmail', text: 'Пользователь с таким email не найден.' },
+};
+
+function formatError(err, context = '') {
     const status = err.status || 0;
     const msg = (err.message || '').toLowerCase();
+
+    // 404 обрабатываем отдельно — зависит от контекста
+    if (status === 404 && CONTEXT_404[context]) {
+        return CONTEXT_404[context];
+    }
+
     for (const rule of ERROR_MAP) {
         if (rule.match(status, msg)) return rule;
     }
@@ -186,9 +198,9 @@ async function login() {
         showNotification('Успешный вход!', 'success');
         setTimeout(() => { window.location.href = REDIRECT_AFTER_LOGIN; }, 1500);
     } catch (err) {
-        const e = formatError(err);
-        emailInput.classList.add('error');
-        passInput.classList.add('error');
+        const e = formatError(err, 'login');
+        if (e.field === 'loginEmail') emailInput.classList.add('error');
+        if (e.field === 'loginPassword') passInput.classList.add('error');
         showNotification(e.text, 'error');
     }
 }
@@ -221,6 +233,7 @@ async function register() {
 
     if (!firstname)              { fail(inputs.firstname, 'Введите имя'); return; }
     if (firstname.length < 3)    { fail(inputs.firstname, 'Имя должно быть не менее 3 символов'); return; }
+    if (lastname && lastname.length < 3) { fail(inputs.lastname, 'Фамилия должна быть не менее 3 символов'); return; }
     if (!email)                  { fail(inputs.email, 'Введите email'); return; }
     if (!RE_EMAIL.test(email))   { fail(inputs.email, 'Введите корректный email'); return; }
     if (phone && !isValidPhone(phone)) { fail(inputs.phone, 'Введите корректный телефон (+7 или 8)'); return; }
@@ -260,10 +273,10 @@ async function confirmEmail() {
     try {
         await authAPI.confirm(email, parseInt(code, 10));
         clearConfirmState();
-        showNotification('Email подтверждён! Теперь войдите', 'success');
-        setTimeout(() => showForm('loginForm'), 1500);
+        showNotification('Регистрация завершена!', 'success');
+        setTimeout(() => { window.location.href = REDIRECT_AFTER_LOGIN; }, 1500);
     } catch (err) {
-        const e = formatError(err);
+        const e = formatError(err, 'confirm');
         codeInput.classList.add('error');
         showNotification(e.text, 'error');
     }
@@ -351,6 +364,27 @@ function startResendTimer() {
     window._resendTimer = setInterval(tick, 1000);
 }
 
+// ===== ВОССТАНОВЛЕНИЕ ПАРОЛЯ: ШАГ 1 — ОТПРАВКА EMAIL =====
+
+async function forgotPassword() {
+    const emailInput = $('forgotEmail');
+    const email = emailInput.value.trim();
+
+    emailInput.classList.remove('error');
+
+    if (!email)              { emailInput.classList.add('error'); showNotification('Введите email', 'error'); return; }
+    if (!RE_EMAIL.test(email)) { emailInput.classList.add('error'); showNotification('Введите корректный email', 'error'); return; }
+
+    try {
+        await authAPI.forget_password(email);
+        showNotification('Инструкция отправлена на email! Проверьте почту.', 'success');
+    } catch (err) {
+        const e = formatError(err, 'forgot');
+        emailInput.classList.add('error');
+        showNotification(e.text, 'error');
+    }
+}
+
 // ===== ВОССТАНОВЛЕНИЕ =====
 
 function restoreAuthState() {
@@ -363,6 +397,9 @@ function restoreAuthState() {
 // ===== СОБЫТИЯ =====
 
 document.addEventListener('DOMContentLoaded', () => {
+    // На странице /reset/ свой скрипт, auth.js не нужен
+    if (!$('loginForm') && !$('registerForm')) return;
+
     setupLiveValidation();
     restoreAuthState();
 
@@ -374,7 +411,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelBtn = $('cancelConfirmBtn');
     if (cancelBtn) cancelBtn.addEventListener('click', cancelConfirmation);
 
-    $('loginForm').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
-    $('registerForm').addEventListener('keydown', (e) => { if (e.key === 'Enter') register(); });
-    $('confirmForm').addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmEmail(); });
+    // Восстановление пароля
+    const forgotLink = $('forgotPasswordLink');
+    if (forgotLink) forgotLink.addEventListener('click', (e) => { e.preventDefault(); showForm('forgotForm'); });
+
+    $('forgotBtn').addEventListener('click', forgotPassword);
+    $('cancelForgotBtn').addEventListener('click', () => showForm('loginForm'));
+
+    $('loginForm').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); login(); } });
+    $('registerForm').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); register(); } });
+    $('confirmForm').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); confirmEmail(); } });
+    $('forgotForm').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); forgotPassword(); } });
 });

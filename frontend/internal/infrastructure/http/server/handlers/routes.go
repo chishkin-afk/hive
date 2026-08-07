@@ -31,6 +31,7 @@ func New(cfg *config.Config, fs frontendService, mws ...gin.HandlerFunc) *gin.En
 	router.GET("/profile", handlers.Profile())
 	router.GET("/topup", handlers.Topup())
 	router.GET("/bookings", handlers.Bookings())
+	router.GET("/reset/", handlers.Reset())
 
 	return router
 }

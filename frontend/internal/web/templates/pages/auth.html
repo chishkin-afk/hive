@@ -4,37 +4,37 @@
 
 {{define "auth_content"}}
 <div class="container">
-    <div class="form-wrapper">
+    <div class="form-wrapper" id="formWrapper">
         <!-- РЕГИСТРАЦИЯ -->
-        <form class="auth-form {{if ne .action "login"}}active{{end}}" id="registerForm">
+        <form class="auth-form {{if ne .action "login"}}active{{end}}" id="registerForm" novalidate>
             <h1 class="auth-title">Создать аккаунт</h1>
 
             <div class="form-group">
                 <label class="form-label" for="regFirstname">Имя <span>*</span></label>
-                <input type="text" id="regFirstname" class="form-input" placeholder="Иван" required>
+                <input type="text" id="regFirstname" class="form-input" placeholder="Иван" autocomplete="given-name">
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="regLastname">Фамилия</label>
-                <input type="text" id="regLastname" class="form-input" placeholder="Иванов (необязательно)">
+                <input type="text" id="regLastname" class="form-input" placeholder="Иванов (необязательно)" autocomplete="family-name">
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="regEmail">Email <span>*</span></label>
-                <input type="email" id="regEmail" class="form-input" placeholder="email@example.com" required>
+                <input type="email" id="regEmail" class="form-input" placeholder="email@example.com" autocomplete="email">
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="regPhone">Телефон</label>
                 <input type="tel" id="regPhone" class="form-input"
-                    placeholder="8 000 000 00 00 (необязательно)">
+                    placeholder="8 000 000 00 00 (необязательно)" autocomplete="tel">
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="regPassword">Пароль <span>*</span></label>
                 <div class="password-wrapper">
-                    <input type="password" id="regPassword" class="form-input" placeholder="••••••••" required>
-                    <button type="button" class="password-toggle">
+                    <input type="password" id="regPassword" class="form-input" placeholder="••••••••" autocomplete="new-password">
+                    <button type="button" class="password-toggle" tabindex="-1">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path
                                 d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z"
@@ -65,19 +65,19 @@
         </form>
 
         <!-- ЛОГИН -->
-        <form class="auth-form {{if eq .action "login"}}active{{end}}" id="loginForm">
+        <form class="auth-form {{if eq .action "login"}}active{{end}}" id="loginForm" novalidate>
             <h1 class="auth-title">Войти</h1>
 
             <div class="form-group">
                 <label class="form-label" for="loginEmail">Email</label>
-                <input type="email" id="loginEmail" class="form-input" placeholder="email@example.com" required>
+                <input type="email" id="loginEmail" class="form-input" placeholder="email@example.com" autocomplete="email">
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="loginPassword">Пароль</label>
                 <div class="password-wrapper">
-                    <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
-                    <button type="button" class="password-toggle">
+                    <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" autocomplete="current-password">
+                    <button type="button" class="password-toggle" tabindex="-1">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path
                                 d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z"
@@ -91,13 +91,7 @@
             </div>
 
             <div class="form-options">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="rememberMe">
-                    <span class="checkmark"></span>
-                    <span>Запомнить меня</span>
-                </label>
-
-                <a href="/forgot-password" class="forgot-password">Восстановить пароль?</a>
+                <a href="#" class="forgot-password" id="forgotPasswordLink">Восстановить пароль?</a>
             </div>
 
             <button type="button" class="submit-btn" id="loginBtn">Войти</button>
@@ -105,17 +99,30 @@
         </form>
 
         <!-- ПОДТВЕРЖДЕНИЕ -->
-        <form class="auth-form" id="confirmForm">
+        <form class="auth-form" id="confirmForm" novalidate>
             <h1 class="auth-title">Подтверждение</h1>
             <p class="confirm-hint">Введите код, который мы отправили на ваш email</p>
             <div class="form-group">
                 <label class="form-label" for="confirmCode">Код</label>
-                <input type="text" id="confirmCode" class="form-input" placeholder="000000" maxlength="6">
+                <input type="text" id="confirmCode" class="form-input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
             </div>
             <button type="button" class="submit-btn" id="confirmBtn">Подтвердить</button>
             <button type="button" class="secondary-btn" id="resendBtn">Отправить код снова</button>
             <button type="button" class="secondary-btn" id="cancelConfirmBtn">Изменить email</button>
         </form>
+
+        <!-- ВОССТАНОВЛЕНИЕ ПАРОЛЯ: ШАГ 1 — EMAIL -->
+        <form class="auth-form" id="forgotForm" novalidate>
+            <h1 class="auth-title">Восстановление пароля</h1>
+            <p class="confirm-hint">Введите email, на который мы отправим инструкцию</p>
+            <div class="form-group">
+                <label class="form-label" for="forgotEmail">Email</label>
+                <input type="email" id="forgotEmail" class="form-input" placeholder="email@example.com" autocomplete="email">
+            </div>
+            <button type="button" class="submit-btn" id="forgotBtn">Отправить</button>
+            <button type="button" class="secondary-btn" id="cancelForgotBtn">Назад ко входу</button>
+        </form>
+
     </div>
 
     <div class="background-circles">

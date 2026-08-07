@@ -17,6 +17,8 @@
         {{template "topup_content" .}}
     {{else if eq .page "bookings"}}
         {{template "bookings_content" .}}
+    {{else if eq .page "reset"}}
+        {{template "reset_content" .}}
     {{end}}
 
     {{template "scripts" .}}
