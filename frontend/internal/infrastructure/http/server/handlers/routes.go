@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/devathh/hive/frontend/internal/infrastructure/config"
+	"github.com/devathh/hive/frontend/internal/infrastructure/http/server/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,16 +25,22 @@ func New(cfg *config.Config, fs frontendService, mws ...gin.HandlerFunc) *gin.En
 
 	router.GET("/js/config.js", handlers.Config())
 
+	// --- Публичные страницы (без авторизации) ---
 	router.GET("/", handlers.Landing())
 	router.GET("/auth", handlers.Auth())
 	router.GET("/appointment/:offerID", handlers.Appointment())
-	router.GET("/services", handlers.Services())
-	router.GET("/profile", handlers.Profile())
-	router.GET("/topup", handlers.Topup())
-	router.GET("/bookings", handlers.Bookings())
 	router.GET("/reset/", handlers.Reset())
 	router.GET("/terms", handlers.Terms())
 	router.GET("/privacy", handlers.Privacy())
+
+	// --- Защищённые страницы (требуется токен) ---
+	protected := router.Group("", middleware.AuthRequired())
+	{
+		protected.GET("/services", handlers.Services())
+		protected.GET("/profile", handlers.Profile())
+		protected.GET("/topup", handlers.Topup())
+		protected.GET("/bookings", handlers.Bookings())
+	}
 
 	return router
 }

@@ -389,6 +389,24 @@ func (h *HandlerFuncs) ChangePassword() gin.HandlerFunc {
 	}
 }
 
+// @Summary      Logout
+// @Description  Removes the jwt token from cookies
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Success      204
+// @Router       /auth/logout [post]
+func (h *HandlerFuncs) Logout() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.SetCookie(
+			"token",
+			"",
+			-1,
+			"", "", false, true)
+		ctx.Status(http.StatusNoContent)
+	}
+}
+
 // @Summary      Unbind the tg from user
 // @Description  Turn off notifications and delete tg's chat id
 // @Tags         auth

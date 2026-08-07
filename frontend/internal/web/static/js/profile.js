@@ -1,136 +1,351 @@
-const services = document.querySelectorAll('.service-card');
-services.forEach(el => {
-    el.addEventListener('click', () => {
-        const overlay = document.getElementById('serviceModalOverlay');
-
-        document.body.classList.add('block-scroll');
-        overlay.classList.add('open');
-
-
-        overlay.addEventListener('mousedown', function(e) {
-        if (e.target === this) {
-            document.body.classList.remove('block-scroll');
-            overlay.classList.remove('open');
-        }
-    });
-    })
-});
-
 (function () {
     'use strict';
 
     const form = document.getElementById('profileForm');
     const navItems = document.querySelectorAll('.profile-nav-item');
-    const sections = document.querySelectorAll('.profile-section');
-    const messageEl = document.getElementById('profileFormMessage');
     const saveBtn = document.getElementById('profileSaveBtn');
-    const bioTextarea = form ? form.querySelector('textarea[name="bio"]') : null;
-    const bioCounter = document.getElementById('bioCounter');
+    const heroName = document.querySelector('.profile-hero-name');
+    const initialsEl = document.querySelector('.profile-avatar-initials');
+    const skeleton = document.getElementById('profileSkeleton');
+    const profileContent = document.getElementById('profileContent');
+    const tgConnect = document.getElementById('tgConnect');
+    const tgStatus = document.getElementById('tgStatus');
+    const tgBindBtn = document.getElementById('tgBindBtn');
+    const changePasswordBtn = document.getElementById('changePasswordBtn');
+    const logoutBtn = document.getElementById('profileLogoutBtn');
 
     if (!form) return;
 
-    const eyeOpenSVG = `<svg class="profile-eye-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-        <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
-    </svg>`;
+    let initialState = {};
+    let tgBound = false;
+    // --- Toast system (как в auth) ---
+    function showToast(message, type) {
+        const existing = document.querySelector('.profile-toast');
+        if (existing) existing.remove();
 
-    const eyeClosedSVG = `<svg class="profile-eye-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M16.86 17.1975C15.4614 18.3376 13.7584 18.9693 12 19C6.27273 19 3 12 3 12C4.01773 9.97167 5.28929 8.39703 7 7M10.2818 5.21002C10.845 5.06904 11.4216 4.99857 12 5.00002C17.7273 5.00002 21 12 21 12C20.5033 12.9937 19.911 13.9292 19.2327 14.7913M13.7345 13.855C13.5098 14.1129 13.2389 14.3198 12.9378 14.4632C12.6367 14.6067 12.3116 14.6839 11.9821 14.6901C11.6525 14.6963 11.3251 14.6315 11.0195 14.4994C10.7139 14.3674 10.4362 14.1709 10.2031 13.9216C9.97007 13.6724 9.78632 13.3755 9.66287 13.0486C9.53942 12.7217 9.47879 12.3716 9.48461 12.0192C9.49042 11.6667 9.56256 11.3191 9.69672 10.9971C9.83087 10.6751 9.96199 10.5626 10.2031 10.3222" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M3 3L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    </svg>`;
+        const toast = document.createElement('div');
+        toast.className = 'profile-toast';
+        if (type) toast.classList.add(type);
+        toast.textContent = message;
+        document.body.appendChild(toast);
 
-    const initialState = captureFormState();
+        requestAnimationFrame(() => toast.classList.add('show'));
 
-    // Activate the first section on load
-    sections.forEach((section) => {
-        if (section.dataset.section === 'personal') {
-            section.classList.add('is-active');
-            section.removeAttribute('hidden');
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 400);
+        }, 4000);
+    }
+
+    function showSkeleton(show) {
+        if (!skeleton || !profileContent) return;
+        skeleton.style.display = show ? 'flex' : 'none';
+        profileContent.style.display = show ? 'none' : '';
+    }
+
+    function updateHero(firstname, lastname) {
+        const full = [firstname, lastname].filter(Boolean).join(' ') || 'Пользователь';
+        if (heroName) heroName.textContent = full;
+        if (initialsEl) {
+            const f = (firstname || '').charAt(0).toUpperCase();
+            const l = (lastname || '').charAt(0).toUpperCase();
+            initialsEl.textContent = (f + l) || '?';
         }
-    });
+    }
 
+    // --- Capture / detect changes ---
     function captureFormState() {
-        const data = new FormData(form);
         const snapshot = {};
-
-        for (const [key, value] of data.entries()) {
-            snapshot[key] = value;
-        }
-
-        form.querySelectorAll('input[type="checkbox"]').forEach((input) => {
-            snapshot[input.name] = input.checked ? 'on' : '';
+        ['firstname', 'lastname', 'phone'].forEach((name) => {
+            const el = form.elements[name];
+            if (el) snapshot[name] = el.value;
         });
-
+        ['notify_new_booking', 'on_vacation'].forEach((name) => {
+            const el = form.elements[name];
+            if (el) snapshot[name] = el.checked;
+        });
         return snapshot;
     }
 
-    function restoreFormState(snapshot) {
-        Object.entries(snapshot).forEach(([name, value]) => {
-            const el = form.elements[name];
-            if (!el) return;
-
-            if (el.type === 'checkbox') {
-                el.checked = value === 'on';
-            } else {
-                el.value = value;
-            }
-        });
-
-        updateBioCounter();
+    function isDirty() {
+        const current = captureFormState();
+        for (const key of Object.keys(initialState)) {
+            if (current[key] !== initialState[key]) return true;
+        }
+        for (const key of Object.keys(current)) {
+            if (!(key in initialState) || current[key] !== initialState[key]) return true;
+        }
+        return false;
     }
 
-    function setMessage(text, type) {
-        messageEl.textContent = text;
-        messageEl.classList.remove('success', 'error');
-
-        if (text) {
-            messageEl.classList.add('is-visible');
-            if (type) messageEl.classList.add(type);
-
-            clearTimeout(setMessage._timer);
-            setMessage._timer = setTimeout(() => {
-                messageEl.classList.remove('is-visible', 'success', 'error');
-            }, 3000);
+    function toggleSaveBtn() {
+        if (!saveBtn) return;
+        if (isDirty()) {
+            saveBtn.style.display = '';
         } else {
-            messageEl.classList.remove('is-visible');
+            saveBtn.style.display = 'none';
         }
     }
 
-    function updateBioCounter() {
-        if (!bioTextarea || !bioCounter) return;
-        bioCounter.textContent = bioTextarea.value.length;
+    // --- Populate form from API response ---
+    function populateForm(user) {
+        if (user.firstname != null) {
+            const el = form.elements['firstname'];
+            if (el) el.value = user.firstname;
+        }
+        if (user.lastname != null) {
+            const el = form.elements['lastname'];
+            if (el) el.value = user.lastname;
+        }
+        const emailEls = form.querySelectorAll('input[name="email"]');
+        emailEls.forEach((el) => {
+            if (user.email != null) el.value = user.email;
+        });
+        if (user.phone_number != null) {
+            const el = form.elements['phone'];
+            if (el) el.value = formatPhone(user.phone_number);
+        }
+        if (user.notification != null && user.notification.telegram_enable != null) {
+            const cb = form.elements['notify_new_booking'];
+            if (cb) cb.checked = user.notification.telegram_enable;
+        }
+        if (user.on_vacation != null) {
+            const cb = form.elements['on_vacation'];
+            if (cb) cb.checked = user.on_vacation;
+        }
+        tgBound = !!(user.telegram_id || user.notification?.telegram_chat_id);
+        updateTgUI();
+
+        initialState = captureFormState();
+        toggleSaveBtn();
+        updateHero(user.firstname || '', user.lastname || '');
+    }
+
+    // --- Telegram UI ---
+    function updateTgUI() {
+        if (!tgConnect) return;
+        if (tgBound) {
+            if (tgStatus) {
+                tgStatus.textContent = 'Подключено';
+                tgStatus.className = 'profile-connect-status active';
+            }
+            if (tgBindBtn) {
+                tgBindBtn.textContent = 'Отвязать';
+                tgBindBtn.className = 'profile-btn profile-btn-ghost';
+            }
+        } else {
+            if (tgStatus) {
+                tgStatus.textContent = 'Не подключено';
+                tgStatus.className = 'profile-connect-status';
+            }
+            if (tgBindBtn) {
+                tgBindBtn.textContent = 'Привязать';
+                tgBindBtn.className = 'profile-btn profile-btn-primary';
+            }
+        }
+    }
+
+    // --- Wrap height management ---
+    function updateWrapHeight() {
+        const wrap = document.querySelector('.profile-sections-wrap');
+        const active = document.querySelector('.profile-section.is-active');
+        if (!wrap || !active) return;
+        active.style.position = 'relative';
+        active.style.display = 'flex';
+        wrap.style.minHeight = active.offsetHeight + 'px';
+        active.style.position = '';
+        active.style.display = '';
     }
 
     function switchSection(sectionName) {
         const currentActive = document.querySelector('.profile-section.is-active');
         const nextActive = document.querySelector(`.profile-section[data-section="${sectionName}"]`);
-
         if (!nextActive || currentActive === nextActive) return;
 
-        // Update nav state
         navItems.forEach((btn) => {
             btn.classList.toggle('active', btn.dataset.section === sectionName);
         });
 
-        // Animate out current
+        const wrap = document.querySelector('.profile-sections-wrap');
+
+        if (currentActive && wrap) {
+            wrap.style.minHeight = currentActive.offsetHeight + 'px';
+        }
+
         if (currentActive) {
             currentActive.classList.remove('is-active');
             currentActive.classList.add('is-leaving');
             currentActive.removeAttribute('hidden');
-
             setTimeout(() => {
                 currentActive.classList.remove('is-leaving');
                 currentActive.setAttribute('hidden', '');
             }, 250);
         }
 
-        // Animate in next
         nextActive.removeAttribute('hidden');
-        // Force reflow to restart transition
+        nextActive.style.position = 'relative';
+        nextActive.style.display = 'flex';
+        const newHeight = nextActive.offsetHeight;
+        nextActive.style.position = '';
+        nextActive.style.display = '';
+
         void nextActive.offsetHeight;
         nextActive.classList.add('is-active');
+
+        if (wrap) wrap.style.minHeight = newHeight + 'px';
     }
 
+    // ===== ВАЛИДАЦИЯ НА ЛЕТУ (как в auth) =====
+    const PHONE_RE = /^[\+\d\s\-]*$/;
+
+    /** Убирает всё лишнее, оставляет только цифры */
+    function phoneDigits(val) {
+        return (val || '').replace(/[^\d]/g, '');
+    }
+
+    /** Форматирует цифры в +7 999 123-45-67 */
+    function formatPhone(val) {
+        let d = phoneDigits(val);
+        if (d.length === 0) return '';
+        // Нормализуем: 8 в начале -> 7, убираем +7/8 если уже есть
+        if (d.startsWith('8')) d = '7' + d.slice(1);
+        // Если больше 11 цифр — обрезаем
+        if (d.length > 11) d = d.slice(0, 11);
+        // Если начинается с 7 и это российский номер (11 цифр или строится)
+        if (d.startsWith('7')) {
+            const len = d.length;
+            if (len <= 1) return '+7';
+            if (len <= 4) return '+7 ' + d.slice(1);
+            if (len <= 7) return '+7 ' + d.slice(1, 4) + ' ' + d.slice(4);
+            if (len <= 9) return '+7 ' + d.slice(1, 4) + ' ' + d.slice(4, 7) + '-' + d.slice(7);
+            return '+7 ' + d.slice(1, 4) + ' ' + d.slice(4, 7) + '-' + d.slice(7, 9) + '-' + d.slice(9);
+        }
+        return '+7 ' + d;
+    }
+
+    function isValidPhone(val) {
+        const d = phoneDigits(val);
+        return d.length === 11 && (d.startsWith('7') || d.startsWith('8'));
+    }
+
+    function setupLiveValidation() {
+        const rules = [
+            { name: 'firstname', test: (v) => v.length >= 3, emptyIsOk: false },
+            { name: 'lastname',  test: (v) => v.length >= 3, emptyIsOk: true  },
+            { name: 'phone',     test: (v) => isValidPhone(v), emptyIsOk: true },
+        ];
+
+        rules.forEach(({ name, test, emptyIsOk }) => {
+            const el = form.elements[name];
+            if (!el) return;
+            el.addEventListener('input', function () {
+                const val = this.value.trim();
+                if (!val && emptyIsOk) {
+                    this.classList.remove('input-error', 'input-success');
+                    return;
+                }
+                const ok = val && test(val);
+                this.classList.toggle('input-error', !ok);
+                this.classList.toggle('input-success', ok);
+            });
+        });
+
+        // Маска ввода для телефона — форматирует в +7 999 123-45-67
+        const phoneEl = form.elements['phone'];
+        if (phoneEl) {
+            phoneEl.addEventListener('input', function () {
+                const cursor = this.selectionStart;
+                const oldLen = (this.value || '').length;
+                const digits = phoneDigits(this.value);
+                if (digits.length > 11) return; // не даём ввести больше 11 цифр
+                this.value = formatPhone(digits);
+                // Восстанавливаем позицию курсора
+                const newLen = this.value.length;
+                const shift = newLen - oldLen;
+                this.setSelectionRange(cursor + shift, cursor + shift);
+            });
+            phoneEl.addEventListener('keydown', function (e) {
+                // Разрешаем backspace/delete даже если уже 11 цифр
+                if (e.key === 'Backspace' || e.key === 'Delete') return;
+                if (phoneDigits(this.value).length >= 11) {
+                    e.preventDefault();
+                }
+            });
+        }
+    }
+
+    // Проверка всех полей перед отправкой
+    function validateAllFields() {
+        const firstname = form.elements['firstname'];
+        const phone = form.elements['phone'];
+        const notifyCb = form.elements['notify_new_booking'];
+        let valid = true;
+
+        if (firstname && firstname.value.trim().length < 3) {
+            firstname.classList.add('input-error');
+            showToast('Имя должно содержать минимум 3 символа', 'error');
+            valid = false;
+        }
+        if (phone && phone.value.trim() && !isValidPhone(phone.value.trim())) {
+            phone.classList.add('input-error');
+            showToast('Введите корректный номер телефона', 'error');
+            valid = false;
+        }
+        // Не даём включить уведомления, если Telegram не подключен
+        if (notifyCb && notifyCb.checked && !tgBound) {
+            notifyCb.checked = false;
+            showToast('Подключите Telegram, чтобы включить уведомления', 'error');
+            toggleSaveBtn();
+            valid = false;
+        }
+        return valid;
+    }
+
+    // ===== АДАПТАЦИЯ ОШИБОК (как в auth) =====
+    const ERROR_MAP = [
+        { field: null,          match: (s) => s === 409,                                                     text: 'Пользователь с таким email уже существует.' },
+        { field: null,          match: (s) => s === 401,                                                     text: 'Неверный email или пароль.' },
+        { field: null,          match: (s) => s === 403,                                                     text: 'Доступ запрещён.' },
+        { field: null,          match: (s) => s === 429,                                                     text: 'Слишком много попыток. Подождите немного.' },
+        { field: null,          match: (s) => s >= 500,                                                      text: 'Ошибка на сервере. Попробуйте позже.' },
+        { field: 'firstname',   match: (s, m) => m.includes('firstname') || m.includes('first name') || m.includes('имя'), text: 'Некорректное имя.' },
+        { field: 'lastname',    match: (s, m) => m.includes('lastname') || m.includes('last name') || m.includes('фамили'), text: 'Некорректная фамилия.' },
+        { field: 'phone',       match: (s, m) => m.includes('phone') || m.includes('телефон'),                text: 'Неверный формат телефона.' },
+        { field: 'email',       match: (s, m) => m.includes('email') || m.includes('e-mail'),                 text: 'Неверный формат email.' },
+        { field: 'notify_new_booking', match: (s, m) => m.includes('telegram') || m.includes('tg') || m.includes('not connected') || m.includes('не подключен'), text: 'Подключите Telegram, чтобы включить уведомления.' },
+    ];
+
+    function formatError(err) {
+        const status = err.status || 0;
+        const msg = (err.message || '').toLowerCase();
+
+        for (const rule of ERROR_MAP) {
+            if (rule.match(status, msg)) return rule;
+        }
+        return { field: null, text: err.message || 'Произошла неизвестная ошибка.' };
+    }
+
+    // --- Load user ---
+    async function loadUser() {
+        showSkeleton(true);
+        try {
+            const user = await authAPI.self();
+            populateForm(user);
+        } catch (err) {
+            showToast(err.message || 'Не удалось загрузить профиль', 'error');
+        } finally {
+            showSkeleton(false);
+            setTimeout(() => updateWrapHeight(), 1050);
+        }
+    }
+
+    const firstSection = document.querySelector('.profile-section[data-section="personal"]');
+    if (firstSection) {
+        firstSection.classList.add('is-active');
+        firstSection.removeAttribute('hidden');
+    }
+
+    // --- Navigation ---
     navItems.forEach((btn) => {
         btn.addEventListener('click', () => {
             const target = btn.dataset.section;
@@ -138,59 +353,168 @@ services.forEach(el => {
         });
     });
 
-    if (bioTextarea) {
-        bioTextarea.addEventListener('input', updateBioCounter);
-        updateBioCounter();
-    }
+    // --- Detect changes on any input ---
+    form.addEventListener('input', toggleSaveBtn);
+    form.addEventListener('change', toggleSaveBtn);
 
-    form.querySelectorAll('.profile-password-toggle').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const targetName = btn.dataset.target;
-            const input = form.querySelector(`input[name="${targetName}"]`);
-            if (!input) return;
-
-            const isPassword = input.type === 'password';
-            input.type = isPassword ? 'text' : 'password';
-            btn.innerHTML = isPassword ? eyeClosedSVG : eyeOpenSVG;
-            btn.setAttribute('aria-label', isPassword ? 'Скрыть пароль' : 'Показать пароль');
-        });
-    });
-
-    form.addEventListener('submit', (event) => {
+    // --- Submit ---
+    form.addEventListener('submit', async (event) => {
         event.preventDefault();
+
+        if (!isDirty()) {
+            showToast('Нет изменений для сохранения', '');
+            return;
+        }
+
+        if (!validateAllFields()) return;
 
         saveBtn.disabled = true;
         saveBtn.textContent = 'Сохраняем…';
-        setMessage('');
 
-        // Visual-only saving. Backend: POST /api/profile/update
-        setTimeout(() => {
+        try {
+            const current = captureFormState();
+            const payload = {};
+
+            if (current.firstname !== initialState.firstname) payload.firstname = current.firstname || '';
+            if (current.lastname !== initialState.lastname) payload.lastname = current.lastname || '';
+            if (current.phone !== initialState.phone) payload.phone_number = phoneDigits(current.phone) || '';
+            if (current.notify_new_booking !== initialState.notify_new_booking) {
+                payload.notification = { telegram_enable: current.notify_new_booking };
+            }
+            if (current.on_vacation !== initialState.on_vacation) {
+                payload.on_vacation = current.on_vacation;
+            }
+
+            await authAPI.update(
+                payload.notification || {},
+                payload.firstname || null,
+                payload.lastname || null,
+                payload.phone_number || null,
+                payload.on_vacation != null ? payload.on_vacation : null
+            );
+
+            const user = await authAPI.self();
+            populateForm(user);
+
+            showToast('Изменения сохранены', 'success');
+        } catch (err) {
+            const e = formatError(err);
+            if (e.field) {
+                const fieldEl = form.elements[e.field];
+                if (fieldEl) fieldEl.classList.add('input-error');
+            }
+            showToast(e.text, 'error');
+        } finally {
             saveBtn.disabled = false;
-            saveBtn.textContent = 'Сохранить';
-            setMessage('Изменения сохранены', 'success');
-
-            const firstname = form.elements.firstname ? form.elements.firstname.value.trim() : '';
-            const lastname = form.elements.lastname ? form.elements.lastname.value.trim() : '';
-            const heroName = document.querySelector('.profile-hero-name');
-
-            if (heroName && (firstname || lastname)) {
-                heroName.textContent = [firstname, lastname].filter(Boolean).join(' ');
-            }
-
-            const initialsEl = document.querySelector('.profile-avatar-initials');
-            if (initialsEl) {
-                const first = firstname.charAt(0).toUpperCase();
-                const last = lastname.charAt(0).toUpperCase();
-                initialsEl.textContent = (first + last) || '?';
-            }
-
-            Object.assign(initialState, captureFormState());
-        }, 700);
-    });
-
-    document.addEventListener('keydown', (event) => {
-        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-            form.requestSubmit();
+            saveBtn.textContent = 'Сохранить изменения';
+            toggleSaveBtn();
         }
     });
+
+    // --- Telegram bind/unbind ---
+    if (tgBindBtn) {
+        tgBindBtn.addEventListener('click', async () => {
+            tgBindBtn.disabled = true;
+            try {
+                if (tgBound) {
+                    await authAPI.unbind_tg();
+                    tgBound = false;
+                    updateTgUI();
+                    showToast('Telegram отвязан', 'success');
+                    const user = await authAPI.self();
+                    populateForm(user);
+                } else {
+                    const binding = await authAPI.bind_tg();
+                    if (binding && binding.bot_url) {
+                        window.open(binding.bot_url, '_blank', 'noopener,noreferrer');
+                        // Без уведомления — клиент переходит на другую страницу
+                    } else {
+                        showToast('Не удалось получить ссылку для привязки Telegram', 'error');
+                    }
+                }
+            } catch (err) {
+                showToast('Не удалось выполнить операцию с Telegram', 'error');
+            } finally {
+                tgBindBtn.disabled = false;
+            }
+        });
+    }
+
+    // --- Change password (with cooldown, persisted in localStorage) ---
+    const PASSWORD_COOLDOWN_KEY = 'pwd_cooldown_ts';
+
+    function isPasswordCooldown() {
+        const ts = parseInt(localStorage.getItem(PASSWORD_COOLDOWN_KEY), 10);
+        return ts && Date.now() < ts;
+    }
+
+    function setPasswordCooldown(active) {
+        if (active) {
+            const expiry = Date.now() + 60000;
+            localStorage.setItem(PASSWORD_COOLDOWN_KEY, expiry);
+            changePasswordBtn.disabled = true;
+            changePasswordBtn.classList.add('btn-disabled');
+            changePasswordBtn.textContent = 'Подождите минуту…';
+        } else {
+            localStorage.removeItem(PASSWORD_COOLDOWN_KEY);
+            changePasswordBtn.disabled = false;
+            changePasswordBtn.classList.remove('btn-disabled');
+            changePasswordBtn.textContent = 'Отправить ссылку для смены пароля';
+        }
+    }
+
+    // Если кулдаун ещё активен после перезагрузки — применить
+    if (isPasswordCooldown()) {
+        setPasswordCooldown(true);
+        const remaining = parseInt(localStorage.getItem(PASSWORD_COOLDOWN_KEY), 10) - Date.now();
+        setTimeout(() => setPasswordCooldown(false), remaining);
+    }
+
+    if (changePasswordBtn) {
+        changePasswordBtn.addEventListener('click', async () => {
+            if (isPasswordCooldown()) {
+                showToast('Подождите минуту перед повторной отправкой', 'error');
+                return;
+            }
+            changePasswordBtn.disabled = true;
+            changePasswordBtn.textContent = 'Отправляем…';
+            try {
+                const emailEl = form.querySelector('input[name="email"]');
+                const email = emailEl ? emailEl.value : '';
+                if (!email) {
+                    showToast('Не удалось определить email', 'error');
+                    changePasswordBtn.disabled = false;
+                    changePasswordBtn.textContent = 'Отправить ссылку для смены пароля';
+                    return;
+                }
+                await authAPI.forget_password(email);
+                showToast('Ссылка для смены пароля отправлена на email', 'success');
+                setPasswordCooldown(true);
+                setTimeout(() => setPasswordCooldown(false), 60000);
+            } catch (err) {
+                showToast(err.message || 'Ошибка отправки', 'error');
+                changePasswordBtn.disabled = false;
+                changePasswordBtn.textContent = 'Отправить ссылку для смены пароля';
+            }
+        });
+    }
+
+    // --- Logout ---
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            await authAPI.logout();
+            window.location.href = '/auth';
+        });
+    }
+
+    // --- Ctrl+Enter to save ---
+    document.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            if (isDirty()) form.requestSubmit();
+        }
+    });
+
+    // Init
+    setupLiveValidation();
+    loadUser();
 })();

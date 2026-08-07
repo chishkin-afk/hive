@@ -206,6 +206,16 @@ class AuthApi extends Api {
             'PATCH'
         )
     }
+
+    /**
+     * @returns {Promise<null>}
+     */
+    async logout() {
+        return this.request(
+            '/logout',
+            'POST'
+        )
+    }
 }
 
 const authAPI = new AuthApi('/auth')

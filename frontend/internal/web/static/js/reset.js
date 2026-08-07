@@ -43,6 +43,7 @@
 
         try {
             await authAPI.change_password(token, password);
+            await authAPI.logout();
             showNotification('Пароль успешно изменён! Сейчас вы будете перенаправлены на страницу входа.', 'success');
             setTimeout(function() { window.location.href = '/auth?action=login'; }, 2000);
         } catch (err) {

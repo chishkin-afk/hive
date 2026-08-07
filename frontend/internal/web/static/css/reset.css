@@ -123,18 +123,6 @@
     transform: translateY(-3px) scale(0.97);
 }
 
-.reset-card .back-link {
-    color: var(--color-text-secondary);
-    width: fit-content;
-    align-self: center;
-    margin-top: 16px;
-    transition: color .3s;
-}
-
-.reset-card .back-link:hover {
-    color: var(--color-text-primary);
-}
-
 /* ===== УВЕДОМЛЕНИЯ ===== */
 .notification-toast {
     position: fixed;

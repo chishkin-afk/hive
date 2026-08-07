@@ -15,13 +15,37 @@
 </div>
 
 <main class="container">
+    <!-- SKELETON -->
+    <div class="profile-skeleton" id="profileSkeleton">
+        <div class="profile-skeleton-hero">
+            <div class="skeleton-avatar"></div>
+            <div class="skeleton-line skeleton-line-name"></div>
+        </div>
+        <div class="profile-skeleton-layout">
+            <div class="skeleton-nav">
+                <div class="skeleton-line skeleton-line-nav"></div>
+                <div class="skeleton-line skeleton-line-nav"></div>
+                <div class="skeleton-line skeleton-line-nav"></div>
+                <div class="skeleton-line skeleton-line-nav"></div>
+            </div>
+            <div class="skeleton-form">
+                <div class="skeleton-line skeleton-line-field"></div>
+                <div class="skeleton-line skeleton-line-field"></div>
+                <div class="skeleton-line skeleton-line-field"></div>
+                <div class="skeleton-line skeleton-line-field"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- REAL CONTENT (hidden until loaded) -->
+    <div id="profileContent" style="display:none;">
     <section class="profile-hero">
         <div class="profile-avatar" id="profileAvatar" aria-label="Аватар профиля">
-            <span class="profile-avatar-initials">АИ</span>
+            <span class="profile-avatar-initials">?</span>
         </div>
 
         <div class="profile-hero-info">
-            <h1 class="profile-hero-name">Александр Иванов</h1>
+            <h1 class="profile-hero-name">Пользователь</h1>
         </div>
     </section>
 
@@ -53,7 +77,7 @@
                                 class="profile-input"
                                 type="text"
                                 name="firstname"
-                                value="Александр"
+                                placeholder="Ваше имя"
                                 autocomplete="given-name"
                                 required
                             >
@@ -65,7 +89,7 @@
                                 class="profile-input"
                                 type="text"
                                 name="lastname"
-                                value="Иванов"
+                                placeholder="Ваша фамилия"
                                 autocomplete="family-name"
                             >
                         </label>
@@ -76,7 +100,7 @@
                                 class="profile-input"
                                 type="email"
                                 name="email"
-                                value="alex@hive.ru"
+                                placeholder="email@example.com"
                                 autocomplete="email"
                                 readonly
                             >
@@ -88,7 +112,7 @@
                                 class="profile-input"
                                 type="tel"
                                 name="phone"
-                                value="+7 900 123-45-67"
+                                placeholder="+7 900 123-45-67"
                                 autocomplete="tel"
                                 inputmode="tel"
                             >
@@ -99,27 +123,30 @@
                 <fieldset class="profile-section" data-section="notifications" hidden>
                     <h2 class="profile-section-title">Уведомления</h2>
 
-                    <div class="profile-connect">
+                    <div class="profile-connect" id="tgConnect">
                         <div class="profile-connect-body">
                             <p class="profile-connect-title">Telegram</p>
                             <p class="profile-connect-text">
                                 Получай уведомления прямо в Telegram
                             </p>
-                            <span class="profile-connect-status active">
-                                Подключено
+                            <span class="profile-connect-status" id="tgStatus">
+                                Не подключено
                             </span>
                         </div>
-                        <button type="button" class="profile-btn profile-btn-ghost">
-                            Отключить
+                        <button type="button" class="profile-btn profile-btn-ghost" id="tgBindBtn">
+                            Привязать
                         </button>
                     </div>
 
                     <div class="profile-switches">
                         <label class="profile-switch">
                             <div class="profile-switch-body">
-                                <p class="profile-switch-title">Уведомления</p>
+                                <p class="profile-switch-title">Уведомления о новых записях</p>
+                                <p class="profile-switch-text">
+                                    Получай уведомления о новых записях в Telegram
+                                </p>
                             </div>
-                            <input type="checkbox" name="notify_new_booking" checked>
+                            <input type="checkbox" name="notify_new_booking">
                             <span class="profile-switch-mark" aria-hidden="true"></span>
                         </label>
                     </div>
@@ -129,92 +156,35 @@
                     <h2 class="profile-section-title">Безопасность</h2>
 
                     <label class="profile-field">
-                        <span class="profile-field-label">Текущий пароль</span>
-                        <div class="profile-password-wrapper">
-                            <input
-                                class="profile-input"
-                                type="password"
-                                name="current_password"
-                                autocomplete="current-password"
-                            >
-                            <button
-                                type="button"
-                                class="profile-password-toggle"
-                                data-target="current_password"
-                                aria-label="Показать пароль"
-                            >
-                                <svg class="profile-eye-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                                    <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
-                                </svg>
-                            </button>
-                        </div>
+                        <span class="profile-field-label">Email</span>
+                        <input
+                            class="profile-input"
+                            type="email"
+                            name="email"
+                            readonly
+                        >
                     </label>
 
-                    <div class="profile-grid profile-grid-2">
-                        <label class="profile-field">
-                            <span class="profile-field-label">Новый пароль</span>
-                            <div class="profile-password-wrapper">
-                                <input
-                                    class="profile-input"
-                                    type="password"
-                                    name="new_password"
-                                    autocomplete="new-password"
-                                    minlength="6"
-                                    maxlength="32"
-                                >
-                                <button
-                                    type="button"
-                                    class="profile-password-toggle"
-                                    data-target="new_password"
-                                    aria-label="Показать пароль"
-                                >
-                                    <svg class="profile-eye-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                                        <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </label>
+                    <p class="profile-hint">
+                        Для смены пароля мы отправим ссылку на ваш email. Перейдите по ней, чтобы задать новый пароль.
+                    </p>
 
-                        <label class="profile-field">
-                            <span class="profile-field-label">Повторите пароль</span>
-                            <div class="profile-password-wrapper">
-                                <input
-                                    class="profile-input"
-                                    type="password"
-                                    name="repeat_password"
-                                    autocomplete="new-password"
-                                    minlength="6"
-                                    maxlength="32"
-                                >
-                                <button
-                                    type="button"
-                                    class="profile-password-toggle"
-                                    data-target="repeat_password"
-                                    aria-label="Показать пароль"
-                                >
-                                    <svg class="profile-eye-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M3 12C3 12 6.27273 5 12 5C17.7273 5 21 12 21 12C21 12 17.7273 19 12 19C6.27273 19 3 12 3 12Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                                        <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </label>
-                    </div>
+                    <button type="button" class="profile-btn profile-btn-primary" id="changePasswordBtn">
+                        Отправить ссылку для смены пароля
+                    </button>
                 </fieldset>
 
                 <fieldset class="profile-section danger" data-section="danger" hidden>
                     <h2 class="profile-section-title danger">Опасная зона</h2>
 
-                    <label class="profile-danger-card profile-switch">
+                    <label class="profile-switch profile-danger-card">
                         <div class="profile-danger-body">
                             <p class="profile-danger-title">Отключить записи</p>
                             <p class="profile-danger-text">
-                                Эта функция запретит создавать клиентам новые запси
+                                Клиенты не смогут создавать новые записи, пока активен этот режим
                             </p>
                         </div>
-                        <input type="checkbox">
+                        <input type="checkbox" name="on_vacation">
                         <span class="profile-switch-mark" aria-hidden="true"></span>
                     </label>
 
@@ -222,33 +192,25 @@
                         <div class="profile-danger-body">
                             <p class="profile-danger-title">Выйти из аккаунта</p>
                         </div>
-                        <button type="button" class="profile-btn profile-btn-ghost">
+                        <button type="button" class="profile-btn profile-btn-ghost" id="profileLogoutBtn">
                             Выйти
                         </button>
                     </div>
                 </fieldset>
             </div>
 
-            <div class="profile-form-footer" id="profileFormFooter">
-                <p
-                    id="profileFormMessage"
-                    class="profile-form-message"
-                    role="status"
-                    aria-live="polite"
-                ></p>
-
-                <div class="profile-form-actions">
-                    <button type="submit" class="profile-btn profile-btn-primary" id="profileSaveBtn">
-                        Сохранить
-                    </button>
-                </div>
-            </div>
+            <!-- Floating save button (hidden until changes) -->
+            <button type="submit" class="profile-btn profile-btn-primary profile-save-float" id="profileSaveBtn" style="display:none;">
+                Сохранить изменения
+            </button>
         </form>
     </section>
+    </div><!-- /profileContent -->
 </main>
 {{end}}
 
 {{define "profile_extra_scripts"}}
+<script src="/static/js/api/auth.js" defer></script>
 <script src="/static/js/profile.js" defer></script>
 <script src="/static/js/header.js" defer></script>
 {{end}}
