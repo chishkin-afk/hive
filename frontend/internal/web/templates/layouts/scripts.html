@@ -15,5 +15,9 @@
         {{block "bookings_extra_scripts" .}}{{end}}
     {{else if eq .page "reset"}}
         {{block "reset_extra_scripts" .}}{{end}}
+    {{else if eq .page "terms"}}
+        {{block "terms_extra_scripts" .}}{{end}}
+    {{else if eq .page "privacy"}}
+        {{block "privacy_extra_scripts" .}}{{end}}
     {{end}}
 {{end}}

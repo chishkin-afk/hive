@@ -19,6 +19,10 @@
         {{template "bookings_content" .}}
     {{else if eq .page "reset"}}
         {{template "reset_content" .}}
+    {{else if eq .page "terms"}}
+        {{template "terms_content" .}}
+    {{else if eq .page "privacy"}}
+        {{template "privacy_content" .}}
     {{end}}
 
     {{template "scripts" .}}

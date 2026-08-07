@@ -100,3 +100,21 @@ func (h *handlers) Reset() gin.HandlerFunc {
 		})
 	}
 }
+
+func (h *handlers) Terms() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.HTML(http.StatusOK, "base", gin.H{
+			"title": "Terms",
+			"page":  "terms",
+		})
+	}
+}
+
+func (h *handlers) Privacy() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.HTML(http.StatusOK, "base", gin.H{
+			"title": "Privacy",
+			"page":  "privacy",
+		})
+	}
+}
