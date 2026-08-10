@@ -268,13 +268,32 @@
 }
 
 .history-badge {
-    color: var(--color-success);
     font-size: 12px;
     font-weight: 700;
     padding: 4px 12px;
     border-radius: var(--radius-fl);
-    background-color: rgba(60, 221, 116, .15);
     white-space: nowrap;
+    transition: background-color .3s, color .3s;
+}
+
+.history-badge.badge-pending {
+    color: var(--color-accent-dark);
+    background-color: rgba(168, 216, 58, .15);
+}
+
+.history-badge.badge-confirmed {
+    color: var(--color-success);
+    background-color: rgba(60, 221, 116, .15);
+}
+
+.history-badge.badge-canceled {
+    color: var(--color-error);
+    background-color: rgba(255, 86, 86, .15);
+}
+
+.history-badge.badge-unknown {
+    color: var(--color-text-secondary);
+    background-color: rgba(148, 163, 184, .15);
 }
 
 .skel-title { width: 45%; height: 14px; }
