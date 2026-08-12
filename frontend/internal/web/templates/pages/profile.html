@@ -54,6 +54,9 @@
             <button type="button" class="profile-nav-item active" data-section="personal">
                 Личное
             </button>
+            <button type="button" class="profile-nav-item" data-section="schedule">
+                Расписание
+            </button>
             <button type="button" class="profile-nav-item" data-section="notifications">
                 Уведомления
             </button>
@@ -152,6 +155,92 @@
                     </div>
                 </fieldset>
 
+                <fieldset class="profile-section" data-section="schedule" hidden>
+                    <h2 class="profile-section-title">Расписание</h2>
+                    <p class="schedule-subtitle">Укажите рабочие дни и перерывы.</p>
+
+                    <!-- Карусель дней недели -->
+                    <div class="schedule-days-carousel" id="scheduleDaysCarousel">
+                        <button type="button" class="schedule-day-btn" data-day="0">Пн</button>
+                        <button type="button" class="schedule-day-btn" data-day="1">Вт</button>
+                        <button type="button" class="schedule-day-btn" data-day="2">Ср</button>
+                        <button type="button" class="schedule-day-btn" data-day="3">Чт</button>
+                        <button type="button" class="schedule-day-btn" data-day="4">Пт</button>
+                        <button type="button" class="schedule-day-btn" data-day="5">Сб</button>
+                        <button type="button" class="schedule-day-btn" data-day="6">Вс</button>
+                    </div>
+
+                    <!-- Содержимое выбранного дня -->
+                    <div class="schedule-day-content" id="scheduleDayContent">
+                        <p class="schedule-empty" id="scheduleEmpty">Выберите день для просмотра расписания</p>
+                    </div>
+
+                    <!-- Кнопка добавления дня (уже не используется, но оставим для совместимости) -->
+                    <button type="button" class="profile-btn profile-btn-ghost schedule-add-btn" id="addDayBtn" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>Добавить рабочий день</span>
+                    </button>
+
+                    <!-- Кнопка сохранения расписания -->
+                    <button type="button" class="profile-btn profile-btn-primary profile-save-float" id="scheduleSaveBtn" style="display:none;">
+                        Сохранить расписание
+                    </button>
+                </fieldset>
+
+                <fieldset class="profile-section" data-section="notifications" hidden>
+                    <h2 class="profile-section-title">Уведомления</h2>
+
+                    <div class="profile-connect" id="tgConnect">
+                        <div class="profile-connect-body">
+                            <p class="profile-connect-title">Telegram</p>
+                            <p class="profile-connect-text">
+                                Получай уведомления прямо в Telegram
+                            </p>
+                            <span class="profile-connect-status" id="tgStatus">
+                                Не подключено
+                            </span>
+                        </div>
+                        <button type="button" class="profile-btn profile-btn-ghost" id="tgBindBtn">
+                            Привязать
+                        </button>
+                    </div>
+
+                    <div class="profile-switches">
+                        <label class="profile-switch">
+                            <div class="profile-switch-body">
+                                <p class="profile-switch-title">Уведомления о новых записях</p>
+                                <p class="profile-switch-text">
+                                    Получай уведомления о новых записях в Telegram
+                                </p>
+                            </div>
+                            <input type="checkbox" name="notify_new_booking">
+                            <span class="profile-switch-mark" aria-hidden="true"></span>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <fieldset class="profile-section" data-section="danger" hidden>
+                    <h2 class="profile-section-title danger">Опасная зона</h2>
+                    <p class="profile-danger-text">
+                        Удаление аккаунта — необратимое действие. Все данные будут потеряны.
+                    </p>
+                    <div class="profile-danger-card">
+                        <div class="profile-danger-body">
+                            <p class="profile-danger-title">Удалить аккаунт</p>
+                            <p class="profile-danger-text">
+                                Это действие нельзя отменить.
+                            </p>
+                        </div>
+                        <button type="button" class="profile-btn profile-btn-danger" id="deleteAccountBtn">
+                            Удалить
+                        </button>
+                    </div>
+                </fieldset>
+                </fieldset>
+
                 <fieldset class="profile-section" data-section="security" hidden>
                     <h2 class="profile-section-title">Безопасность</h2>
 
@@ -204,6 +293,41 @@
                 Сохранить изменения
             </button>
         </form>
+
+        <!-- Модальное окно добавления/редактирования расписания -->
+        <div class="schedule-modal-overlay" id="scheduleModalOverlay" hidden>
+            <div class="schedule-modal" role="dialog" aria-modal="true" aria-labelledby="scheduleModalTitle">
+                <div class="schedule-modal-header">
+                    <h3 class="schedule-modal-title" id="scheduleModalTitle">Добавить расписание</h3>
+                    <button type="button" class="schedule-modal-close" id="scheduleModalClose" aria-label="Закрыть">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="schedule-modal-body">
+                    <label class="profile-field">
+                        <span class="profile-field-label">Начало работы</span>
+                        <input class="profile-input" type="time" id="scheduleStartTime" required>
+                    </label>
+                    <label class="profile-field">
+                        <span class="profile-field-label">Конец работы</span>
+                        <input class="profile-input" type="time" id="scheduleEndTime" required>
+                    </label>
+                    <div class="schedule-breaks" id="scheduleBreaks">
+                        <p class="profile-field-label">Перерывы</p>
+                        <div class="schedule-breaks-list" id="scheduleBreaksList"></div>
+                        <button type="button" class="profile-btn profile-btn-ghost schedule-add-break-btn" id="scheduleAddBreakBtn">
+                            + Добавить перерыв
+                        </button>
+                    </div>
+                </div>
+                <div class="schedule-modal-footer">
+                    <button type="button" class="profile-btn profile-btn-ghost" id="scheduleModalCancel">Отмена</button>
+                    <button type="button" class="profile-btn profile-btn-primary" id="scheduleModalSave">Сохранить</button>
+                </div>
+            </div>
+        </div>
     </section>
     </div><!-- /profileContent -->
 </main>
@@ -211,6 +335,7 @@
 
 {{define "profile_extra_scripts"}}
 <script src="/static/js/api/auth.js" defer></script>
+<script src="/static/js/api/schedule.js" defer></script>
 <script src="/static/js/profile.js" defer></script>
 <script src="/static/js/header.js" defer></script>
 {{end}}

@@ -702,6 +702,400 @@
     background-color: rgba(224, 94, 82, 0.08) !important;
 }
 
+/* ===== SCHEDULE ===== */
+
+.schedule-subtitle {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    margin: 0 0 4px;
+    line-height: 1.5;
+    transition: color .3s;
+}
+
+/* Карусель дней */
+.schedule-days-carousel {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: visible;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 4px 2px 8px 2px;
+    min-height: 54px;
+}
+
+.schedule-days-carousel::-webkit-scrollbar {
+    display: none;
+}
+
+.schedule-day-btn {
+    position: relative;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-bg-tertiary);
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    transition: color .3s, background-color .3s, border-color .3s, transform .3s;
+    cursor: pointer;
+}
+
+.schedule-day-btn:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-accent-dark);
+    transform: translateY(-2px);
+}
+
+.schedule-day-btn.active {
+    color: #1A1A1A;
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Контейнер дня */
+.schedule-day-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Пустое состояние */
+.schedule-empty {
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    text-align: center;
+    padding: 40px 16px;
+    transition: color .3s;
+}
+
+/* ===== INLINE-ФОРМА РАСПИСАНИЯ ===== */
+
+.schedule-inline-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-bg-tertiary);
+    background-color: var(--color-bg-tertiary);
+    transition: border-color .3s, background-color .3s;
+}
+
+.schedule-inline-form:hover {
+    border-color: var(--color-accent-dark);
+}
+
+.schedule-inline-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.schedule-inline-time {
+    max-width: 130px;
+    flex: 1;
+    padding: 8px 10px;
+    font-size: 15px;
+    font-weight: 600;
+    /* Стилизуем иконку часов в input[type="time"] */
+    color-scheme: dark;
+}
+
+/* Кастомный цвет иконки часов для WebKit */
+.schedule-inline-time::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.schedule-inline-time:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+}
+
+.schedule-inline-sep {
+    color: var(--color-text-primary);
+    font-size: 15px;
+    font-weight: 600;
+    transition: color .3s;
+}
+
+/* Перерывы */
+.schedule-inline-breaks {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.schedule-inline-breaks-label {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    transition: color .3s;
+}
+
+.schedule-inline-breaks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.schedule-inline-break-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 8px;
+}
+
+.schedule-inline-break-row .schedule-inline-time {
+    max-width: 110px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 8px;
+}
+
+.schedule-inline-break-remove {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    background-color: transparent;
+    transition: color .3s, background-color .3s;
+}
+
+.schedule-inline-break-remove:hover {
+    color: var(--color-error);
+    background-color: var(--color-bg-hover);
+}
+
+.schedule-inline-add-break {
+    align-self: flex-start;
+    font-size: 12px;
+    padding: 4px 10px;
+    border: 1px solid var(--color-bg-hover);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-primary);
+    background-color: transparent;
+    transition: color .3s, background-color .3s, border-color .3s, transform .3s;
+}
+
+.schedule-inline-add-break:hover {
+    background-color: var(--color-bg-hover);
+    border-color: var(--color-text-secondary);
+    transform: translateY(-2px);
+}
+
+.schedule-inline-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 4px;
+}
+
+.schedule-inline-delete {
+    color: var(--color-text-secondary) !important;
+    background-color: transparent;
+    border: 1px solid var(--color-bg-hover);
+    border-radius: var(--radius-sm);
+    transition: color .3s, background-color .3s, border-color .3s, transform .3s;
+}
+
+.schedule-inline-delete:hover {
+    color: var(--color-error) !important;
+    background-color: var(--color-bg-hover);
+    border-color: var(--color-error);
+    transform: translateY(-2px);
+}
+
+/* Кнопка добавления расписания (под контентом дня) */
+.schedule-add-btn {
+    align-self: flex-start;
+    margin-top: 4px;
+}
+
+/* ===== МОДАЛЬНОЕ ОКНО ===== */
+
+.schedule-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.5);
+    animation: fade-in .25s ease;
+}
+
+.schedule-modal-overlay[hidden] {
+    display: none;
+}
+
+.schedule-modal {
+    width: min(480px, calc(100% - 32px));
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-bg-tertiary);
+    background-color: var(--color-bg-secondary);
+    box-shadow: var(--shadow-lg);
+    animation: fade-up .3s ease;
+    overflow: hidden;
+    transition: background-color .3s, border-color .3s, box-shadow .3s;
+}
+
+.schedule-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.schedule-modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    transition: color .3s;
+}
+
+.schedule-modal-close {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    transition: color .3s, background-color .3s;
+}
+
+.schedule-modal-close:hover {
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-hover);
+}
+
+.schedule-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 60vh;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.schedule-modal-body::-webkit-scrollbar {
+    display: none;
+}
+
+/* Поля ввода внутри модалки — фон tertiary для контраста */
+.schedule-modal-body .profile-input {
+    background-color: var(--color-bg-tertiary);
+    /* Стилизуем иконку часов в input[type="time"] */
+    color-scheme: dark;
+}
+
+.schedule-modal-body .profile-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.schedule-modal-body .profile-input:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+}
+
+.schedule-breaks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.schedule-breaks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.schedule-break-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.schedule-break-row .profile-input {
+    flex: 1;
+    color-scheme: dark;
+}
+
+.schedule-break-row .profile-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.schedule-break-row .profile-input:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+}
+
+.schedule-break-remove {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    background-color: transparent;
+    transition: color .3s, background-color .3s;
+}
+
+.schedule-break-remove:hover {
+    color: var(--color-error);
+    background-color: var(--color-bg-hover);
+}
+
+.schedule-add-break-btn {
+    align-self: flex-start;
+    font-size: 12px;
+    padding: 4px 10px;
+    border: 1px solid var(--color-bg-hover);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-primary);
+    background-color: transparent;
+    transition: color .3s, background-color .3s, border-color .3s, transform .3s;
+}
+
+.schedule-add-break-btn:hover {
+    background-color: var(--color-bg-hover);
+    border-color: var(--color-text-secondary);
+    transform: translateY(-2px);
+}
+
+.schedule-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    transition: background-color .3s;
+}
+
 /* RESPONSIVE */
 @media (max-width: 900px) {
     .profile-layout {
@@ -777,6 +1171,36 @@
 
     .profile-btn {
         width: 100%;
+    }
+
+    /* Центрирование расписания на мобильных */
+    .schedule-inline-form {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .schedule-inline-row {
+        justify-content: center;
+    }
+
+    .schedule-inline-break-row {
+        justify-content: center;
+    }
+
+    .schedule-inline-breaks {
+        align-items: center;
+    }
+
+    .schedule-inline-add-break {
+        align-self: center;
+    }
+
+    .schedule-add-break-btn {
+        align-self: center;
+    }
+
+    .schedule-inline-actions {
+        justify-content: center;
     }
 
     .background-circles {

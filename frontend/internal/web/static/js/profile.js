@@ -75,6 +75,8 @@
         for (const key of Object.keys(current)) {
             if (!(key in initialState) || current[key] !== initialState[key]) return true;
         }
+        // Проверяем, есть ли изменения в расписаниях
+        if (collectScheduleDiffs().length > 0) return true;
         return false;
     }
 
@@ -353,9 +355,17 @@
         });
     });
 
-    // --- Detect changes on any input ---
+    // --- Detect changes on any input (включая inline-формы расписания) ---
     form.addEventListener('input', toggleSaveBtn);
     form.addEventListener('change', toggleSaveBtn);
+
+    // Отслеживаем изменения в расписании — делегируем с document
+    document.addEventListener('input', (e) => {
+        if (e.target.closest('.schedule-inline-form')) toggleSaveBtn();
+    });
+    document.addEventListener('change', (e) => {
+        if (e.target.closest('.schedule-inline-form')) toggleSaveBtn();
+    });
 
     // --- Submit ---
     form.addEventListener('submit', async (event) => {
@@ -385,25 +395,49 @@
                 payload.on_vacation = current.on_vacation;
             }
 
-            await authAPI.update(
-                payload.notification || {},
-                payload.firstname || null,
-                payload.lastname || null,
-                payload.phone_number || null,
-                payload.on_vacation != null ? payload.on_vacation : null
-            );
+            const profileChanged = Object.keys(payload).length > 0;
 
-            const user = await authAPI.self();
-            populateForm(user);
+            // Сохраняем профиль, если есть изменения
+            if (profileChanged) {
+                await authAPI.update(
+                    payload.notification || {},
+                    payload.firstname || null,
+                    payload.lastname || null,
+                    payload.phone_number || null,
+                    payload.on_vacation != null ? payload.on_vacation : null
+                );
+                const user = await authAPI.self();
+                populateForm(user);
+            }
 
-            showToast('Изменения сохранены', 'success');
+            // Сохраняем изменённые расписания
+            const scheduleDiffs = collectScheduleDiffs();
+            for (const diff of scheduleDiffs) {
+                await scheduleAPI.update({
+                    scheduleId: diff.scheduleId,
+                    startTime: diff.startTime,
+                    endTime: diff.endTime,
+                    doUpdateBreak: true,
+                    breaks: diff.breaks
+                });
+            }
+
+            // Перезагружаем кэш расписаний, чтобы сбросить diffs
+            if (scheduleDiffs.length > 0) {
+                await loadAllSchedules();
+            }
+
+            if (profileChanged || scheduleDiffs.length > 0) {
+                showToast('Изменения сохранены', 'success');
+            }
         } catch (err) {
             const e = formatError(err);
             if (e.field) {
                 const fieldEl = form.elements[e.field];
                 if (fieldEl) fieldEl.classList.add('input-error');
             }
-            showToast(e.text, 'error');
+            // Если ошибка пришла от расписаний — маппим на русский
+            showToast(mapScheduleError(err) !== err.message ? mapScheduleError(err) : e.text, 'error');
         } finally {
             saveBtn.disabled = false;
             saveBtn.textContent = 'Сохранить изменения';
@@ -513,6 +547,708 @@
             if (isDirty()) form.requestSubmit();
         }
     });
+
+    // ===== SCHEDULE LOGIC =====
+    const scheduleDaysCarousel = document.getElementById('scheduleDaysCarousel');
+    const scheduleDayContent = document.getElementById('scheduleDayContent');
+    const scheduleEmpty = document.getElementById('scheduleEmpty');
+    const scheduleModalOverlay = document.getElementById('scheduleModalOverlay');
+    const scheduleModalTitle = document.getElementById('scheduleModalTitle');
+    const scheduleStartTime = document.getElementById('scheduleStartTime');
+    const scheduleEndTime = document.getElementById('scheduleEndTime');
+    const scheduleBreaksList = document.getElementById('scheduleBreaksList');
+    const scheduleAddBreakBtn = document.getElementById('scheduleAddBreakBtn');
+    const scheduleModalSave = document.getElementById('scheduleModalSave');
+    const scheduleModalCancel = document.getElementById('scheduleModalCancel');
+    const scheduleModalClose = document.getElementById('scheduleModalClose');
+
+    // Локальный кэш расписаний, key = dayIndex (0-6), value = массив schedule-объектов
+    let scheduleCache = {};
+    let selectedDay = null;    // индекс выбранного дня (0-6)
+    let editingScheduleId = null;  // id редактируемого расписания (null = создание нового)
+
+    const DAY_NAMES_FULL = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+
+    let scheduleUserId = null;
+
+    /**
+     * Преобразовать строку "HH:MM" в объект {hour, minute}, который ждёт бэкенд (DayTime).
+     */
+    function toDayTime(timeStr) {
+        if (!timeStr) return { hour: 0, minute: 0 };
+        const [h, m] = timeStr.split(':').map(Number);
+        return { hour: h || 0, minute: m || 0 };
+    }
+
+    /**
+     * Загрузить ВСЕ расписания с сервера и разложить по дням в кэш.
+     */
+    async function loadAllSchedules() {
+        if (!scheduleUserId) {
+            try {
+                const user = await authAPI.self();
+                scheduleUserId = user.id;
+            } catch (e) {
+                showToast('Не удалось определить пользователя', 'error');
+                return;
+            }
+        }
+
+        try {
+            const result = await scheduleAPI.listByUserId(scheduleUserId);
+            const allSchedules = result.list || [];
+
+            for (let d = 0; d < 7; d++) {
+                scheduleCache[d] = [];
+            }
+
+            allSchedules.forEach(sch => {
+                const day = sch.day_of_week;
+                if (day >= 0 && day <= 6) {
+                    if (!scheduleCache[day]) scheduleCache[day] = [];
+                    scheduleCache[day].push(sch);
+                }
+            });
+        } catch (err) {
+            showToast('Не удалось загрузить расписание', 'error');
+            for (let d = 0; d < 7; d++) {
+                scheduleCache[d] = [];
+            }
+        }
+
+        updateDayButtonsIndicators();
+
+        if (selectedDay != null) {
+            renderDayContent(selectedDay);
+        }
+    }
+
+    /**
+     * Отрендерить содержимое выбранного дня
+     */
+    function renderDayContent(dayIndex) {
+        if (!scheduleDayContent || !scheduleEmpty) return;
+
+        const schedules = scheduleCache[dayIndex] || [];
+
+        // Очищаем всё, кроме empty-сообщения
+        const existingCards = scheduleDayContent.querySelectorAll('.schedule-card, .schedule-add-btn, .schedule-inline-form');
+        existingCards.forEach(el => el.remove());
+
+        if (schedules.length === 0) {
+            scheduleEmpty.style.display = '';
+            scheduleEmpty.textContent = 'Нет расписаний на этот день';
+
+            // Кнопка добавления — только если нет расписаний
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'profile-btn profile-btn-ghost schedule-add-btn';
+            addBtn.textContent = '+ Добавить расписание';
+            addBtn.addEventListener('click', () => openScheduleModal(null));
+            scheduleDayContent.appendChild(addBtn);
+        } else {
+            scheduleEmpty.style.display = 'none';
+
+            schedules.sort((a, b) => compareDayTime(a.start_time, b.start_time));
+
+            // Показываем inline-форму для каждого расписания
+            schedules.forEach(sch => {
+                const form = createScheduleInlineForm(sch);
+                scheduleDayContent.appendChild(form);
+            });
+        }
+    }
+
+    /**
+     * Создать inline-форму для одного расписания (редактирование на месте, без модалки)
+     */
+    function createScheduleInlineForm(sch) {
+        const form = document.createElement('div');
+        form.className = 'schedule-inline-form';
+        form.dataset.scheduleId = sch.id;
+
+        // Время
+        const timeRow = document.createElement('div');
+        timeRow.className = 'schedule-inline-row';
+
+        const startInput = document.createElement('input');
+        startInput.type = 'time';
+        startInput.className = 'profile-input schedule-inline-time';
+        startInput.value = formatTime(sch.start_time);
+
+        const sep = document.createElement('span');
+        sep.className = 'schedule-inline-sep';
+        sep.textContent = '—';
+
+        const endInput = document.createElement('input');
+        endInput.type = 'time';
+        endInput.className = 'profile-input schedule-inline-time';
+        endInput.value = formatTime(sch.end_time);
+
+        timeRow.appendChild(startInput);
+        timeRow.appendChild(sep);
+        timeRow.appendChild(endInput);
+        form.appendChild(timeRow);
+
+        // Перерывы
+        const breaksContainer = document.createElement('div');
+        breaksContainer.className = 'schedule-inline-breaks';
+
+        const breaksLabel = document.createElement('span');
+        breaksLabel.className = 'schedule-inline-breaks-label';
+        breaksLabel.textContent = 'Перерывы:';
+        breaksContainer.appendChild(breaksLabel);
+
+        const breaksList = document.createElement('div');
+        breaksList.className = 'schedule-inline-breaks-list';
+
+        const addBreakRowInline = (bStart, bEnd) => {
+            const row = document.createElement('div');
+            row.className = 'schedule-inline-break-row';
+
+            const bs = document.createElement('input');
+            bs.type = 'time';
+            bs.className = 'profile-input schedule-inline-time';
+            bs.value = formatTime(bStart);
+
+            const bSep = document.createElement('span');
+            bSep.textContent = '–';
+
+            const be = document.createElement('input');
+            be.type = 'time';
+            be.className = 'profile-input schedule-inline-time';
+            be.value = formatTime(bEnd);
+
+            const rm = document.createElement('button');
+            rm.type = 'button';
+            rm.className = 'schedule-inline-break-remove';
+            rm.setAttribute('aria-label', 'Удалить перерыв');
+            rm.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+            rm.addEventListener('click', () => row.remove());
+
+            row.appendChild(bs);
+            row.appendChild(bSep);
+            row.appendChild(be);
+            row.appendChild(rm);
+            breaksList.appendChild(row);
+        };
+
+        if (sch.breaks && sch.breaks.length > 0) {
+            sch.breaks.forEach(b => addBreakRowInline(b.start_time, b.end_time));
+        }
+
+        const addBreakBtn = document.createElement('button');
+        addBreakBtn.type = 'button';
+        addBreakBtn.className = 'profile-btn profile-btn-ghost schedule-inline-add-break';
+        addBreakBtn.textContent = '+ Перерыв';
+        addBreakBtn.addEventListener('click', () => {
+            addBreakRowInline({ hour: 12, minute: 0 }, { hour: 13, minute: 0 });
+            toggleSaveBtn();
+        });
+
+        breaksContainer.appendChild(breaksList);
+        breaksContainer.appendChild(addBreakBtn);
+        form.appendChild(breaksContainer);
+
+        // Отслеживаем изменения в time-инпутах и удаление перерывов — показываем кнопку Сохранить
+        form.addEventListener('input', (e) => {
+            if (e.target.matches('input[type="time"]')) {
+                toggleSaveBtn();
+            }
+        });
+        form.addEventListener('click', (e) => {
+            if (e.target.closest('.schedule-inline-break-remove')) {
+                // Небольшая задержка, чтобы DOM обновился до вызова toggleSaveBtn
+                setTimeout(toggleSaveBtn, 0);
+            }
+        });
+
+        // Кнопки действий
+        const actions = document.createElement('div');
+        actions.className = 'schedule-inline-actions';
+
+        // Кнопка удаления
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'profile-btn profile-btn-ghost schedule-inline-delete';
+        deleteBtn.textContent = 'Удалить';
+        deleteBtn.addEventListener('click', () => deleteSchedule(sch.id));
+
+        actions.appendChild(deleteBtn);
+        form.appendChild(actions);
+
+        return form;
+    }
+
+    /**
+     * Собрать изменённые расписания из inline-форм.
+     * Сравнивает значения в DOM с оригиналом в кэше.
+     * Возвращает массив {scheduleId, startTime, endTime, breaks} для отправки на сервер.
+     */
+    function collectScheduleDiffs() {
+        if (!scheduleDayContent) return [];
+        const forms = scheduleDayContent.querySelectorAll('.schedule-inline-form');
+        const diffs = [];
+
+        forms.forEach(form => {
+            const scheduleId = form.dataset.scheduleId;
+            if (!scheduleId) return;
+
+            // Найти оригинал в кэше
+            let original = null;
+            for (let d = 0; d < 7; d++) {
+                const found = (scheduleCache[d] || []).find(s => s.id === scheduleId);
+                if (found) { original = found; break; }
+            }
+            if (!original) return;
+
+            const startInput = form.querySelector('.schedule-inline-row .schedule-inline-time:first-child');
+            const endInput = form.querySelector('.schedule-inline-row .schedule-inline-time:last-child');
+            if (!startInput || !endInput) return;
+
+            const newStart = startInput.value;
+            const newEnd = endInput.value;
+            const origStart = formatTime(original.start_time);
+            const origEnd = formatTime(original.end_time);
+
+            // Собрать перерывы из DOM
+            const breakRows = form.querySelectorAll('.schedule-inline-break-row');
+            const newBreaks = [];
+            breakRows.forEach(row => {
+                const inputs = row.querySelectorAll('input[type="time"]');
+                if (inputs.length === 2) {
+                    const bs = inputs[0].value;
+                    const be = inputs[1].value;
+                    if (bs && be && bs < be) {
+                        newBreaks.push({ start: bs, end: be });
+                    }
+                }
+            });
+
+            // Собрать оригинальные перерывы
+            const origBreaks = (original.breaks || []).map(b => ({
+                start: formatTime(b.start_time),
+                end: formatTime(b.end_time)
+            }));
+
+            // Сравнить
+            const timeChanged = newStart !== origStart || newEnd !== origEnd;
+            let breaksChanged = newBreaks.length !== origBreaks.length;
+            if (!breaksChanged) {
+                for (let i = 0; i < newBreaks.length; i++) {
+                    if (newBreaks[i].start !== origBreaks[i].start || newBreaks[i].end !== origBreaks[i].end) {
+                        breaksChanged = true;
+                        break;
+                    }
+                }
+            }
+
+            if (timeChanged || breaksChanged) {
+                diffs.push({
+                    scheduleId: scheduleId,
+                    startTime: toDayTime(newStart),
+                    endTime: toDayTime(newEnd),
+                    breaks: newBreaks.map(b => ({ start_time: toDayTime(b.start), end_time: toDayTime(b.end) }))
+                });
+            }
+        });
+
+        return diffs;
+    }
+
+    function formatTime(dt) {
+        if (!dt) return '--:--';
+        // dt может быть строкой "09:00" / "09:00:00" или объектом {hour, minute} с бэкенда
+        if (typeof dt === 'object' && 'hour' in dt && 'minute' in dt) {
+            return String(dt.hour).padStart(2, '0') + ':' + String(dt.minute).padStart(2, '0');
+        }
+        if (typeof dt === 'string') {
+            return dt.slice(0, 5);
+        }
+        return '--:--';
+    }
+
+    /**
+     * Сравнить два DayTime (объект {hour,minute}) для сортировки
+     */
+    function compareDayTime(a, b) {
+        const ha = (typeof a === 'object' && 'hour' in a) ? a.hour : 0;
+        const ma = (typeof a === 'object' && 'minute' in a) ? a.minute : 0;
+        const hb = (typeof b === 'object' && 'hour' in b) ? b.hour : 0;
+        const mb = (typeof b === 'object' && 'minute' in b) ? b.minute : 0;
+        if (ha !== hb) return ha - hb;
+        return ma - mb;
+    }
+
+    /**
+     * Обновить индикаторы (точки) на кнопках дней
+     */
+    function updateDayButtonsIndicators() {
+        if (!scheduleDaysCarousel) return;
+        const buttons = scheduleDaysCarousel.querySelectorAll('.schedule-day-btn');
+        buttons.forEach(btn => {
+            const day = parseInt(btn.dataset.day, 10);
+            const hasSchedule = (scheduleCache[day] && scheduleCache[day].length > 0);
+            btn.classList.toggle('has-schedule', hasSchedule);
+        });
+    }
+
+    /**
+     * Открыть модальное окно для создания/редактирования
+     */
+    function openScheduleModal(schedule) {
+        if (!scheduleModalOverlay) return;
+
+        editingScheduleId = schedule ? schedule.id : null;
+
+        if (scheduleModalTitle) {
+            scheduleModalTitle.textContent = schedule ? 'Редактировать расписание' : 'Добавить расписание';
+        }
+
+        // Заполнить поля
+        if (scheduleStartTime) scheduleStartTime.value = schedule ? formatTime(schedule.start_time) : '09:00';
+        if (scheduleEndTime) scheduleEndTime.value = schedule ? formatTime(schedule.end_time) : '18:00';
+
+        // Очистить список перерывов
+        if (scheduleBreaksList) {
+            scheduleBreaksList.innerHTML = '';
+
+            const breaks = (schedule && schedule.breaks) ? schedule.breaks : [];
+            breaks.forEach(b => addBreakRow(b.start_time, b.end_time));
+        }
+
+        scheduleModalOverlay.removeAttribute('hidden');
+    }
+
+    /**
+     * Закрыть модальное окно
+     */
+    function closeScheduleModal() {
+        if (!scheduleModalOverlay) return;
+        scheduleModalOverlay.setAttribute('hidden', '');
+        editingScheduleId = null;
+    }
+
+    /**
+     * Добавить строку перерыва в модальном окне
+     */
+    function addBreakRow(startTime, endTime) {
+        if (!scheduleBreaksList) return;
+
+        const row = document.createElement('div');
+        row.className = 'schedule-break-row';
+
+        const startInput = document.createElement('input');
+        startInput.type = 'time';
+        startInput.className = 'profile-input';
+        startInput.value = startTime ? formatTime(startTime) : '12:00';
+
+        const endInput = document.createElement('input');
+        endInput.type = 'time';
+        endInput.className = 'profile-input';
+        endInput.value = endTime ? formatTime(endTime) : '13:00';
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'schedule-break-remove';
+        removeBtn.setAttribute('aria-label', 'Удалить перерыв');
+        removeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+        removeBtn.addEventListener('click', () => row.remove());
+
+        row.appendChild(startInput);
+        row.appendChild(endInput);
+        row.appendChild(removeBtn);
+        scheduleBreaksList.appendChild(row);
+    }
+
+    /**
+     * Валидировать перерывы: должны быть внутри [startTime, endTime], >= 5 мин, без пересечений.
+     * Возвращает строку с ошибкой или null.
+     */
+    function validateBreaks(breaks, workStart, workEnd) {
+        if (breaks.length === 0) return null;
+
+        // Сортируем по времени начала
+        const sorted = [...breaks].sort((a, b) => {
+            if (a.start_time.hour !== b.start_time.hour) return a.start_time.hour - b.start_time.hour;
+            return a.start_time.minute - b.start_time.minute;
+        });
+
+        const workStartMin = workStart.hour * 60 + workStart.minute;
+        const workEndMin = workEnd.hour * 60 + workEnd.minute;
+
+        for (let i = 0; i < sorted.length; i++) {
+            const bs = sorted[i].start_time.hour * 60 + sorted[i].start_time.minute;
+            const be = sorted[i].end_time.hour * 60 + sorted[i].end_time.minute;
+
+            // Должен быть внутри рабочего времени
+            if (bs < workStartMin || be > workEndMin) {
+                return 'Перерыв должен быть внутри рабочего времени';
+            }
+
+            // Минимум 5 минут
+            if (be - bs < 5) {
+                return 'Перерыв должен быть не менее 5 минут';
+            }
+
+            // Пересечение с предыдущим
+            if (i > 0) {
+                const prevEnd = sorted[i - 1].end_time.hour * 60 + sorted[i - 1].end_time.minute;
+                if (bs < prevEnd) {
+                    return 'Перерывы не должны пересекаться';
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Сопоставить серверную ошибку с русским сообщением.
+     */
+    function mapScheduleError(err) {
+        const msg = (err && err.message) ? err.message : '';
+        if (!msg) return 'Ошибка при сохранении расписания';
+
+        const lower = msg.toLowerCase();
+        if (lower.includes('times of schedule must be more than 5 minutes') || lower.includes('errinvalidschedule')) {
+            return 'Рабочее время должно быть не менее 5 минут';
+        }
+        if (lower.includes('invalid day of week') || lower.includes('errinvaliddayofweek')) {
+            return 'Некорректный день недели';
+        }
+        if (lower.includes('invalid break') || lower.includes('errinvalidbreak')) {
+            return 'Некорректный перерыв (проверьте время)';
+        }
+        if (lower.includes('some breaks is overlap') || lower.includes('errbreakoverlap')) {
+            return 'Перерывы не должны пересекаться';
+        }
+        if (lower.includes('invalid user') || lower.includes('errinvaliduserid')) {
+            return 'Ошибка авторизации';
+        }
+
+        return msg;
+    }
+
+    /**
+     * Сохранить расписание (создать или обновить)
+     */
+    async function saveSchedule() {
+        if (!scheduleUserId || selectedDay == null) {
+            showToast('Выберите день недели', 'error');
+            return;
+        }
+
+        const startTime = scheduleStartTime ? scheduleStartTime.value : '';
+        const endTime = scheduleEndTime ? scheduleEndTime.value : '';
+
+        if (!startTime || !endTime) {
+            showToast('Укажите время начала и конца работы', 'error');
+            return;
+        }
+
+        if (startTime >= endTime) {
+            showToast('Время начала должно быть раньше времени конца', 'error');
+            return;
+        }
+
+        // Проверка минимальной длительности (5 минут)
+        const [sh, sm] = startTime.split(':').map(Number);
+        const [eh, em] = endTime.split(':').map(Number);
+        const workDuration = (eh * 60 + em) - (sh * 60 + sm);
+        if (workDuration < 5) {
+            showToast('Рабочее время должно быть не менее 5 минут', 'error');
+            return;
+        }
+
+        // Собрать перерывы
+        const breakRows = scheduleBreaksList ? scheduleBreaksList.querySelectorAll('.schedule-break-row') : [];
+        const breaks = [];
+        for (const row of breakRows) {
+            const inputs = row.querySelectorAll('input[type="time"]');
+            if (inputs.length === 2) {
+                const bStart = inputs[0].value;
+                const bEnd = inputs[1].value;
+                if (bStart && bEnd && bStart < bEnd) {
+                    breaks.push({ start_time: toDayTime(bStart), end_time: toDayTime(bEnd) });
+                }
+            }
+        }
+
+        // Валидировать перерывы
+        const breakError = validateBreaks(breaks, { hour: sh, minute: sm }, { hour: eh, minute: em });
+        if (breakError) {
+            showToast(breakError, 'error');
+            return;
+        }
+
+        scheduleModalSave.disabled = true;
+        scheduleModalSave.textContent = 'Сохраняем…';
+
+        try {
+            if (editingScheduleId) {
+                // Обновление: делаем запрос, потом обновляем кэш и перерендериваем
+                const updated = await scheduleAPI.update({
+                    scheduleId: editingScheduleId,
+                    startTime: toDayTime(startTime),
+                    endTime: toDayTime(endTime),
+                    doUpdateBreak: true,
+                    breaks: breaks
+                });
+                // Обновить в кэше
+                const day = updated.day_of_week;
+                if (scheduleCache[day]) {
+                    const idx = scheduleCache[day].findIndex(s => s.id === editingScheduleId);
+                    if (idx !== -1) scheduleCache[day][idx] = updated;
+                }
+            } else {
+                // Создание: API возвращает созданный объект — добавляем в кэш и DOM сразу
+                const created = await scheduleAPI.create({
+                    dayOfWeek: selectedDay,
+                    startTime: toDayTime(startTime),
+                    endTime: toDayTime(endTime),
+                    breaks: breaks
+                });
+                // Добавить в кэш
+                const day = created.day_of_week;
+                if (!scheduleCache[day]) scheduleCache[day] = [];
+                scheduleCache[day].push(created);
+            }
+
+            closeScheduleModal();
+            // Перерендерить текущий день (без перезагрузки с сервера)
+            if (selectedDay != null) {
+                updateDayButtonsIndicators();
+                renderDayContent(selectedDay);
+            }
+            showToast('Расписание сохранено', 'success');
+        } catch (err) {
+            showToast(mapScheduleError(err), 'error');
+        } finally {
+            scheduleModalSave.disabled = false;
+            scheduleModalSave.textContent = 'Сохранить';
+        }
+    }
+
+    /**
+     * Удалить расписание
+     */
+    async function deleteSchedule(scheduleId) {
+        if (!scheduleUserId || selectedDay == null) return;
+
+        try {
+            await scheduleAPI.delete(scheduleId);
+            // Удалить из кэша
+            for (let d = 0; d < 7; d++) {
+                if (scheduleCache[d]) {
+                    scheduleCache[d] = scheduleCache[d].filter(s => s.id !== scheduleId);
+                }
+            }
+            // Перерендерить текущий день
+            updateDayButtonsIndicators();
+            if (selectedDay != null) {
+                renderDayContent(selectedDay);
+            }
+            showToast('Расписание удалено', 'success');
+        } catch (err) {
+            showToast(mapScheduleError(err), 'error');
+        }
+    }
+
+    // --- Обработчики событий ---
+    if (scheduleDaysCarousel) {
+        scheduleDaysCarousel.addEventListener('click', (e) => {
+            const btn = e.target.closest('.schedule-day-btn');
+            if (!btn) return;
+
+            const dayIndex = parseInt(btn.dataset.day, 10);
+            if (isNaN(dayIndex)) return;
+
+            // Подсветить активную кнопку
+            scheduleDaysCarousel.querySelectorAll('.schedule-day-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            selectedDay = dayIndex;
+            renderDayContent(dayIndex);
+        });
+    }
+
+    if (scheduleAddBreakBtn) {
+        scheduleAddBreakBtn.addEventListener('click', () => addBreakRow(null, null));
+    }
+
+    if (scheduleModalSave) {
+        scheduleModalSave.addEventListener('click', saveSchedule);
+    }
+
+    if (scheduleModalCancel) {
+        scheduleModalCancel.addEventListener('click', closeScheduleModal);
+    }
+
+    if (scheduleModalClose) {
+        scheduleModalClose.addEventListener('click', closeScheduleModal);
+    }
+
+    // Закрытие модального окна по клику на оверлей
+    if (scheduleModalOverlay) {
+        scheduleModalOverlay.addEventListener('click', (e) => {
+            if (e.target === scheduleModalOverlay) closeScheduleModal();
+        });
+    }
+
+    // Закрытие по Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && scheduleModalOverlay && !scheduleModalOverlay.hasAttribute('hidden')) {
+            closeScheduleModal();
+        }
+    });
+
+    // --- Интеграция с загрузкой профиля ---
+    // После populateForm нужно сохранить userId и загрузить расписания для выбранного дня
+    const originalPopulateForm = populateForm;
+    populateForm = function(user) {
+        originalPopulateForm(user);
+        if (user && user.id) {
+            scheduleUserId = user.id;
+            // Устанавливаем день по умолчанию (пн), если ещё не выбран
+            if (selectedDay == null) {
+                selectedDay = 0;
+                if (scheduleDaysCarousel) {
+                    scheduleDaysCarousel.querySelectorAll('.schedule-day-btn').forEach(b => b.classList.remove('active'));
+                    const activeBtn = scheduleDaysCarousel.querySelector('.schedule-day-btn[data-day="0"]');
+                    if (activeBtn) activeBtn.classList.add('active');
+                }
+            }
+            loadAllSchedules();
+        }
+    };
+
+    // При переключении на вкладку schedule — активировать первый день, если ничего не выбрано
+    const originalSwitchSection = switchSection;
+    switchSection = function(sectionName) {
+        originalSwitchSection(sectionName);
+        if (sectionName === 'schedule' && selectedDay == null) {
+            // Активировать понедельник по умолчанию
+            const dayIndex = 0; // 0 = пн
+            selectedDay = dayIndex;
+
+            if (scheduleDaysCarousel) {
+                scheduleDaysCarousel.querySelectorAll('.schedule-day-btn').forEach(b => b.classList.remove('active'));
+                const activeBtn = scheduleDaysCarousel.querySelector(`.schedule-day-btn[data-day="${dayIndex}"]`);
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+
+            // Если кэш уже загружен — просто рендерим, иначе загружаем
+            if (scheduleUserId) {
+                loadAllSchedules().then(() => {
+                    if (selectedDay != null) renderDayContent(selectedDay);
+                });
+            } else {
+                // populateForm ещё не вызван, рендерить пока нечего
+                // loadAllSchedules будет вызван из populateForm после загрузки пользователя
+            }
+        }
+    };
 
     // Init
     setupLiveValidation();
