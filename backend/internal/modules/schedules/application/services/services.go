@@ -54,6 +54,10 @@ func (s *ScheduleService) Create(ctx context.Context, req *requests.CreateSchedu
 		return nil, err
 	}
 
+	if err := s.clearSchedulesCache(ctx, userID); err != nil {
+		s.log.Warn("failed to clear schedules cache", slog.String("error", err.Error()))
+	}
+
 	return s.scheduleToDTO(savedSchedule), nil
 }
 
