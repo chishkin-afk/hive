@@ -14,88 +14,7 @@
     </div>
 
     <div class="services-list" id="servicesList">
-        <div class="service-card loading">
-            <div class="skeleton skeleton-title"></div>
-            <div class="skeleton skeleton-description"></div>
-            <div class="skeleton skeleton-meta"></div>
-        </div>
-   
-        <div class="service-card">
-            <h3 class="service-title">Название</h3>
-            <p class="service-description">Описание</p>
-            <div class="service-meta">
-                <div class="service-duration-wrapper">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M12 6V12L16 14"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span class="service-duration">30 мин</span>
-                </div>
-                <div class="service-price">
-                    <span class="service-amount">2000</span>
-                    <span class="service-currency">₽</span>
-                </div>
-            </div>
-        </div>
-        <div class="service-card">
-            <h3 class="service-title">Название</h3>
-            <p class="service-description">Описание</p>
-            <div class="service-meta">
-                <div class="service-duration-wrapper">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M12 6V12L16 14"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span class="service-duration">30 мин</span>
-                </div>
-                <div class="service-price">
-                    <span class="service-amount">2000</span>
-                    <span class="service-currency">₽</span>
-                </div>
-            </div>
-        </div>
-        <div class="service-card">
-            <h3 class="service-title">Название</h3>
-            <p class="service-description">Описание</p>
-            <div class="service-meta">
-                <div class="service-duration-wrapper">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M12 6V12L16 14"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span class="service-duration">30 мин</span>
-                </div>
-                <div class="service-price">
-                    <span class="service-amount">2000</span>
-                    <span class="service-currency">₽</span>
-                </div>
-            </div>
-        </div>
-        <div class="service-card">
-            <h3 class="service-title">Название</h3>
-            <p class="service-description">Описание</p>
-            <div class="service-meta">
-                <div class="service-duration-wrapper">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M12 6V12L16 14"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span class="service-duration">30 мин</span>
-                </div>
-                <div class="service-price">
-                    <span class="service-amount">2000</span>
-                    <span class="service-currency">₽</span>
-                </div>
-            </div>
-        </div>
+        <!-- Карточки будут загружены динамически -->
     </div>
     
     <div class="pagination" id="pagination">
@@ -122,23 +41,30 @@
                 <div class="service-modal-main">
                     <label>
                         <span class="service-modal-input-title">Название</span>
-                        <input id="serviceTitle" type="text">
+                        <input id="editServiceTitle" type="text">
                     </label>
                     <label>
                         <span class="service-modal-input-title">Описание</span>
-                        <textarea id="serviceDescription"></textarea>
+                        <textarea id="editServiceDescription"></textarea>
                     </label>
                     <label>
                         <span class="service-modal-input-title">Цена</span>
                         <div class="service-modal-input-wrapper">
-                            <input id="servicePrice" type="number">
+                            <input id="editServicePrice" type="number">
                             <span class="service-modal-input-suffix">₽</span>
                         </div>
                     </label>
                     <label>
                         <span class="service-modal-input-title">Продолжительность</span>
                         <div class="service-modal-input-wrapper">
-                            <input id="serviceDuration" type="number">
+                            <input id="editServiceDuration" type="number">
+                            <span class="service-modal-input-suffix">мин</span>
+                        </div>
+                    </label>
+                    <label>
+                        <span class="service-modal-input-title">Интервал между записями</span>
+                        <div class="service-modal-input-wrapper">
+                            <input id="editServiceInterval" type="number">
                             <span class="service-modal-input-suffix">мин</span>
                         </div>
                     </label>
@@ -147,7 +73,7 @@
                 <div class="service-divider"></div>
                 
                 <div class="service-modal-buttons">
-                    <button id="saveServiceBtn" class="service-modal-btn">Сохранить</button>
+                    <button id="saveEditServiceBtn" class="service-modal-btn">Сохранить</button>
                     <button id="suspendServiceBtn" class="service-modal-btn">Приостановить</button>
                     <button id="resumeServiceBtn" class="service-modal-btn">Возобновить</button>
                     <button id="copyURLServiceBtn" class="service-modal-btn">Ссылка</button>
@@ -158,17 +84,8 @@
             <div class="service-modal-bottom">
                 <h2>Записи</h2>
 
-                <div class="bookings-list">
-                    <div class="booking-card">
-                        <div class="booking-card-main">
-                            <h3>Имя</h3>
-                            <span>Телефон</span>
-                            <span>Дата и время</span>
-                            <p>Комментарий</p>
-                        </div>
-    
-                        <button class="booking-cancel-btn">Отменить</button>
-                    </div>
+                <div class="bookings-list" id="editBookingsList">
+                    <!-- Записи будут загружены динамически -->
                 </div>
             </div>
         </div>
@@ -180,23 +97,30 @@
                 <div class="service-modal-main">
                     <label>
                         <span class="service-modal-input-title">Название</span>
-                        <input id="serviceTitle" type="text">
+                        <input id="createServiceTitle" type="text">
                     </label>
                     <label>
                         <span class="service-modal-input-title">Описание</span>
-                        <textarea id="serviceDescription"></textarea>
+                        <textarea id="createServiceDescription"></textarea>
                     </label>
                     <label>
                         <span class="service-modal-input-title">Цена</span>
                         <div class="service-modal-input-wrapper">
-                            <input id="servicePrice" type="number">
+                            <input id="createServicePrice" type="number">
                             <span class="service-modal-input-suffix">₽</span>
                         </div>
                     </label>
                     <label>
                         <span class="service-modal-input-title">Продолжительность</span>
                         <div class="service-modal-input-wrapper">
-                            <input id="serviceDuration" type="number">
+                            <input id="createServiceDuration" type="number">
+                            <span class="service-modal-input-suffix">мин</span>
+                        </div>
+                    </label>
+                    <label>
+                        <span class="service-modal-input-title">Интервал между записями</span>
+                        <div class="service-modal-input-wrapper">
+                            <input id="createServiceInterval" type="number">
                             <span class="service-modal-input-suffix">мин</span>
                         </div>
                     </label>
@@ -205,7 +129,7 @@
                 <div class="service-divider"></div>
                 
                 <div class="service-modal-buttons">
-                    <button id="saveServiceBtn" class="service-modal-btn">Сохранить</button>
+                    <button id="saveCreateServiceBtn" class="service-modal-btn">Сохранить</button>
                 </div>
             </div>
         </div>
@@ -224,6 +148,7 @@
 {{end}}
 
 {{define "services_extra_scripts"}}
+<script src="/static/js/api/auth.js"></script>
 <script src="/static/js/api/offer.js"></script>
 <script src="/static/js/api/booking.js"></script>
 <script src="/static/js/services.js" defer></script>

@@ -80,7 +80,7 @@ class OfferApi extends Api {
             {
                 offer_id: offerId,
                 title: title,
-                description: description,
+                description: description ?? '',
                 price_penny: pricePenny,
                 slot_duration_minutes: slotDurationMinutes,
                 slot_interval_minutes: slotIntervalMinutes,
