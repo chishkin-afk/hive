@@ -87,4 +87,4 @@ class ClientApi extends Api {
     }
 }
 
-const clientAPI = new ClientApi('/clients')
+window.clientAPI = new ClientApi('/clients')

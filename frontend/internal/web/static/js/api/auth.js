@@ -218,4 +218,4 @@ class AuthApi extends Api {
     }
 }
 
-const authAPI = new AuthApi('/auth')
+window.authAPI = new AuthApi('/auth')

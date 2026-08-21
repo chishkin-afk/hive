@@ -306,7 +306,15 @@ func (bs *BookingService) GetFreeSlots(ctx context.Context, offerID uuid.UUID, d
 
 	schedule, err := bs.fetchScheduleForOffer(ctx, offer, date)
 	if err != nil {
-		return nil, err
+		// Если расписания нет на этот день — возвращаем пустой список слотов
+		bs.log.Debug("no schedule found for this day",
+			slog.String("offer_id", offerID.String()),
+			slog.Time("date", date),
+		)
+		return &responses.Slots{
+			Date:  fmt.Sprintf("%d-%02d-%02d", date.Year(), date.Month(), date.Day()),
+			Times: []responses.DayTime{},
+		}, nil
 	}
 
 	dayStart, dayEnd := bs.computeTimeRange(schedule, date)
@@ -453,30 +461,73 @@ func (bs *BookingService) slotsToDTO(slots []responses.DayTime, date time.Time) 
 func (bs *BookingService) generateFreeSlots(schedule *responses.Schedule, offer *responses.Offer, bookings []*booking.Booking) []responses.DayTime {
 	slots := make([]responses.DayTime, 0)
 	currSlot := bs.allMinutes(&schedule.StartTime)
-	slotInterval := offer.SlotIntervalMinutes
-	for currSlot < bs.allMinutes(&schedule.EndTime)-int64(offer.SlotIntervalMinutes+offer.SlotDurationMinutes) {
-		slot := responses.DayTime{
-			Hour:   uint8(currSlot / 60),
-			Minute: uint8(currSlot % 60),
-		}
 
+	endTimeLimit := bs.allMinutes(&schedule.EndTime) - int64(offer.SlotDurationMinutes)
+
+	for currSlot <= endTimeLimit {
 		startSlot := int(currSlot)
-		endSlot := int(currSlot) + int(offer.SlotDurationMinutes+offer.SlotIntervalMinutes)
+		endSlot := startSlot + int(offer.SlotDurationMinutes)
+		// Конец слота с учётом интервала
+		endSlotWithInterval := endSlot + int(offer.SlotIntervalMinutes)
 
-		currSlot += int64(slotInterval)
+		// Проверяем, не пересекается ли слот + интервал с бронями и перерывами
+		isAvailable := bs.checkBookingsWithInterval(offer, bookings, startSlot, endSlotWithInterval) &&
+			bs.checkBreaksWithInterval(schedule, startSlot, endSlotWithInterval)
 
-		if !bs.checkBookings(offer, bookings, startSlot, endSlot) {
-			continue
+		if isAvailable {
+			slots = append(slots, responses.DayTime{
+				Hour:   uint8(currSlot / 60),
+				Minute: uint8(currSlot % 60),
+			})
 		}
 
-		if !bs.checkBreaks(schedule, startSlot, endSlot) {
-			continue
+		// Если слот занят, следующий сдвигается на duration + interval
+		// Если свободен — шаг duration
+		if !isAvailable {
+			currSlot += int64(offer.SlotDurationMinutes + offer.SlotIntervalMinutes)
+		} else {
+			currSlot += int64(offer.SlotDurationMinutes)
 		}
-
-		slots = append(slots, slot)
 	}
 
 	return slots
+}
+
+// checkBookingsWithInterval проверяет, что слот + интервал не пересекается с другими записями
+func (bs *BookingService) checkBookingsWithInterval(offer *responses.Offer, bookings []*booking.Booking, startSlot, endSlotWithInterval int) bool {
+	for _, booking := range bookings {
+		startTime := booking.StartTime().In(mskLocation)
+		otherStartTime := startTime.Hour()*60 + startTime.Minute()
+		// Конец другой записи с учётом её интервала
+		otherEndTimeWithInterval := otherStartTime + int(offer.SlotDurationMinutes) + int(offer.SlotIntervalMinutes)
+
+		// Проверяем пересечение слота + интервал с текущей записью + её интервалом
+		if intervalsOverlap(
+			int64(startSlot),
+			int64(endSlotWithInterval),
+			int64(otherStartTime),
+			int64(otherEndTimeWithInterval),
+		) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// checkBreaksWithInterval проверяет, что слот + интервал не пересекается с перерывами
+func (bs *BookingService) checkBreaksWithInterval(schedule *responses.Schedule, startSlot, endSlotWithInterval int) bool {
+	for _, b := range schedule.Breaks {
+		bStartTime := int(b.StartTime.Hour)*60 + int(b.StartTime.Minute)
+		bEndTime := int(b.EndTime.Hour)*60 + int(b.EndTime.Minute)
+
+		if endSlotWithInterval > int(bStartTime) &&
+			startSlot < bEndTime {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (bs *BookingService) checkBreaks(schedule *responses.Schedule, startSlot, endSlot int) bool {

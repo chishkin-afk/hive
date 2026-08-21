@@ -7,18 +7,60 @@ html {
     width: 100%;
     min-height: 100svh;
     display: flex;
-    padding: 32px;
-    gap: 16px;
+    padding: 0;
+    gap: 0;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
+    justify-content: flex-start;
 }
 
-.service-header, .calendar-container {
+.service-header {
     width: 40%;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    padding: 32px 0 16px 0;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    background: var(--color-bg-primary);
+    z-index: 10;
+}
+
+.calendar-container {
+    width: 40%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 32px;
+}
+
+.confirmation {
+    max-width: 450px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    padding: 32px;
+    gap: 16px;
+    border-radius: var(--radius-md);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    animation: slide-up .3s;
+}
+
+.days-selector {
+    flex-shrink: 0;
+}
+
+.time-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 150px;
+    padding: 4px 0;
 }
 
 .service-title {
@@ -44,12 +86,25 @@ html {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-height: 200px; /* Фиксируем минимальную высоту */
 }
 
 .time-section {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    animation: fade-in 0.3s ease; /* Плавное появление */
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .month-title, .time-section-title {
@@ -231,6 +286,7 @@ html {
     justify-content: center;
     backdrop-filter: blur(8px);
     transition: visibility .3s;
+    z-index: 20;
 }
 
 .confirmation-overlay.open {
@@ -242,7 +298,8 @@ html {
 }
 
 .confirmation {
-    max-width: 30%;
+    max-width: 450px;
+    width: 100%;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
@@ -286,6 +343,7 @@ html {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    margin-bottom: 8px;
 }
 
 .confirmation-group {
@@ -358,9 +416,78 @@ html {
     fill: currentColor;
 }
 
+/* ===== КНОПКА ВОССТАНОВЛЕНИЯ ПАРОЛЯ ===== */
+#forgotPasswordBtn {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--color-accent, #6c63ff);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: text-decoration 0.2s;
+    padding: 4px 0;
+}
+
+#forgotPasswordBtn:hover {
+    text-decoration: underline;
+}
+
+/* ===== УВЕДОМЛЕНИЯ (как в profile) ===== */
+.appointment-toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    padding: 14px 28px;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    font-size: 14px;
+    z-index: 9999;
+    opacity: 0;
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    box-shadow: var(--shadow-lg);
+    max-width: 90%;
+    text-align: center;
+    pointer-events: none;
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+}
+
+.appointment-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.appointment-toast.error {
+    color: var(--color-error);
+}
+
+.appointment-toast.success {
+    color: var(--color-success);
+}
+
+.appointment-toast.info {
+    color: var(--color-text-secondary);
+}
+
 @media (max-width: 768px) {
     .service-header, .calendar-container {
         width: 90%;
+    }
+
+    .service-header {
+        padding: 16px 0 12px 0;
+    }
+
+    .service-title {
+        font-size: 20px;
+    }
+
+    .service-amount {
+        font-size: 16px;
     }
 
     .background-circles {
@@ -376,6 +503,54 @@ html {
     }
 
     .confirmation {
-        padding: 16px;
+        max-width: 100%;
+        padding: 20px;
+        margin: 0 8px;
+        border-radius: var(--radius-sm);
+    }
+
+    .confirmation-body {
+        gap: 12px;
+    }
+
+    .confirmation-group {
+        padding: 6px 12px;
+        gap: 4px;
+    }
+
+    .group-title {
+        font-size: 12px;
+    }
+
+    .group-content, .group-price, .group-input {
+        font-size: 14px;
+    }
+
+    .confirmation-title {
+        font-size: 18px;
+    }
+
+    .confirmation-submit {
+        font-size: 14px;
+        padding: 10px 16px;
+    }
+
+    .confirmation-close {
+        font-size: 16px;
+    }
+
+    .appointment-toast {
+        top: 16px;
+        left: 16px;
+        right: 16px;
+        transform: translateX(0) translateY(-100px);
+        max-width: none;
+        padding: 14px 20px;
+        font-size: 13px;
+        border-radius: var(--radius-sm);
+    }
+
+    .appointment-toast.show {
+        transform: translateX(0) translateY(0);
     }
 }

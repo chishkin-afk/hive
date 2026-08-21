@@ -115,4 +115,4 @@ class ScheduleApi extends Api {
     }
 }
 
-const scheduleAPI = new ScheduleApi('/schedules')
+window.scheduleAPI = new ScheduleApi('/schedules')

@@ -130,4 +130,4 @@ class OfferApi extends Api {
     }
 }
 
-const offerAPI = new OfferApi('/offers')
+window.offerAPI = new OfferApi('/offers')

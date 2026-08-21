@@ -175,4 +175,4 @@ class BookingApi extends Api {
     }
 }
 
-const bookingAPI = new BookingApi('/bookings')
+window.bookingAPI = new BookingApi('/bookings')

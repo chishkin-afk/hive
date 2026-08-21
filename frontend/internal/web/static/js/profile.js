@@ -567,7 +567,8 @@
     let selectedDay = null;    // индекс выбранного дня (0-6)
     let editingScheduleId = null;  // id редактируемого расписания (null = создание нового)
 
-    const DAY_NAMES_FULL = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+    // Американская система: 0=воскресенье, 1=понедельник, ..., 6=суббота
+    const DAY_NAMES_FULL = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 
     let scheduleUserId = null;
 
@@ -1212,10 +1213,10 @@
             scheduleUserId = user.id;
             // Устанавливаем день по умолчанию (пн), если ещё не выбран
             if (selectedDay == null) {
-                selectedDay = 0;
+                selectedDay = 1; // 1 = понедельник (неделя начинается с пн)
                 if (scheduleDaysCarousel) {
                     scheduleDaysCarousel.querySelectorAll('.schedule-day-btn').forEach(b => b.classList.remove('active'));
-                    const activeBtn = scheduleDaysCarousel.querySelector('.schedule-day-btn[data-day="0"]');
+                    const activeBtn = scheduleDaysCarousel.querySelector('.schedule-day-btn[data-day="1"]');
                     if (activeBtn) activeBtn.classList.add('active');
                 }
             }

@@ -116,4 +116,4 @@ class PaymentApi extends Api {
     }
 }
 
-const paymentAPI = new PaymentApi('/payments')
+window.paymentAPI = new PaymentApi('/payments')
