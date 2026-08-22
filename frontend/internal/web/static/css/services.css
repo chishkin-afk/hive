@@ -318,7 +318,7 @@
 }
 
 .booking-cancel-btn {
-    padding: 8px;
+    padding: 8px 16px;
     color: #FAFAFA;
     font-weight: 500;
     border-radius: var(--radius-sm);
@@ -328,6 +328,44 @@
 
 .booking-cancel-btn:hover {
     transform: translateY(-3px);    
+}
+
+/* Пагинация записей */
+.bookings-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 0 8px 0;
+    border-top: 1px solid var(--color-bg-tertiary);
+}
+
+.bookings-pagination .pagination-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    transition: background-color .3s, opacity .3s;
+    cursor: pointer;
+}
+
+.bookings-pagination .pagination-btn:hover:not(:disabled) {
+    background-color: var(--color-bg-hover);
+}
+
+.bookings-pagination .pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.bookings-pagination .pagination-info {
+    color: var(--color-text-secondary);
+    font-size: 14px;
 }
 
 /* Скелетон для записей */

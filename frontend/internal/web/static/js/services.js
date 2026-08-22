@@ -5,6 +5,12 @@ let totalPages = 1;
 let currentOffer = null;
 let authorId = null;
 
+// Пагинация для записей
+let bookingsCurrentPage = 1;
+let bookingsTotalPages = 1;
+let bookingsOfferId = null;
+const bookingsLimit = 10;
+
 // Элементы DOM
 const servicesList = document.getElementById('servicesList');
 const pagination = document.getElementById('pagination');
@@ -224,7 +230,12 @@ async function openOfferModal(offerId) {
 }
 
 // Загрузка записей для услуги со скелетоном
-async function loadBookingsForOffer(offerId) {
+// Загрузка записей для услуги со скелетоном и пагинацией
+async function loadBookingsForOffer(offerId, page = 1) {
+    // Сохраняем offerId для пагинации
+    bookingsOfferId = offerId;
+    bookingsCurrentPage = page;
+    
     // Показываем скелетон
     editBookingsList.innerHTML = `
         <div class="booking-card loading">
@@ -234,15 +245,117 @@ async function loadBookingsForOffer(offerId) {
         </div>
     `;
     
+    // Скрываем пагинацию на время загрузки
+    const bookingsPagination = document.getElementById('bookingsPagination');
+    if (bookingsPagination) bookingsPagination.style.display = 'none';
+    
     try {
-        // TODO: реализовать API для загрузки записей
-        // const bookings = await bookingAPI.listByOffer(offerId);
-        setTimeout(() => {
-            editBookingsList.innerHTML = '<div class="booking-card">Пока что записей нет</div>';
-        }, 500);
+        const response = await bookingAPI.list(page, bookingsLimit, offerId);
+        let bookings = [];
+        
+        if (response && response.list) {
+            bookings = response.list;
+            bookingsTotalPages = response.total_pages || 1;
+        } else if (Array.isArray(response)) {
+            bookings = response.map(item => ({ booking: item }));
+            bookingsTotalPages = 1;
+        }
+        
+        if (bookings.length === 0) {
+            editBookingsList.innerHTML = '<div class="booking-card">Нет записей</div>';
+            if (bookingsPagination) bookingsPagination.style.display = 'none';
+            return;
+        }
+        
+        // Рендерим записи
+        editBookingsList.innerHTML = bookings.map(item => {
+            const booking = item.booking || item;
+            const user = item.user || null;
+            
+            if (!booking || !booking.start_time) {
+                return '';
+            }
+            
+            const date = new Date(booking.start_time * 1000);
+            const dateStr = date.toLocaleDateString('ru-RU', { 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric' 
+            });
+            const timeStr = date.toLocaleTimeString('ru-RU', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            const isCancelled = booking.is_cancelled || false;
+            const userName = user && user.firstname ? escapeHtml(user.firstname) : 'Неизвестный пользователь';
+            
+            return `
+                <div class="booking-card" data-booking-id="${booking.id}">
+                    <div class="booking-card-main">
+                        <span class="booking-date">${dateStr} в ${timeStr}</span>
+                        <span class="booking-user">${userName}</span>
+                        ${booking.comment ? `<span class="booking-comment">${escapeHtml(booking.comment)}</span>` : ''}
+                        <span class="booking-status ${isCancelled ? 'cancelled' : 'active'}">
+                            ${isCancelled ? 'Отменена' : 'Активна'}
+                        </span>
+                    </div>
+                    ${!isCancelled ? `
+                        <button class="booking-cancel-btn" data-booking-id="${booking.id}">
+                            Отменить
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+        }).filter(html => html).join('');
+        
+        // Показываем пагинацию и обновляем состояние
+        if (bookingsPagination) {
+            bookingsPagination.style.display = 'flex';
+            updateBookingsPagination();
+        }
+        
+        // Навешиваем обработчики на кнопки отмены
+        document.querySelectorAll('.booking-cancel-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const bookingId = btn.dataset.bookingId;
+                if (confirm('Вы уверены, что хотите отменить эту запись?')) {
+                    try {
+                        await bookingAPI.cancel(bookingId);
+                        showNotification('Запись отменена', 'success');
+                        // Перезагружаем записи с той же страницы
+                        await loadBookingsForOffer(offerId, bookingsCurrentPage);
+                    } catch (error) {
+                        console.error('Ошибка отмены записи:', error);
+                        showNotification('Не удалось отменить запись', 'error');
+                    }
+                }
+            });
+        });
+        
     } catch (error) {
+        console.error('Ошибка загрузки записей:', error);
         editBookingsList.innerHTML = '<div class="booking-card">Ошибка загрузки записей</div>';
+        const bookingsPagination = document.getElementById('bookingsPagination');
+        if (bookingsPagination) bookingsPagination.style.display = 'none';
     }
+}
+
+// Обновление пагинации записей
+function updateBookingsPagination() {
+    const bookingsPagination = document.getElementById('bookingsPagination');
+    if (!bookingsPagination) return;
+    
+    const backBtn = document.getElementById('bookingsBackBtn');
+    const forwardBtn = document.getElementById('bookingsForwardBtn');
+    const currentPageSpan = document.getElementById('bookingsCurrentPage');
+    const totalPagesSpan = document.getElementById('bookingsTotalPages');
+    
+    if (currentPageSpan) currentPageSpan.textContent = bookingsCurrentPage;
+    if (totalPagesSpan) totalPagesSpan.textContent = bookingsTotalPages;
+    
+    if (backBtn) backBtn.disabled = bookingsCurrentPage <= 1;
+    if (forwardBtn) forwardBtn.disabled = bookingsCurrentPage >= bookingsTotalPages;
 }
 
 // Закрытие модального окна
@@ -264,7 +377,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Обработчики пагинации
+// Обработчики пагинации для списка услуг
 backBtn.addEventListener('click', () => {
     if (currentPage > 1) {
         currentPage--;
@@ -278,6 +391,28 @@ forwardBtn.addEventListener('click', () => {
         loadOffers(currentPage);
     }
 });
+
+// Обработчики пагинации для записей
+const bookingsBackBtn = document.getElementById('bookingsBackBtn');
+const bookingsForwardBtn = document.getElementById('bookingsForwardBtn');
+
+if (bookingsBackBtn) {
+    bookingsBackBtn.addEventListener('click', () => {
+        if (bookingsCurrentPage > 1 && bookingsOfferId) {
+            bookingsCurrentPage--;
+            loadBookingsForOffer(bookingsOfferId, bookingsCurrentPage);
+        }
+    });
+}
+
+if (bookingsForwardBtn) {
+    bookingsForwardBtn.addEventListener('click', () => {
+        if (bookingsCurrentPage < bookingsTotalPages && bookingsOfferId) {
+            bookingsCurrentPage++;
+            loadBookingsForOffer(bookingsOfferId, bookingsCurrentPage);
+        }
+    });
+}
 
 // Сохранение изменений в услуге - отправляем только изменённые поля с валидацией
 saveEditServiceBtn.addEventListener('click', async () => {

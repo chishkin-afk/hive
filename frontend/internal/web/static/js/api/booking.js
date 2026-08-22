@@ -173,6 +173,21 @@ class BookingApi extends Api {
             'GET'
         )
     }
+
+    /**
+     * @param {string} bookingId 
+     * @returns {Promise<Booking>}
+     */
+    async cancel(bookingId) {
+        return this.request(
+            `/booking`,
+            'PATCH',
+            {
+                booking_id: bookingId,
+                is_cancelled: true
+            }
+        )
+    }
 }
 
 window.bookingAPI = new BookingApi('/bookings')
