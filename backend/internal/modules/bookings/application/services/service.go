@@ -324,10 +324,19 @@ func (bs *BookingService) GetFreeSlots(ctx context.Context, offerID uuid.UUID, d
 		return nil, err
 	}
 
-	return bs.slotsToDTO(
-		bs.generateFreeSlots(schedule, offer, bookings),
-		date,
-	), nil
+	slots := bs.generateFreeSlots(schedule, offer, bookings)
+	nowMSK := time.Now().In(mskLocation)
+	// Convert date to MSK midnight
+	dateMSK := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, mskLocation)
+	filteredSlots := make([]responses.DayTime, 0, len(slots))
+	for _, slot := range slots {
+		slotTimeMSK := dateMSK.Add(time.Duration(int(slot.Hour))*time.Hour + time.Duration(int(slot.Minute))*time.Minute)
+		if slotTimeMSK.After(nowMSK) {
+			filteredSlots = append(filteredSlots, slot)
+		}
+	}
+
+	return bs.slotsToDTO(filteredSlots, date), nil
 }
 
 // GetAllDays is a method that returns a list of days
@@ -496,6 +505,11 @@ func (bs *BookingService) generateFreeSlots(schedule *responses.Schedule, offer 
 // checkBookingsWithInterval проверяет, что слот + интервал не пересекается с другими записями
 func (bs *BookingService) checkBookingsWithInterval(offer *responses.Offer, bookings []*booking.Booking, startSlot, endSlotWithInterval int) bool {
 	for _, booking := range bookings {
+		// Пропускаем отменённые записи — они не блокируют слоты
+		if booking.IsCancelled() {
+			continue
+		}
+
 		startTime := booking.StartTime().In(mskLocation)
 		otherStartTime := startTime.Hour()*60 + startTime.Minute()
 		// Конец другой записи с учётом её интервала
@@ -546,6 +560,11 @@ func (bs *BookingService) checkBreaks(schedule *responses.Schedule, startSlot, e
 
 func (bs *BookingService) checkBookings(offer *responses.Offer, bookings []*booking.Booking, startSlot, endSlot int) bool {
 	for _, booking := range bookings {
+		// Пропускаем отменённые записи — они не блокируют слоты
+		if booking.IsCancelled() {
+			continue
+		}
+
 		startTime := booking.StartTime().In(mskLocation)
 		otherStartTime := startTime.Hour()*60 + startTime.Minute()
 		otherEndTime := otherStartTime + int(offer.SlotDurationMinutes+offer.SlotIntervalMinutes)
@@ -973,7 +992,8 @@ func (bs *BookingService) getOfferAndCoach(ctx context.Context, offerID uuid.UUI
 }
 
 func (bs *BookingService) parseStartTime(offer *responses.Offer, startTime *requests.Time) (time.Time, error) {
-	bookingStart, err := time.ParseInLocation(time.DateOnly, startTime.Date, mskLocation)
+	dateTimeStr := fmt.Sprintf("%s %02d:%02d:00", startTime.Date, startTime.StartTime.Hour, startTime.StartTime.Minute)
+	bookingStart, err := time.ParseInLocation(time.DateTime, dateTimeStr, mskLocation)
 	if err != nil {
 		return time.Time{}, errs.NewErrorWithKind(errs.ErrInvalidTimeForBooking, errs.KindRequest)
 	}

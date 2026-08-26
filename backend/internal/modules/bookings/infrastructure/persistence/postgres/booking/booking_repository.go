@@ -194,7 +194,7 @@ func (br *bookingRepository) buildListByOfferIDQuery(offerID uuid.UUID, page, li
 		"is_cancelled",
 		"created_at",
 		"updated_at",
-	).From("bookings").Limit(uint64(limit)).Offset(uint64(offset)).Where("offer_id = ?", offerID).ToSql()
+	).From("bookings").Limit(uint64(limit)).Offset(uint64(offset)).Where("offer_id = ?", offerID).OrderBy("is_cancelled ASC, start_time ASC").ToSql()
 }
 
 func (br *bookingRepository) countByOfferID(ctx context.Context, db DB, offerID uuid.UUID) (int64, error) {
@@ -264,7 +264,7 @@ func (br *bookingRepository) buildListByUserIDQuery(userID uuid.UUID, page, limi
 		"is_cancelled",
 		"created_at",
 		"updated_at",
-	).From("bookings").Limit(uint64(limit)).Offset(uint64(offset)).Where("user_id = ?", userID).ToSql()
+	).From("bookings").Limit(uint64(limit)).Offset(uint64(offset)).Where("user_id = ?", userID).OrderBy("is_cancelled ASC, start_time ASC").ToSql()
 }
 
 func (br *bookingRepository) countByUserID(ctx context.Context, db DB, userID uuid.UUID) (int64, error) {
