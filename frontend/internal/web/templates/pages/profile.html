@@ -1,15 +1,3 @@
-{{define "meta_title"}}<title>Мой профиль | Hive</title>{{end}}
-
-{{define "meta_description"}}<meta name="description" content="Управляй своим профилем.">{{end}}
-
-{{define "meta_og"}}
-    <meta property="og:title" content="Мой профиль | Hive">
-    <meta property="og:description" content="Настройки профиля, управление данными и уведомлениями.">
-    <meta property="og:type" content="website">
-    <meta property="og:image" content="/static/images/og/default-og.png">
-    <meta property="og:site_name" content="Hive">
-    <meta property="og:locale" content="ru_RU">
-{{end}}
 {{define "profile_extra_head"}}
 <link rel="stylesheet" href="/static/css/profile.css">
 <link rel="stylesheet" href="/static/css/header.css">
@@ -91,7 +79,7 @@
                                 class="profile-input"
                                 type="text"
                                 name="firstname"
-                                placeholder="Ваше имя"
+                                placeholder="Имя"
                                 autocomplete="given-name"
                                 required
                             >
@@ -103,7 +91,7 @@
                                 class="profile-input"
                                 type="text"
                                 name="lastname"
-                                placeholder="Ваша фамилия"
+                                placeholder="Фамилия"
                                 autocomplete="family-name"
                             >
                         </label>
@@ -326,7 +314,6 @@
 {{end}}
 
 {{define "profile_extra_scripts"}}
-<script src="/static/js/api/auth.js" defer></script>
 <script src="/static/js/api/schedule.js" defer></script>
 <script src="/static/js/profile.js" defer></script>
 <script src="/static/js/header.js" defer></script>

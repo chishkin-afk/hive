@@ -14,61 +14,141 @@ menuLinks.forEach(link => {
     link.addEventListener('click', toggleMobileMenu);
 });
 
-const pricingGrid = document.getElementById('pricingGrid');
-
-async function loadPlans() {
-    try {
-        if (typeof paymentAPI === 'undefined' || typeof paymentAPI.listRates !== 'function') {
-            console.error('paymentAPI is not available or listRates is not a function');
-            return;
+// Проверка авторизации (проверяем наличие токена в куках)
+function checkAuth() {
+    // Проверяем, есть ли токен в куках
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith('access_token=') || cookie.startsWith('refresh_token=')) {
+            return true;
         }
-
-        const data = await paymentAPI.listRates();
-        renderRates(data.list);
-    } catch (err) {
-        console.error('Не удалось загрузить тарифы', err);
-        pricingGrid.innerHTML = '<p class="plans-error">Не удалось загрузить тарифы. Попробуйте позже.</p>';
     }
+    return false;
 }
 
-function renderRates(rates) {
+// Загрузка тарифов для лендинга
+async function loadLandingRates() {
     const grid = document.getElementById('pricingGrid');
     if (!grid) return;
 
-    // clear skeletons
-    grid.querySelectorAll('.pricing-skeleton').forEach(el => el.remove());
+    if (typeof paymentAPI === 'undefined') {
+        await loadRatesDirect(grid);
+        return;
+    }
 
-    if (!rates || !rates.length) {
-        grid.insertAdjacentHTML('beforeend', '<p class="plans-empty">Нет доступных тарифов</p>');
+    try {
+        const data = await paymentAPI.listRates();
+        renderLandingRates(grid, data.list);
+    } catch (err) {
+        console.error('Не удалось загрузить тарифы через paymentAPI:', err);
+        await loadRatesDirect(grid);
+    }
+}
+
+// Прямая загрузка тарифов через fetch (на случай, если paymentAPI не инициализирован)
+async function loadRatesDirect(grid) {
+    try {
+        const apiUrl = window.APP_CONFIG?.apiUrl || '';
+        const response = await fetch(apiUrl + '/payments/rates', {
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Ошибка загрузки тарифов: ' + response.status);
+        }
+        
+        const data = await response.json();
+        if (data && data.list) {
+            renderLandingRates(grid, data.list);
+        } else {
+            throw new Error('Некорректный ответ от сервера');
+        }
+    } catch (err) {
+        console.error('Не удалось загрузить тарифы:', err);
+        showRatesError(grid);
+    }
+}
+
+function showRatesError(grid) {
+    const skeletons = grid.querySelectorAll('.pricing-card.loading');
+    if (skeletons.length > 0) {
+        skeletons.forEach(s => s.remove());
+        grid.insertAdjacentHTML('beforeend', '<p class="pricing-error">Не удалось загрузить тарифы</p>');
+    }
+}
+
+function renderLandingRates(grid, rates) {
+    // Удаляем скелетоны
+    grid.querySelectorAll('.pricing-card.loading').forEach(el => el.remove());
+
+    if (!rates || rates.length === 0) {
+        grid.insertAdjacentHTML('beforeend', '<p class="pricing-empty">Нет доступных тарифов</p>');
         return;
     }
 
     rates.forEach(rate => {
-        const card = buildRateCard(rate);
+        const card = buildLandingRateCard(rate);
         grid.appendChild(card);
+    });
+
+    // Принудительно добавляем класс visible для новых карточек
+    grid.querySelectorAll('.pricing-card:not(.loading)').forEach(el => {
+        el.classList.add('visible');
     });
 }
 
-function buildRateCard(rate) {
-    const div = document.createElement('div');
-    div.className = 'pricing-card';
+function buildLandingRateCard(rate) {
+    const card = document.createElement('div');
+    card.className = 'pricing-card';
 
-    const price = rate.amount_penny / 100;
-    const priceFormatted = new Intl.NumberFormat('ru-RU').format(price);
+    const daily = rate.amount_penny / 100 / rate.paid_days;
+    const dailyFormatted = '~' + Math.max(1, Math.round(daily)) + ' ₽ в день';
 
-    div.innerHTML = `
-        <h3 class="pricing-name">${escapeHtml(rate.name)}</h3>
-        <div class="pricing-price">
-            <span class="pricing-amount">${priceFormatted}</span>
-            <span class="pricing-currency">₽</span>
-        </div>
-        <p class="pricing-period">${rate.paid_days} дней</p>
-        <a href="/auth?action=register&rate=${rate.id}" class="pricing-btn">Выбрать тариф</a>
-    `;
+    card.innerHTML =
+        '<h3 class="pricing-name">' + escapeHtml(rate.name) + '</h3>' +
+        '<div class="pricing-price">' +
+        '<span class="pricing-amount">' + (rate.amount_penny / 100) + '</span>' +
+        '<span class="pricing-currency">₽</span>' +
+        '</div>' +
+        '<p class="pricing-period">' + rate.paid_days + ' дней</p>' +
+        '<p class="pricing-daily">' + dailyFormatted + '</p>' +
+        '<button class="pricing-btn">Выбрать тариф</button>';
 
-    return div;
+    const btn = card.querySelector('.pricing-btn');
+    btn.addEventListener('click', async () => {
+        // Проверяем, авторизован ли пользователь
+        if (!checkAuth()) {
+            window.location.href = '/auth';
+            return;
+        }
+
+        btn.classList.add('loading');
+        btn.textContent = 'Создаём платёж…';
+        try {
+            const result = await paymentAPI.create(rate.id);
+            if (result.url) {
+                window.location.href = result.url;
+            } else {
+                btn.textContent = 'Ошибка';
+                btn.classList.remove('loading');
+            }
+        } catch (err) {
+            console.error('Ошибка создания платежа', err);
+            if (err.status === 401) {
+                window.location.href = '/auth?action=login';
+                return;
+            }
+            btn.textContent = 'Ошибка';
+            btn.classList.remove('loading');
+        }
+    });
+
+    return card;
 }
 
+// Простая функция для экранирования HTML
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.appendChild(document.createTextNode(str));
@@ -91,7 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
     `)
         .forEach(el => observer.observe(el));
 
-    loadPlans();
+    // Загружаем тарифы после того, как страница полностью загружена
+    loadLandingRates();
 });
 
 const faqItems = document.querySelectorAll('.faq-item');
