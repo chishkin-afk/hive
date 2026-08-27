@@ -15,10 +15,24 @@
     </div>
 
     <div class="services-list" id="servicesList">
-        <!-- Карточки будут загружены динамически -->
+        <div class="service-card loading">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-description"></div>
+            <div class="skeleton skeleton-meta"></div>
+        </div>
+        <div class="service-card loading">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-description"></div>
+            <div class="skeleton skeleton-meta"></div>
+        </div>
+        <div class="service-card loading">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-description"></div>
+            <div class="skeleton skeleton-meta"></div>
+        </div>
     </div>
     
-    <div class="pagination" id="pagination">
+    <div class="pagination" id="pagination" style="display: none;">
         <button class="pagination-btn" id="backBtn">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M15 6L9 12L15 18"
@@ -90,13 +104,13 @@
                 </div>
 
                 <div class="bookings-pagination" id="bookingsPagination" style="display: none;">
-                    <button id="bookingsBackBtn" class="pagination-btn">
+                    <button id="bookingsBackBtn" class="pagination-btn" disabled>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </button>
                     <span class="pagination-info"><span id="bookingsCurrentPage">1</span> из <span id="bookingsTotalPages">1</span></span>
-                    <button id="bookingsForwardBtn" class="pagination-btn">
+                    <button id="bookingsForwardBtn" class="pagination-btn" disabled>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>

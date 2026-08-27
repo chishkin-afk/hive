@@ -88,16 +88,9 @@ async function loadOffers(page) {
     }
 }
 
-// Показ скелетона загрузки
+// Показ скелетона загрузки (уже есть в HTML, просто очищаем список перед загрузкой)
 function showSkeleton() {
-    servicesList.innerHTML = `
-        <div class="service-card loading">
-            <div class="skeleton skeleton-title"></div>
-            <div class="skeleton skeleton-description"></div>
-            <div class="skeleton skeleton-meta"></div>
-        </div>
-
-    `;
+    // Скелетоны уже в HTML, ничего не делаем
 }
 
 // Рендеринг карточек офферов
@@ -163,15 +156,16 @@ function updateOfferCard(offer) {
 
 // Обновление пагинации
 function updatePagination() {
-    // Если страниц нет вообще, показываем "— из —"
-    if (totalPages === 0) {
-        currentPageSpan.textContent = '—';
-        totalPagesSpan.textContent = '—';
-        backBtn.classList.add('inactive');
-        forwardBtn.classList.add('inactive');
+    const paginationEl = document.getElementById('pagination');
+    if (!paginationEl) return;
+    
+    // Если страниц нет вообще или только одна — скрываем пагинацию
+    if (totalPages === 0 || totalPages === 1) {
+        paginationEl.style.display = 'none';
         return;
     }
     
+    paginationEl.style.display = 'flex';
     currentPageSpan.textContent = currentPage;
     totalPagesSpan.textContent = totalPages;
     

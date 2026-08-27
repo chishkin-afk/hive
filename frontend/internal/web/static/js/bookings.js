@@ -65,6 +65,8 @@ async function loadBookings(page = 1) {
         if (!response || !response.list || response.list.length === 0) {
             bookingsList.innerHTML = '';
             bookingsEmpty.style.display = 'flex';
+            const pagination = document.getElementById('bookingsPagination');
+            if (pagination) pagination.style.display = 'none';
             return;
         }
 
@@ -114,6 +116,24 @@ async function loadBookings(page = 1) {
             const offerTitle = offer ? escapeHtml(offer.title) : 'Услуга';
             const offerPrice = offer ? `${(offer.price / 100).toFixed(2)} ₽` : '';
             
+            // Проверяем, можно ли отменить/перенести запись
+            let canModify = false;
+            if (!isCancelled) {
+                const now = Math.floor(Date.now() / 1000);
+                // Если есть duration, проверяем end_time
+                if (offer && offer.duration) {
+                    const endTime = booking.start_time + offer.duration * 60; // duration в минутах -> секунды
+                    if (booking.start_time > now) {
+                        canModify = true;
+                    }
+                } else {
+                    // Если duration нет, просто проверяем, что запись ещё не началась
+                    if (booking.start_time > now) {
+                        canModify = true;
+                    }
+                }
+            }
+            
             return `
                 <div class="booking-card" data-booking-id="${booking.id}">
                     <div class="booking-date">
@@ -132,11 +152,13 @@ async function loadBookings(page = 1) {
 
                     <div class="booking-side">
                         <div class="booking-actions">
-                            ${!isCancelled ? `
+                            ${isCancelled ? `
+                                <span class="booking-status cancelled">Отменена</span>
+                            ` : canModify ? `
                                 <a href="/appointment/${booking.offer_id}?booking_id=${booking.id}" class="booking-btn booking-btn-reschedule">Перенести</a>
                                 <button type="button" class="booking-btn booking-btn-cancel danger" data-booking-id="${booking.id}">Отменить</button>
                             ` : `
-                                <span class="booking-status cancelled">Отменена</span>
+                                <span class="booking-status completed">Завершена</span>
                             `}
                         </div>
                     </div>
@@ -188,16 +210,13 @@ function updatePagination() {
     
     if (!pagination) return;
     
-    // Всегда показываем пагинацию
-    pagination.style.display = 'flex';
+    // Показываем пагинацию только если есть больше одной страницы
     if (totalPages <= 1) {
-        if (currentPageSpan) currentPageSpan.textContent = '1';
-        if (totalPagesSpan) totalPagesSpan.textContent = '1';
-        if (backBtn) { backBtn.disabled = true; backBtn.classList.add('inactive'); }
-        if (forwardBtn) { forwardBtn.disabled = true; forwardBtn.classList.add('inactive'); }
+        pagination.style.display = 'none';
         return;
     }
     
+    pagination.style.display = 'flex';
     if (currentPageSpan) currentPageSpan.textContent = currentPage;
     if (totalPagesSpan) totalPagesSpan.textContent = totalPages;
     if (backBtn) {

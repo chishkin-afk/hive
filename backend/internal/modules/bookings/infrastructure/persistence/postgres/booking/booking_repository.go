@@ -151,7 +151,7 @@ func (br *bookingRepository) ListByOfferID(ctx context.Context, offerID uuid.UUI
 		slog.String("offer_id", offerID.String()),
 	)
 
-	count, err := br.countByOfferID(ctx, br.db, offerID)
+	count, err := br.countByOfferIDActive(ctx, br.db, offerID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count bookings: %w",
 			handleError(err),
@@ -194,11 +194,20 @@ func (br *bookingRepository) buildListByOfferIDQuery(offerID uuid.UUID, page, li
 		"is_cancelled",
 		"created_at",
 		"updated_at",
-	).From("bookings").Limit(uint64(limit)).Offset(uint64(offset)).Where("offer_id = ?", offerID).OrderBy("is_cancelled ASC, start_time ASC").ToSql()
+	).From("bookings").Limit(uint64(limit)).Offset(uint64(offset)).Where("offer_id = ? AND is_cancelled = false", offerID).OrderBy("(start_time > NOW()) DESC, start_time ASC").ToSql()
 }
 
 func (br *bookingRepository) countByOfferID(ctx context.Context, db DB, offerID uuid.UUID) (int64, error) {
 	query, args, err := br.buildCountByOfferIDQuery(offerID)
+	if err != nil {
+		return 0, nil
+	}
+
+	return mapCountRow(db.QueryRowContext(ctx, query, args...))
+}
+
+func (br *bookingRepository) countByOfferIDActive(ctx context.Context, db DB, offerID uuid.UUID) (int64, error) {
+	query, args, err := br.buildCountByOfferIDActiveQuery(offerID)
 	if err != nil {
 		return 0, nil
 	}
@@ -213,6 +222,13 @@ func (br *bookingRepository) buildCountByOfferIDQuery(offerID uuid.UUID) (string
 		ToSql()
 }
 
+func (br *bookingRepository) buildCountByOfferIDActiveQuery(offerID uuid.UUID) (string, []any, error) {
+	return br.sqlBuilder.Select("count(*)").
+		From("bookings").
+		Where("offer_id = ? AND is_cancelled = false", offerID).
+		ToSql()
+}
+
 // ListByUserID is a function that returns
 // a list of all bookings for a specific user.
 // The UserID should be taken from the token
@@ -221,7 +237,7 @@ func (br *bookingRepository) ListByUserID(ctx context.Context, userID uuid.UUID,
 		slog.String("user_id", userID.String()),
 	)
 
-	count, err := br.countByUserID(ctx, br.db, userID)
+	count, err := br.countByUserIDActive(ctx, br.db, userID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count bookings by user's id: %w",
 			handleError(err),
@@ -264,7 +280,7 @@ func (br *bookingRepository) buildListByUserIDQuery(userID uuid.UUID, page, limi
 		"is_cancelled",
 		"created_at",
 		"updated_at",
-	).From("bookings").Limit(uint64(limit)).Offset(uint64(offset)).Where("user_id = ?", userID).OrderBy("is_cancelled ASC, start_time ASC").ToSql()
+	).From("bookings").Limit(uint64(limit)).Offset(uint64(offset)).Where("user_id = ? AND is_cancelled = false", userID).OrderBy("(start_time > NOW()) DESC, start_time ASC").ToSql()
 }
 
 func (br *bookingRepository) countByUserID(ctx context.Context, db DB, userID uuid.UUID) (int64, error) {
@@ -276,10 +292,26 @@ func (br *bookingRepository) countByUserID(ctx context.Context, db DB, userID uu
 	return mapCountRow(db.QueryRowContext(ctx, query, args...))
 }
 
+func (br *bookingRepository) countByUserIDActive(ctx context.Context, db DB, userID uuid.UUID) (int64, error) {
+	query, args, err := br.buildCountByUserIDActiveQuery(userID)
+	if err != nil {
+		return 0, err
+	}
+
+	return mapCountRow(db.QueryRowContext(ctx, query, args...))
+}
+
 func (br *bookingRepository) buildCountByUserIDQuery(userID uuid.UUID) (string, []any, error) {
 	return br.sqlBuilder.Select("count(*)").
 		From("bookings").
 		Where("user_id = ?", userID).
+		ToSql()
+}
+
+func (br *bookingRepository) buildCountByUserIDActiveQuery(userID uuid.UUID) (string, []any, error) {
+	return br.sqlBuilder.Select("count(*)").
+		From("bookings").
+		Where("user_id = ? AND is_cancelled = false", userID).
 		ToSql()
 }
 

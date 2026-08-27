@@ -171,7 +171,8 @@
     background-color: var(--color-error);
 }
 
-.booking-status.cancelled {
+.booking-status.cancelled,
+.booking-status.completed {
     color: var(--color-text-secondary);
     font-size: 13px;
     font-weight: 600;
