@@ -2,8 +2,31 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{{ .title }}</title>
         
+        {{block "meta_title" .}}
+            <title>{{ .title }}</title>
+        {{end}}
+        
+        {{block "meta_description" .}}
+            <meta name="description" content="Hive — платформа для записи клиентов. Управляй услугами, графиком и клиентами в одном месте.">
+        {{end}}
+
+        {{block "meta_og" .}}
+            <meta property="og:title" content="{{ .title }}">
+            <meta property="og:description" content="Hive — платформа для записи клиентов. Управляй услугами, графиком и клиентами в одном месте.">
+            <meta property="og:type" content="website">
+            {{if .og_url}}
+                <meta property="og:url" content="{{ .og_url }}">
+            {{end}}
+            {{if .og_image}}
+                <meta property="og:image" content="{{ .og_image }}">
+            {{else}}
+                <meta property="og:image" content="/static/images/og/default-og.png">
+            {{end}}
+            <meta property="og:site_name" content="Hive">
+            <meta property="og:locale" content="ru_RU">
+        {{end}}
+
         <link rel="stylesheet" href="/static/css/base.css">
 
         <link rel="icon" href="/static/images/svg/favicon-dark.svg" media="(prefers-color-scheme: light)">

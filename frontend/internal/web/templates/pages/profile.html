@@ -1,4 +1,15 @@
+{{define "meta_title"}}<title>Мой профиль | Hive</title>{{end}}
 
+{{define "meta_description"}}<meta name="description" content="Управляй своим профилем.">{{end}}
+
+{{define "meta_og"}}
+    <meta property="og:title" content="Мой профиль | Hive">
+    <meta property="og:description" content="Настройки профиля, управление данными и уведомлениями.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/static/images/og/default-og.png">
+    <meta property="og:site_name" content="Hive">
+    <meta property="og:locale" content="ru_RU">
+{{end}}
 {{define "profile_extra_head"}}
 <link rel="stylesheet" href="/static/css/profile.css">
 <link rel="stylesheet" href="/static/css/header.css">
@@ -220,25 +231,6 @@
                             <span class="profile-switch-mark" aria-hidden="true"></span>
                         </label>
                     </div>
-                </fieldset>
-
-                <fieldset class="profile-section" data-section="danger" hidden>
-                    <h2 class="profile-section-title danger">Опасная зона</h2>
-                    <p class="profile-danger-text">
-                        Удаление аккаунта — необратимое действие. Все данные будут потеряны.
-                    </p>
-                    <div class="profile-danger-card">
-                        <div class="profile-danger-body">
-                            <p class="profile-danger-title">Удалить аккаунт</p>
-                            <p class="profile-danger-text">
-                                Это действие нельзя отменить.
-                            </p>
-                        </div>
-                        <button type="button" class="profile-btn profile-btn-danger" id="deleteAccountBtn">
-                            Удалить
-                        </button>
-                    </div>
-                </fieldset>
                 </fieldset>
 
                 <fieldset class="profile-section" data-section="security" hidden>

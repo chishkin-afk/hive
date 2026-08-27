@@ -1,6 +1,20 @@
+{{define "meta_title"}}<title>Мои услуги | Hive</title>{{end}}
+
+{{define "meta_description"}}<meta name="description" content="Управляй своими услугами, настраивай цены, длительность.">{{end}}
+
+{{define "meta_og"}}
+    <meta property="og:title" content="Мои услуги | Hive">
+    <meta property="og:description" content="Создавай и редактируй услуги для онлайн-записи.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/static/images/og/default-og.png">
+    <meta property="og:site_name" content="Hive">
+    <meta property="og:locale" content="ru_RU">
+{{end}}
+
 {{define "services_extra_head"}}
 <link rel="stylesheet" href="/static/css/header.css">
 <link rel="stylesheet" href="/static/css/services.css">
+<link rel="stylesheet" href="/static/css/pagination.css">
 <link rel="stylesheet" href="/static/css/keyframes.css">
 <link rel="stylesheet" href="/static/css/footer.css">
 {{end}}

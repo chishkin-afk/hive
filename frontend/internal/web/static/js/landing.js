@@ -14,6 +14,67 @@ menuLinks.forEach(link => {
     link.addEventListener('click', toggleMobileMenu);
 });
 
+const pricingGrid = document.getElementById('pricingGrid');
+
+async function loadPlans() {
+    try {
+        if (typeof paymentAPI === 'undefined' || typeof paymentAPI.listRates !== 'function') {
+            console.error('paymentAPI is not available or listRates is not a function');
+            return;
+        }
+
+        const data = await paymentAPI.listRates();
+        renderRates(data.list);
+    } catch (err) {
+        console.error('Не удалось загрузить тарифы', err);
+        pricingGrid.innerHTML = '<p class="plans-error">Не удалось загрузить тарифы. Попробуйте позже.</p>';
+    }
+}
+
+function renderRates(rates) {
+    const grid = document.getElementById('pricingGrid');
+    if (!grid) return;
+
+    // clear skeletons
+    grid.querySelectorAll('.pricing-skeleton').forEach(el => el.remove());
+
+    if (!rates || !rates.length) {
+        grid.insertAdjacentHTML('beforeend', '<p class="plans-empty">Нет доступных тарифов</p>');
+        return;
+    }
+
+    rates.forEach(rate => {
+        const card = buildRateCard(rate);
+        grid.appendChild(card);
+    });
+}
+
+function buildRateCard(rate) {
+    const div = document.createElement('div');
+    div.className = 'pricing-card';
+
+    const price = rate.amount_penny / 100;
+    const priceFormatted = new Intl.NumberFormat('ru-RU').format(price);
+
+    div.innerHTML = `
+        <h3 class="pricing-name">${escapeHtml(rate.name)}</h3>
+        <div class="pricing-price">
+            <span class="pricing-amount">${priceFormatted}</span>
+            <span class="pricing-currency">₽</span>
+        </div>
+        <p class="pricing-period">${rate.paid_days} дней</p>
+        <a href="/auth?action=register&rate=${rate.id}" class="pricing-btn">Выбрать тариф</a>
+    `;
+
+    return div;
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -29,6 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
         .pricing-card, .faq-item
     `)
         .forEach(el => observer.observe(el));
+
+    loadPlans();
 });
 
 const faqItems = document.querySelectorAll('.faq-item');

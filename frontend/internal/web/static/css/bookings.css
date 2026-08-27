@@ -225,42 +225,6 @@
     height: 12px;
 }
 
-/* PAGINATION */
-.bookings-pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 16px;
-}
-
-.pagination-btn {
-    display: flex;
-    padding: 8px;
-    border: solid 1px var(--color-bg-tertiary);
-    border-radius: var(--radius-md);
-    color: var(--color-accent);
-    background-color: var(--color-bg-secondary);
-    transition: background-color .3s,
-        border-color .3s;
-}
-
-.pagination-btn.inactive {
-    color: var(--color-text-secondary);
-    cursor: default;
-}
-
-.pagination-btn svg {
-    width: 24px;
-}
-
-.pagination-btn svg path {
-    stroke: currentColor;
-}
-
-.pagination-info {
-    color: var(--color-text-primary);
-}
-
 /* EMPTY */
 .bookings-empty {
     display: flex;
