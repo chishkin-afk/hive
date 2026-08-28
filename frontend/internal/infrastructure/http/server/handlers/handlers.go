@@ -24,8 +24,9 @@ func (h *handlers) Config() gin.HandlerFunc {
 func (h *handlers) Landing() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "base", gin.H{
-			"title": "Hive",
-			"page":  "landing",
+			"title":  "Hive",
+			"page":   "landing",
+			"og_url": ctx.Request.URL.Path,
 		})
 	}
 }
@@ -35,9 +36,10 @@ func (h *handlers) Auth() gin.HandlerFunc {
 		action := ctx.DefaultQuery("action", "register")
 
 		ctx.HTML(http.StatusOK, "base", gin.H{
-			"title":  "Auth",
+			"title":  "Авторизация",
 			"page":   "auth",
 			"action": action,
+			"og_url": ctx.Request.URL.Path,
 		})
 	}
 }
@@ -45,11 +47,9 @@ func (h *handlers) Auth() gin.HandlerFunc {
 func (h *handlers) Appointment() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "base", gin.H{
-			"title":              "название услуги",
-			"serviceTitle":       "название услуги",
-			"serviceDescription": "описание услуги",
-			"serviceAmount":      "стоимость услуги",
-			"page":               "appointment",
+			"title":  "Запись",
+			"page":   "appointment",
+			"og_url": ctx.Request.URL.Path,
 		})
 	}
 }
@@ -57,8 +57,9 @@ func (h *handlers) Appointment() gin.HandlerFunc {
 func (h *handlers) Services() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "base", gin.H{
-			"title": "Услуги",
-			"page":  "services",
+			"title":  "Услуги",
+			"page":   "services",
+			"og_url": ctx.Request.URL.Path,
 		})
 	}
 }
@@ -66,8 +67,9 @@ func (h *handlers) Services() gin.HandlerFunc {
 func (h *handlers) Profile() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "base", gin.H{
-			"title": "Профиль",
-			"page":  "profile",
+			"title":  "Профиль",
+			"page":   "profile",
+			"og_url": ctx.Request.URL.Path,
 		})
 	}
 }
@@ -75,8 +77,9 @@ func (h *handlers) Profile() gin.HandlerFunc {
 func (h *handlers) Topup() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "base", gin.H{
-			"title": "Тарифы",
-			"page":  "topup",
+			"title":  "Тарифы",
+			"page":   "topup",
+			"og_url": ctx.Request.URL.Path,
 		})
 	}
 }
@@ -84,8 +87,9 @@ func (h *handlers) Topup() gin.HandlerFunc {
 func (h *handlers) Bookings() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "base", gin.H{
-			"title": "Записи",
-			"page":  "bookings",
+			"title":  "Записи",
+			"page":   "bookings",
+			"og_url": ctx.Request.URL.Path,
 		})
 	}
 }
@@ -97,6 +101,7 @@ func (h *handlers) Reset() gin.HandlerFunc {
 			"title":       "Смена пароля",
 			"page":        "reset",
 			"reset_token": token,
+			"og_url":      ctx.Request.URL.Path,
 		})
 	}
 }
@@ -104,8 +109,9 @@ func (h *handlers) Reset() gin.HandlerFunc {
 func (h *handlers) Terms() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "base", gin.H{
-			"title": "Terms",
-			"page":  "terms",
+			"title":  "Terms",
+			"page":   "terms",
+			"og_url": ctx.Request.URL.Path,
 		})
 	}
 }
@@ -113,8 +119,9 @@ func (h *handlers) Terms() gin.HandlerFunc {
 func (h *handlers) Privacy() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "base", gin.H{
-			"title": "Privacy",
-			"page":  "privacy",
+			"title":  "Privacy",
+			"page":   "privacy",
+			"og_url": ctx.Request.URL.Path,
 		})
 	}
 }
