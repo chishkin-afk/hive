@@ -109,7 +109,7 @@ func (h *handlers) Reset() gin.HandlerFunc {
 func (h *handlers) Terms() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "base", gin.H{
-			"title":  "Terms",
+			"title":  "Пользовательское соглашение",
 			"page":   "terms",
 			"og_url": ctx.Request.URL.Path,
 		})
@@ -119,8 +119,18 @@ func (h *handlers) Terms() gin.HandlerFunc {
 func (h *handlers) Privacy() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.HTML(http.StatusOK, "base", gin.H{
-			"title":  "Privacy",
+			"title":  "Политика обработки данных",
 			"page":   "privacy",
+			"og_url": ctx.Request.URL.Path,
+		})
+	}
+}
+
+func (h *handlers) Offer() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.HTML(http.StatusOK, "base", gin.H{
+			"title":  "Оферта",
+			"page":   "offer",
 			"og_url": ctx.Request.URL.Path,
 		})
 	}

@@ -3,6 +3,7 @@
 // =====================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+  loadTrialStatus();
   loadRates();
   loadHistory();
 });
@@ -36,6 +37,68 @@ function fmtDate(ts) {
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   return day + '.' + month + '.' + d.getFullYear();
+}
+
+// -------------------------------- Trial ----------------------------------
+
+async function loadTrialStatus() {
+  const btn = document.getElementById('trialBtn');
+  if (!btn) return;
+
+  // Проверяем, есть ли у пользователя активный paid_until (используем authAPI.self())
+  try {
+    const user = await authAPI.self();
+    if (user && user.paid_until) {
+      const now = Math.floor(Date.now() / 1000);
+      if (user.paid_until > now) {
+        // У пользователя есть активная подписка или триал — скрываем блок
+        const section = document.querySelector('.trial-section');
+        if (section) section.style.display = 'none';
+        return;
+      }
+    }
+  } catch (err) {
+    console.log('Не удалось проверить paid_until, проверяем платежи');
+  }
+
+  // Если нет paid_until, проверяем оплаченные платежи
+  try {
+    const data = await paymentAPI.listPayments(1, 50);
+    const hasActivePayment = data.list.some(p => p.status_int === 2);
+    if (hasActivePayment) {
+      const section = document.querySelector('.trial-section');
+      if (section) section.style.display = 'none';
+      return;
+    }
+  } catch (err) {
+    console.log('Не удалось проверить историю платежей, показываем кнопку');
+  }
+
+  btn.addEventListener('click', onTrialClick);
+}
+
+async function onTrialClick(e) {
+  const btn = e.currentTarget;
+  if (btn.classList.contains('trial-used') || btn.classList.contains('loading')) return;
+
+  btn.classList.add('loading');
+  btn.textContent = 'Активируем...';
+
+  try {
+    await paymentAPI.takeTrial();
+    btn.classList.add('trial-used');
+    btn.classList.remove('loading');
+    btn.textContent = 'Пробный период активирован';
+    setTimeout(() => location.reload(), 1500);
+  } catch (err) {
+    console.error('Ошибка активации пробного периода', err);
+    btn.classList.remove('loading');
+    btn.textContent = 'Активировать пробный период';
+    if (err.status === 400 || err.status === 409) {
+      btn.classList.add('trial-used');
+      btn.textContent = 'Пробный период активирован';
+    }
+  }
 }
 
 // -------------------------------- Rates ----------------------------------

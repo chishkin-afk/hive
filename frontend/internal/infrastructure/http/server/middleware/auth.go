@@ -21,3 +21,18 @@ func AuthRequired() gin.HandlerFunc {
 		ctx.Next()
 	}
 }
+
+// RedirectIfAuthenticated — middleware, который проверяет наличие куки "token"
+// и редиректит на /services, если она есть.
+// Используется на странице /auth, чтобы залогиненные пользователи не видели форму входа.
+func RedirectIfAuthenticated() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		_, err := ctx.Cookie("token")
+		if err == nil {
+			ctx.Redirect(http.StatusFound, "/services")
+			ctx.Abort()
+			return
+		}
+		ctx.Next()
+	}
+}

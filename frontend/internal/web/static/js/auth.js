@@ -1,5 +1,4 @@
 // ===== КОНФИГ =====
-const API_BASE = window.APP_CONFIG?.apiUrl || '/api/v1';
 const REDIRECT_AFTER_LOGIN = '/services';
 const LS_EMAIL = 'auth_confirm_email';
 const LS_EXPIRES = 'auth_resend_expires_at';

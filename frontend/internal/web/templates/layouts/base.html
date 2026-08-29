@@ -23,6 +23,8 @@
         {{template "terms_content" .}}
     {{else if eq .page "privacy"}}
         {{template "privacy_content" .}}
+    {{else if eq .page "offer"}}
+        {{template "offer_content" .}}
     {{end}}
 
     {{template "scripts" .}}

@@ -27,11 +27,12 @@ func New(cfg *config.Config, fs frontendService, mws ...gin.HandlerFunc) *gin.En
 
 	// --- Публичные страницы (без авторизации) ---
 	router.GET("/", handlers.Landing())
-	router.GET("/auth", handlers.Auth())
+	router.GET("/auth", middleware.RedirectIfAuthenticated(), handlers.Auth())
 	router.GET("/appointment/:offerID", handlers.Appointment())
 	router.GET("/reset", handlers.Reset())
 	router.GET("/terms", handlers.Terms())
 	router.GET("/privacy", handlers.Privacy())
+	router.GET("/offer", handlers.Offer())
 
 	// --- Защищённые страницы (требуется токен) ---
 	protected := router.Group("", middleware.AuthRequired())
