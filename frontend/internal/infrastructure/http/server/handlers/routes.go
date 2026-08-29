@@ -33,6 +33,7 @@ func New(cfg *config.Config, fs frontendService, mws ...gin.HandlerFunc) *gin.En
 	router.GET("/terms", handlers.Terms())
 	router.GET("/privacy", handlers.Privacy())
 	router.GET("/offer", handlers.Offer())
+	router.GET("/consent", handlers.Consent())
 
 	// --- Защищённые страницы (требуется токен) ---
 	protected := router.Group("", middleware.AuthRequired())

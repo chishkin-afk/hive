@@ -135,3 +135,13 @@ func (h *handlers) Offer() gin.HandlerFunc {
 		})
 	}
 }
+
+func (h *handlers) Consent() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.HTML(http.StatusOK, "base", gin.H{
+			"title":  "Согласие на обработку персональных данных",
+			"page":   "consent",
+			"og_url": ctx.Request.URL.Path,
+		})
+	}
+}

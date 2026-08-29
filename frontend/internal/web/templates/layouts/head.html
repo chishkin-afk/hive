@@ -58,6 +58,8 @@
             {{block "privacy_extra_head" .}}{{end}}
         {{else if eq .page "offer"}}
             {{block "offer_extra_head" .}}{{end}}
+        {{else if eq .page "consent"}}
+            {{block "consent_extra_head" .}}{{end}}
         {{end}}
 
         <script src="/static/js/theme.js"></script>

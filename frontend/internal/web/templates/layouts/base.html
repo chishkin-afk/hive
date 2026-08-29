@@ -25,6 +25,8 @@
         {{template "privacy_content" .}}
     {{else if eq .page "offer"}}
         {{template "offer_content" .}}
+    {{else if eq .page "consent"}}
+        {{template "consent_content" .}}
     {{end}}
 
     {{template "scripts" .}}
