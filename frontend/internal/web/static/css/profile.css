@@ -454,6 +454,24 @@
     background-color: #1A1A1A;
 }
 
+/* Disabled state via data-attribute */
+.profile-switch input[data-bound="false"] + .profile-switch-mark {
+    background-color: var(--color-bg-secondary);
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.profile-switch input[data-bound="false"] + .profile-switch-mark::after {
+    background-color: var(--color-text-secondary);
+    opacity: 0.5;
+}
+
+.profile-switch input[data-bound="false"] + .profile-switch-mark + .profile-switch-body {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* DANGER */
 .profile-danger-card {
     display: flex;

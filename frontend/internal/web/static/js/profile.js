@@ -115,7 +115,8 @@
             const cb = form.elements['on_vacation'];
             if (cb) cb.checked = user.on_vacation;
         }
-        tgBound = !!(user.telegram_id || user.notification?.telegram_chat_id);
+        // tg_chat_id приходит с бэкенда (число), если оно > 0 — Telegram привязан
+        tgBound = !!(user.tg_chat_id && user.tg_chat_id > 0);
         updateTgUI();
 
         initialState = captureFormState();
@@ -408,6 +409,9 @@
                 );
                 const user = await authAPI.self();
                 populateForm(user);
+                // Обновляем tgBound после сохранения
+                tgBound = !!(user.tg_chat_id && user.tg_chat_id > 0);
+                updateTgUI();
             }
 
             // Сохраняем изменённые расписания
@@ -452,16 +456,20 @@
             try {
                 if (tgBound) {
                     await authAPI.unbind_tg();
-                    tgBound = false;
-                    updateTgUI();
                     showToast('Telegram отвязан', 'success');
                     const user = await authAPI.self();
+                    tgBound = !!(user.tg_chat_id && user.tg_chat_id > 0);
+                    updateTgUI();
                     populateForm(user);
                 } else {
                     const binding = await authAPI.bind_tg();
                     if (binding && binding.bot_url) {
                         window.open(binding.bot_url, '_blank', 'noopener,noreferrer');
-                        // Без уведомления — клиент переходит на другую страницу
+                        // После привязки обновим статус при возврате
+                        const user = await authAPI.self();
+                        tgBound = !!(user.tg_chat_id && user.tg_chat_id > 0);
+                        updateTgUI();
+                        populateForm(user);
                     } else {
                         showToast('Не удалось получить ссылку для привязки Telegram', 'error');
                     }
