@@ -95,10 +95,13 @@ function showSkeleton() {
 
 // Рендеринг карточек офферов
 function renderOffers(offers) {
+    const empty = document.getElementById('servicesEmpty');
     if (offers.length === 0) {
-        servicesList.innerHTML = '<div class="service-card">Услуги не найдены</div>';
+        servicesList.innerHTML = '';
+        if (empty) empty.style.display = 'flex';
         return;
     }
+    if (empty) empty.style.display = 'none';
     
     servicesList.innerHTML = offers.map(offer => {
         // Бэкенд возвращает price в penny, конвертируем в рубли
@@ -467,12 +470,13 @@ saveEditServiceBtn.addEventListener('click', async () => {
             hasChanges = true;
         }
         
-        // Нормализуем описание: пустая строка = null
-        const newDescNormalized = newDescription ? newDescription : null;
-        const currentDescNormalized = currentOffer.description || null;
+        // Нормализуем описание: если пустое — отправляем "", чтобы удалить
+        const currentDescNormalized = currentOffer.description || '';
+        const newDescNormalized = newDescription ? newDescription.trim() : '';
         
-        // Сравниваем и отправляем, если изменилось (включая случай когда очистили описание)
+        // Если описание изменилось
         if (newDescNormalized !== currentDescNormalized) {
+            // Если описание пустое — отправляем пустую строку
             updates.description = newDescNormalized;
             hasChanges = true;
         }

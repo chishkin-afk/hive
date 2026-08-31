@@ -5,16 +5,17 @@
     min-height: 100svh;
     display: flex;
     flex-direction: column;
-    padding: 128px 16px 64px 16px;
-    gap: 16px;
-    justify-content: center;
     align-items: center;
+    gap: 32px;
+    padding: 128px 16px 64px;
 }
 
 .services-header {
+    width: min(760px, 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
+    text-align: center;
     animation: fade-up .8s;
 }
 
@@ -24,10 +25,35 @@
 }
 
 .services-list {
-    width: 40%;
+    width: min(760px, 100%);
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+/* EMPTY STATE */
+.services-empty {
+    width: min(760px, 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 40px 16px;
+    text-align: center;
+    color: var(--color-text-secondary);
+    border: 1px dashed var(--color-bg-tertiary);
+    border-radius: var(--radius-lg);
+    transition: border-color .3s;
+}
+
+.services-empty[hidden] {
+    display: none;
+}
+
+.services-empty-title {
+    color: var(--color-text-primary);
+    font-weight: 700;
+    transition: color .3s;
 }
 
 .service-card {

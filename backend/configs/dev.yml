@@ -91,7 +91,7 @@ yookassa:
   - "2a02:5180::"
 
 engage:
-  base_url: http://localhost:8041
+  base_url: http://hive-engage:8041
 
 smtp:
   host: smtp.yandex.ru

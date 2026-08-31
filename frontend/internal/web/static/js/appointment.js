@@ -734,6 +734,15 @@
             if (msg.includes('forbidden')) return 'Нет доступа.';
             if (msg.includes('conflict')) return 'Конфликт данных.';
             if (msg.includes('too many requests')) return 'Слишком много запросов.';
+            if (msg.includes('user not paid')) {
+                return 'У этого специалиста закончилась подписка. Он не может принимать новые записи.';
+            }
+            if (msg.includes('coach on vacation')) {
+                return 'Этот специалист сейчас в отпуске и не принимает записи.';
+            }
+            if (msg.includes('offer isn\'t active') || msg.includes('offer is not active')) {
+                return 'На эту услугу сейчас нельзя записаться.';
+            }
             return error.message;
         }
         

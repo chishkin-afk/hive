@@ -365,6 +365,76 @@ function startResendTimer() {
 
 // ===== ВОССТАНОВЛЕНИЕ ПАРОЛЯ: ШАГ 1 — ОТПРАВКА EMAIL =====
 
+const FORGOT_COOLDOWN_MS = 60_000;
+
+function lockForgotBtn() {
+    const btn = $('forgotBtn');
+    btn.disabled = true;
+    btn.classList.add('disabled');
+}
+
+function unlockForgotBtn() {
+    const btn = $('forgotBtn');
+    btn.disabled = false;
+    btn.classList.remove('disabled');
+    btn.textContent = 'Отправить';
+}
+
+let forgotTimer = null;
+
+function startForgotTimer() {
+    const btn = $('forgotBtn');
+    const expiresAt = Date.now() + FORGOT_COOLDOWN_MS;
+    localStorage.setItem('auth_forgot_expires', String(expiresAt));
+
+    lockForgotBtn();
+    if (forgotTimer) clearInterval(forgotTimer);
+
+    const tick = () => {
+        const left = Math.max(0, expiresAt - Date.now());
+        if (left <= 0) {
+            clearInterval(forgotTimer);
+            forgotTimer = null;
+            localStorage.removeItem('auth_forgot_expires');
+            unlockForgotBtn();
+            return;
+        }
+        btn.textContent = `Отправить (${Math.ceil(left / 1000)}с)`;
+    };
+
+    tick();
+    forgotTimer = setInterval(tick, 1000);
+}
+
+function restoreForgotTimer() {
+    const expiresAt = localStorage.getItem('auth_forgot_expires');
+    if (!expiresAt) return;
+    const left = parseInt(expiresAt, 10) - Date.now();
+    if (left <= 0) {
+        localStorage.removeItem('auth_forgot_expires');
+        unlockForgotBtn();
+        return;
+    }
+    // Кнопка заблокирована, запускаем таймер
+    const btn = $('forgotBtn');
+    lockForgotBtn();
+    if (forgotTimer) clearInterval(forgotTimer);
+    const expiresNum = parseInt(expiresAt, 10);
+    const tick = () => {
+        const left = Math.max(0, expiresNum - Date.now());
+        if (left <= 0) {
+            clearInterval(forgotTimer);
+            forgotTimer = null;
+            localStorage.removeItem('auth_forgot_expires');
+            unlockForgotBtn();
+            return;
+        }
+        btn.textContent = `Отправить (${Math.ceil(left / 1000)}с)`;
+    };
+    tick();
+    forgotTimer = setInterval(tick, 1000);
+}
+
 async function forgotPassword() {
     const emailInput = $('forgotEmail');
     const email = emailInput.value.trim();
@@ -374,9 +444,17 @@ async function forgotPassword() {
     if (!email)              { emailInput.classList.add('error'); showNotification('Введите email', 'error'); return; }
     if (!RE_EMAIL.test(email)) { emailInput.classList.add('error'); showNotification('Введите корректный email', 'error'); return; }
 
+    // Проверяем, не заблокирована ли кнопка
+    const expiresAt = localStorage.getItem('auth_forgot_expires');
+    if (expiresAt && Date.now() < parseInt(expiresAt, 10)) {
+        showNotification('Подождите, пока истечёт таймер.', 'error');
+        return;
+    }
+
     try {
         await authAPI.forget_password(email);
         showNotification('Инструкция отправлена на email! Проверьте почту.', 'success');
+        startForgotTimer();
     } catch (err) {
         const e = formatError(err, 'forgot');
         emailInput.classList.add('error');
@@ -401,6 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupLiveValidation();
     restoreAuthState();
+    restoreForgotTimer();
 
     $('loginBtn').addEventListener('click', login);
     $('registerBtn').addEventListener('click', register);
@@ -415,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (forgotLink) forgotLink.addEventListener('click', (e) => { e.preventDefault(); showForm('forgotForm'); });
 
     $('forgotBtn').addEventListener('click', forgotPassword);
-    $('cancelForgotBtn').addEventListener('click', () => showForm('loginForm'));
+    $('cancelForgotBtn').addEventListener('click', () => { showForm('loginForm'); });
 
     $('loginForm').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); login(); } });
     $('registerForm').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); register(); } });

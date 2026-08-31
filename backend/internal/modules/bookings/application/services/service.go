@@ -49,7 +49,8 @@ type offerService interface {
 }
 
 type SMTPClient interface {
-	Notify(ctx context.Context, body string, to []string) error
+	Notify(ctx context.Context, body string, subject string, to []string) error
+	NotifyHTML(ctx context.Context, body string, subject string, to []string) error
 }
 
 type BookingService struct {
@@ -145,11 +146,23 @@ func (bs *BookingService) Create(ctx context.Context, req *requests.CreateBookin
 		)
 	}
 
+	client, err := bs.authService.GetUserByID(ctx, userID)
+	clientName := "Клиент"
+	if err == nil {
+		clientName = client.Firstname + " " + client.Lastname
+	} else {
+		bs.log.Error("failed to get client for notifyCreated",
+			slog.String("error", err.Error()),
+			slog.String("user_id", userID.String()),
+		)
+	}
+
 	go bs.notifyCreated(
 		context.Background(),
 		coach,
 		offer,
 		savedBooking,
+		clientName,
 	)
 
 	return bs.bookingToDTO(savedBooking), nil
@@ -655,6 +668,18 @@ func (bs *BookingService) applyChanges(ctx context.Context, booking *booking.Boo
 					bs.log.Error("failed to get offer & coach",
 						slog.String("error", err.Error()),
 					)
+					return
+				}
+
+				client, err := bs.authService.GetUserByID(ctxTimeout, booking.UserID())
+				clientName := "Клиент"
+				if err == nil {
+					clientName = client.Firstname + " " + client.Lastname
+				} else {
+					bs.log.Error("failed to get client for notifyCanceled",
+						slog.String("error", err.Error()),
+						slog.String("user_id", booking.UserID().String()),
+					)
 				}
 
 				bs.notifyCanceled(
@@ -662,6 +687,7 @@ func (bs *BookingService) applyChanges(ctx context.Context, booking *booking.Boo
 					coach,
 					offer,
 					booking,
+					clientName,
 				)
 			}()
 		}
@@ -734,12 +760,24 @@ func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *bookin
 		return errs.NewErrorWithKind(err, errs.KindRequest)
 	}
 
+	client, err := bs.authService.GetUserByID(ctx, booking.UserID())
+	clientName := "Клиент"
+	if err == nil {
+		clientName = client.Firstname + " " + client.Lastname
+	} else {
+		bs.log.Error("failed to get client for notifyUpdated",
+			slog.String("error", err.Error()),
+			slog.String("user_id", booking.UserID().String()),
+		)
+	}
+
 	go bs.notifyUpdated(
 		context.Background(),
 		coach,
 		offer,
 		booking,
 		oldTime,
+		clientName,
 	)
 
 	return nil

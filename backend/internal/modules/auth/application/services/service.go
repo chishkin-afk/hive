@@ -35,7 +35,8 @@ type JWTManager interface {
 }
 
 type SMTPClient interface {
-	Notify(ctx context.Context, body string, to []string) error
+	Notify(ctx context.Context, body string, subject string, to []string) error
+	NotifyHTML(ctx context.Context, body string, subject string, to []string) error
 }
 
 type AuthService struct {
@@ -267,11 +268,37 @@ func (as *AuthService) sendChangeURL(ctx context.Context, email user.Email, toke
 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	if err := as.smtpClient.Notify(ctxTimeout, fmt.Sprintf(
-		ResetPassword,
-		as.cfg.Service.ChangePasswordURL,
-		token,
-	), []string{email.String()}); err != nil {
+	htmlBody := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Montserrat, Arial, sans-serif; background-color: #E6E6E6; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #FAFAFA; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+        .header { text-align: center; padding: 10px 0; border-bottom: 2px solid #FFB61A; }
+        .header h1 { color: #1A1A1A; margin: 0; font-weight: 600; }
+        .content { padding: 20px 0; text-align: center; }
+        .content p { font-size: 16px; color: #1A1A1A; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #FFB61A; color: #1A1A1A; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Восстановление пароля</h1>
+        </div>
+        <div class="content">
+            <p>Для сброса пароля нажмите на кнопку ниже:</p>
+            <a href="%s?token=%s" class="button">Сбросить пароль</a>
+            <p>Если вы не запрашивали восстановление, проигнорируйте это письмо.</p>
+        </div>
+    </div>
+</body>
+</html>
+`, as.cfg.Service.ChangePasswordURL, token)
+
+	if err := as.smtpClient.NotifyHTML(ctxTimeout, htmlBody, "Восстановление пароля", []string{email.String()}); err != nil {
 		as.log.Error("failed to send reset url for user",
 			slog.String("error", err.Error()),
 		)
@@ -688,6 +715,44 @@ func (as *AuthService) sendConfirmationCode(ctx context.Context, email user.Emai
 	}
 }
 
+func (as *AuthService) sendCode(ctx context.Context, email user.Email, code int) error {
+	htmlBody := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Montserrat, Arial, sans-serif; background-color: #E6E6E6; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #FAFAFA; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+        .header { text-align: center; padding: 10px 0; border-bottom: 2px solid #FFB61A; }
+        .header h1 { color: #1A1A1A; margin: 0; font-weight: 600; }
+        .content { padding: 20px 0; text-align: center; }
+        .content p { font-size: 16px; color: #1A1A1A; }
+        .code { display: inline-block; padding: 15px 30px; font-size: 32px; font-weight: bold; color: #1A1A1A; background-color: #FFB61A; border-radius: 8px; letter-spacing: 4px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Подтверждение регистрации</h1>
+        </div>
+        <div class="content">
+            <div class="code">%d</div>
+            <p>Если вы не запрашивали код, проигнорируйте это письмо.</p>
+        </div>
+    </div>
+</body>
+</html>
+`, code)
+
+	subject := fmt.Sprintf("Подтверждение регистрации: %d", code)
+	if err := as.smtpClient.NotifyHTML(ctx, htmlBody, subject, []string{email.String()}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (as *AuthService) userToDTO(user *user.User) *responses.User {
 	return &responses.User{
 		ID:          user.ID(),
@@ -954,15 +1019,7 @@ func (as *AuthService) generateSecureCode() (int, error) {
 }
 
 func (as *AuthService) sendPassword(ctx context.Context, email user.Email, password string) error {
-	if err := as.smtpClient.Notify(ctx, fmt.Sprintf("ваш сгенерированный пароль: %s", password), []string{email.String()}); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (as *AuthService) sendCode(ctx context.Context, email user.Email, code int) error {
-	if err := as.smtpClient.Notify(ctx, fmt.Sprintf("Ваш код подтверждения: %d", code), []string{email.String()}); err != nil {
+	if err := as.smtpClient.Notify(ctx, fmt.Sprintf("ваш сгенерированный пароль: %s", password), "Ваш пароль", []string{email.String()}); err != nil {
 		return err
 	}
 

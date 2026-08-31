@@ -74,18 +74,19 @@ class OfferApi extends Api {
         slotIntervalMinutes,
         isActive,
     }) {
+        const body = { offer_id: offerId };
+
+        if (title !== undefined) body.title = title;
+        if (description !== undefined) body.description = description;
+        if (pricePenny !== undefined) body.price_penny = pricePenny;
+        if (slotDurationMinutes !== undefined) body.slot_duration_minutes = slotDurationMinutes;
+        if (slotIntervalMinutes !== undefined) body.slot_interval_minutes = slotIntervalMinutes;
+        if (isActive !== undefined) body.is_active = isActive;
+
         return this.request(
             '/offer',
             'PATCH',
-            {
-                offer_id: offerId,
-                title: title,
-                description: description ?? '',
-                price_penny: pricePenny,
-                slot_duration_minutes: slotDurationMinutes,
-                slot_interval_minutes: slotIntervalMinutes,
-                is_active: isActive,
-            }
+            body
         )
     }
 

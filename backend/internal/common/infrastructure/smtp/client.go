@@ -24,15 +24,23 @@ func New(cfg *config.Config) *SMTPClient {
 	}
 }
 
-func (sc *SMTPClient) Notify(ctx context.Context, body string, to []string) error {
+func (sc *SMTPClient) Notify(ctx context.Context, body string, subject string, to []string) error {
+	return sc.NotifyWithContentType(ctx, body, subject, to, "text/plain")
+}
+
+func (sc *SMTPClient) NotifyHTML(ctx context.Context, body string, subject string, to []string) error {
+	return sc.NotifyWithContentType(ctx, body, subject, to, "text/html")
+}
+
+func (sc *SMTPClient) NotifyWithContentType(ctx context.Context, body string, subject string, to []string, contentType string) error {
 	errCh := make(chan error, 1)
 
 	go func() {
 		defer close(errCh)
 
 		msg := fmt.Sprintf(
-			"From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n\r\n%s",
-			sc.cfg.SMTP.From, strings.Join(to, ","), sc.cfg.SMTP.Msg.Subject, body,
+			"From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: %s; charset=\"UTF-8\"\r\n\r\n%s",
+			sc.cfg.SMTP.From, strings.Join(to, ","), subject, contentType, body,
 		)
 
 		if err := smtp.SendMail(sc.addr, sc.auth, sc.cfg.SMTP.From, to, []byte(msg)); err != nil {
