@@ -49,6 +49,22 @@ services:
     volumes:
       - ./backend/keys:/app/keys:ro
 
+  hive-engage:
+    build:
+      context: ./engage
+      dockerfile: Dockerfile
+    container_name: hive-engage
+    ports:
+      - "8041:8041"
+    env_file:
+      - ./engage/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:

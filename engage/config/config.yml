@@ -1,0 +1,40 @@
+env: debug
+shutdown_timeout: 5s
+http:
+  host: ${HTTP_HOST}
+  port: ${HTTP_PORT}
+  read_timeout: 15s
+  write_timeout: 15s
+  idle_timeout: 60s
+  auth:
+    host: ${HTTP_AUTH_HOST} 
+    port: ${HTTP_AUTH_PORT}
+    timeout: 5s
+tg:
+  token: ${TG_BOT_TOKEN}
+  supergroup-id: ${TG_SUPERGROUP_ID}
+  tickets-thread-id: ${TG_TICKETS_THREAD_ID}
+  webhook:
+    url: ${TG_WEBHOOK_URL}
+    secret: ${TG_WEBHOOK_SECRET}
+cache:
+  host: ${CACHE_HOST}
+  port: ${CACHE_PORT}
+  password: ${CACHE_PASSWORD}
+  db: 0
+  pool-size: 10
+  dial-timeout: 5s
+  max-retries: 3
+db:
+  host: ${DB_HOST}
+  port: ${DB_PORT}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+  dbname: ${DB_NAME}
+  max-conns: 20
+  min-conns: 2
+log:
+  service: engage
+  output-type: console
+  log-file-path:
+  json: false
