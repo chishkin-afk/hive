@@ -86,14 +86,14 @@ html {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    min-height: 200px; /* Фиксируем минимальную высоту */
+    min-height: 200px;
 }
 
 .time-section {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    animation: fade-in 0.3s ease; /* Плавное появление */
+    animation: fade-in 0.3s ease;
 }
 
 @keyframes fade-in {
@@ -416,7 +416,6 @@ html {
     fill: currentColor;
 }
 
-/* ===== КНОПКА ВОССТАНОВЛЕНИЯ ПАРОЛЯ ===== */
 #forgotPasswordBtn {
     display: none;
     background: none;
@@ -434,7 +433,6 @@ html {
     text-decoration: underline;
 }
 
-/* ===== УВЕДОМЛЕНИЯ (как в profile) ===== */
 .appointment-toast {
     position: fixed;
     top: 20px;

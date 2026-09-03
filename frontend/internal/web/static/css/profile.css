@@ -1,5 +1,3 @@
-/* MAIN */
-
 .container {
     width: 100%;
     min-height: 100svh;
@@ -47,7 +45,6 @@
     animation-delay: 1s;
 }
 
-/* PROFILE CONTENT WRAPPER */
 #profileContent {
     width: min(960px, 100%);
     display: flex;
@@ -56,7 +53,6 @@
     gap: 32px;
 }
 
-/* HERO */
 .profile-hero {
     width: 100%;
     display: flex;
@@ -109,7 +105,6 @@
     white-space: nowrap;
 }
 
-/* LAYOUT */
 .profile-layout {
     width: 100%;
     display: grid;
@@ -119,7 +114,6 @@
     animation: fade-up 1s;
 }
 
-/* NAV */
 .profile-nav {
     position: sticky;
     top: 96px;
@@ -170,7 +164,6 @@
     background-color: var(--color-error);
 }
 
-/* FORM */
 .profile-form {
     display: flex;
     flex-direction: column;
@@ -286,7 +279,6 @@
     border-color: var(--color-accent);
 }
 
-/* PASSWORD */
 .profile-password-wrapper {
     position: relative;
     display: flex;
@@ -332,7 +324,6 @@
     transition: background-color .3s;
 }
 
-/* CONNECT */
 .profile-connect {
     display: flex;
     align-items: center;
@@ -375,7 +366,6 @@
     color: var(--color-success);
 }
 
-/* SWITCHES */
 .profile-switches {
     display: flex;
     flex-direction: column;
@@ -454,7 +444,6 @@
     background-color: #1A1A1A;
 }
 
-/* Disabled state via data-attribute */
 .profile-switch input[data-bound="false"] + .profile-switch-mark {
     background-color: var(--color-bg-secondary);
     opacity: 0.5;
@@ -472,7 +461,6 @@
     cursor: not-allowed;
 }
 
-/* DANGER */
 .profile-danger-card {
     display: flex;
     align-items: center;
@@ -502,7 +490,6 @@
     color: var(--color-error);
 }
 
-/* BUTTONS */
 .profile-btn {
     font-size: 14px;
     font-weight: 600;
@@ -558,7 +545,6 @@
     filter: brightness(1.1);
 }
 
-/* FLOATING SAVE BUTTON */
 .profile-save-float {
     position: fixed;
     bottom: 32px;
@@ -581,7 +567,6 @@
     transform: translateY(0);
 }
 
-/* SKELETON */
 .profile-skeleton {
     width: min(960px, 100%);
     display: flex;
@@ -665,7 +650,6 @@
     100% { background-position: -200% 0; }
 }
 
-/* ===== УВЕДОМЛЕНИЯ (как в auth) ===== */
 .profile-toast {
     position: fixed;
     top: 20px;
@@ -704,7 +688,6 @@
     color: var(--color-text-secondary);
 }
 
-/* ===== ВАЛИДАЦИЯ НА ЛЕТУ (как в auth) ===== */
 .profile-input.input-error {
     border-color: var(--color-error) !important;
     background-color: rgba(224, 94, 82, 0.08) !important;
@@ -720,8 +703,6 @@
     background-color: rgba(224, 94, 82, 0.08) !important;
 }
 
-/* ===== SCHEDULE ===== */
-
 .schedule-subtitle {
     color: var(--color-text-secondary);
     font-size: 13px;
@@ -730,7 +711,6 @@
     transition: color .3s;
 }
 
-/* Карусель дней */
 .schedule-days-carousel {
     display: flex;
     gap: 8px;
@@ -778,14 +758,12 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
-/* Контейнер дня */
 .schedule-day-content {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
-/* Пустое состояние */
 .schedule-empty {
     color: var(--color-text-secondary);
     font-size: 14px;
@@ -793,8 +771,6 @@
     padding: 40px 16px;
     transition: color .3s;
 }
-
-/* ===== INLINE-ФОРМА РАСПИСАНИЯ ===== */
 
 .schedule-inline-form {
     display: flex;
@@ -823,11 +799,9 @@
     padding: 8px 10px;
     font-size: 15px;
     font-weight: 600;
-    /* Стилизуем иконку часов в input[type="time"] */
     color-scheme: dark;
 }
 
-/* Кастомный цвет иконки часов для WebKit */
 .schedule-inline-time::-webkit-calendar-picker-indicator {
     filter: invert(0.7);
     cursor: pointer;
@@ -846,7 +820,6 @@
     transition: color .3s;
 }
 
-/* Перерывы */
 .schedule-inline-breaks {
     display: flex;
     flex-direction: column;
@@ -937,13 +910,10 @@
     transform: translateY(-2px);
 }
 
-/* Кнопка добавления расписания (под контентом дня) */
 .schedule-add-btn {
     align-self: flex-start;
     margin-top: 4px;
 }
-
-/* ===== МОДАЛЬНОЕ ОКНО ===== */
 
 .schedule-modal-overlay {
     position: fixed;
@@ -1020,10 +990,8 @@
     display: none;
 }
 
-/* Поля ввода внутри модалки — фон tertiary для контраста */
 .schedule-modal-body .profile-input {
     background-color: var(--color-bg-tertiary);
-    /* Стилизуем иконку часов в input[type="time"] */
     color-scheme: dark;
 }
 
@@ -1114,7 +1082,6 @@
     transition: background-color .3s;
 }
 
-/* RESPONSIVE */
 @media (max-width: 900px) {
     .profile-layout {
         grid-template-columns: 1fr;
@@ -1191,7 +1158,6 @@
         width: 100%;
     }
 
-    /* Центрирование расписания на мобильных */
     .schedule-inline-form {
         width: 100%;
         box-sizing: border-box;
@@ -1225,7 +1191,6 @@
         display: none;
     }
 
-    /* Floating save button — mobile */
     .profile-save-float {
         bottom: 16px;
         left: 16px;
@@ -1237,7 +1202,6 @@
         text-align: center;
     }
 
-    /* Toast notifications — mobile */
     .profile-toast {
         top: 16px;
         left: 16px;

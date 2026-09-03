@@ -14,7 +14,6 @@ menuLinks.forEach(link => {
     link.addEventListener('click', toggleMobileMenu);
 });
 
-// ---------- Paid until ----------
 async function loadPaidUntil() {
     const paidUntilEl = document.getElementById('paidUntil');
     const menuPaidUntilEl = document.getElementById('menuPaidUntil');
@@ -30,18 +29,15 @@ async function loadPaidUntil() {
                 if (paidUntilEl) paidUntilEl.textContent = 'до ' + formatted;
                 if (menuPaidUntilEl) menuPaidUntilEl.textContent = 'до ' + formatted;
             } else {
-                // Подписка истекла
                 if (paidUntilEl) paidUntilEl.textContent = 'Тарифы';
                 if (menuPaidUntilEl) menuPaidUntilEl.textContent = 'Тарифы';
             }
         } else {
-            // Если нет paid_until — показываем «Тарифы»
             if (paidUntilEl) paidUntilEl.textContent = 'Тарифы';
             if (menuPaidUntilEl) menuPaidUntilEl.textContent = 'Тарифы';
         }
     } catch (err) {
         console.error('Не удалось загрузить информацию о подписке:', err);
-        // Если пользователь не авторизован — показываем «Тарифы»
         if (paidUntilEl) paidUntilEl.textContent = 'Тарифы';
         if (menuPaidUntilEl) menuPaidUntilEl.textContent = 'Тарифы';
     }
@@ -54,5 +50,4 @@ function formatDate(date) {
     return day + '.' + month + '.' + year;
 }
 
-// Загружаем информацию о подписке после загрузки страницы
 document.addEventListener('DOMContentLoaded', loadPaidUntil);

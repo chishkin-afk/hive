@@ -172,7 +172,6 @@
     transform: translateY(-3px) scale(0.97);
 }
 
-/* Только кнопки переключения форм ("Уже есть аккаунт?", "Нет аккаунта?") */
 .switch-btn {
     color: var(--color-text-secondary);
     width: fit-content;
@@ -185,7 +184,6 @@
     color: var(--color-text-primary);
 }
 
-/* Второстепенные кнопки (resend, cancel в форме подтверждения) */
 .secondary-btn {
     color: var(--color-text-secondary);
     width: fit-content;
@@ -242,18 +240,6 @@
     animation-delay: 1s;
 }
 
-@media (max-width: 768px) {
-    .form-wrapper {
-        width: 100%;
-    }
-
-    .background-circles {
-        display: none;
-    }
-}
-
-
-/* ===== УВЕДОМЛЕНИЯ ===== */
 .notification-toast {
     position: fixed;
     top: 20px;
@@ -292,7 +278,6 @@
     color: var(--color-text-secondary);
 }
 
-/* ===== ВАЛИДАЦИЯ НА ЛЕТУ ===== */
 .form-input.error {
     border-color: var(--color-error) !important;
     background-color: rgba(224, 94, 82, 0.08) !important;
@@ -306,4 +291,14 @@
 .checkbox-label .checkmark.error {
     border-color: var(--color-error) !important;
     background-color: rgba(224, 94, 82, 0.08) !important;
+}
+
+@media (max-width: 768px) {
+    .form-wrapper {
+        width: 100%;
+    }
+
+    .background-circles {
+        display: none;
+    }
 }

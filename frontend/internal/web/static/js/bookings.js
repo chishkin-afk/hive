@@ -1,10 +1,8 @@
-// Состояние пагинации
 let currentPage = 1;
 const limit = 10;
 let totalPages = 1;
 let bookingIdToCancel = null;
 
-// DOM-элементы
 const bookingsList = document.getElementById('bookingsList');
 const bookingsEmpty = document.getElementById('bookingsEmpty');
 const cancelOverlay = document.getElementById('cancelOverlay');
@@ -12,7 +10,6 @@ const cancelClose = document.getElementById('cancelClose');
 const cancelConfirm = document.getElementById('cancelConfirm');
 const cancelText = document.getElementById('cancelText');
 
-// Экранирование HTML
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -20,7 +17,6 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Показать скелетон
 function showSkeleton() {
     bookingsList.innerHTML = `
         <div class="booking-card booking-card-skeleton">
@@ -54,7 +50,6 @@ function showSkeleton() {
     bookingsEmpty.style.display = 'none';
 }
 
-// Загрузка записей
 async function loadBookings(page = 1) {
     currentPage = page;
     showSkeleton();
@@ -72,10 +67,8 @@ async function loadBookings(page = 1) {
 
         totalPages = response.total_pages || 1;
 
-        // Собираем уникальные offer_id
         const offerIds = [...new Set(response.list.map(item => item.booking.offer_id).filter(id => id))];
 
-        // Загружаем данные по всем услугам параллельно
         const offersMap = new Map();
         if (offerIds.length > 0 && window.offerAPI) {
             await Promise.all(offerIds.map(async (offerId) => {
@@ -90,7 +83,6 @@ async function loadBookings(page = 1) {
             }));
         }
 
-        // Рендерим карточки
         bookingsList.innerHTML = response.list.map(item => {
             const booking = item.booking;
             const user = item.user;
@@ -98,7 +90,7 @@ async function loadBookings(page = 1) {
             if (!booking || !booking.start_time) return '';
             
             const date = new Date(booking.start_time * 1000);
-            const mskOffset = 3 * 60; // MSK = UTC+3
+            const mskOffset = 3 * 60;
             const mskTime = new Date(date.getTime() + (date.getTimezoneOffset() + mskOffset) * 60000);
             const dayNames = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
             const monthNames = ['ЯНВ', 'ФЕВ', 'МАР', 'АПР', 'МАЙ', 'ИЮН', 'ИЮЛ', 'АВГ', 'СЕН', 'ОКТ', 'НОЯ', 'ДЕК'];
@@ -116,18 +108,15 @@ async function loadBookings(page = 1) {
             const offerTitle = offer ? escapeHtml(offer.title) : 'Услуга';
             const offerPrice = offer ? `${(offer.price / 100).toFixed(2)} ₽` : '';
             
-            // Проверяем, можно ли отменить/перенести запись
             let canModify = false;
             if (!isCancelled) {
                 const now = Math.floor(Date.now() / 1000);
-                // Если есть duration, проверяем end_time
                 if (offer && offer.duration) {
-                    const endTime = booking.start_time + offer.duration * 60; // duration в минутах -> секунды
+                    const endTime = booking.start_time + offer.duration * 60;
                     if (booking.start_time > now) {
                         canModify = true;
                     }
                 } else {
-                    // Если duration нет, просто проверяем, что запись ещё не началась
                     if (booking.start_time > now) {
                         canModify = true;
                     }
@@ -166,11 +155,9 @@ async function loadBookings(page = 1) {
             `;
         }).filter(html => html).join('');
 
-        // Обновляем пагинацию
         updatePagination();
         bookingsEmpty.style.display = 'none';
 
-        // Навешиваем обработчики на кнопки отмены
         document.querySelectorAll('.booking-btn-cancel').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -184,7 +171,6 @@ async function loadBookings(page = 1) {
                     cancelOverlay.classList.add('open');
                     cancelOverlay.removeAttribute('aria-hidden');
                     document.body.classList.add('block-scroll');
-                    // Фокус на модалку
                     const firstFocusable = cancelOverlay.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
                     if (firstFocusable) {
                         setTimeout(() => firstFocusable.focus(), 100);
@@ -200,7 +186,6 @@ async function loadBookings(page = 1) {
     }
 }
 
-// Обновление пагинации
 function updatePagination() {
     const backBtn = document.getElementById('bookingsBackBtn');
     const forwardBtn = document.getElementById('bookingsForwardBtn');
@@ -210,7 +195,6 @@ function updatePagination() {
     
     if (!pagination) return;
     
-    // Показываем пагинацию только если есть больше одной страницы
     if (totalPages <= 1) {
         pagination.style.display = 'none';
         return;
@@ -229,7 +213,6 @@ function updatePagination() {
     }
 }
 
-// Закрытие модалки отмены
 function closeCancelModal() {
     cancelOverlay.classList.remove('open');
     cancelOverlay.setAttribute('aria-hidden', 'true');
@@ -237,7 +220,6 @@ function closeCancelModal() {
     bookingIdToCancel = null;
 }
 
-// События модалки отмены
 if (cancelClose) {
     cancelClose.addEventListener('click', closeCancelModal);
 }
@@ -247,7 +229,6 @@ if (cancelOverlay) {
     });
 }
 
-// Подтверждение отмены
 if (cancelConfirm) {
     cancelConfirm.addEventListener('click', async () => {
         if (!bookingIdToCancel) return;
@@ -264,7 +245,6 @@ if (cancelConfirm) {
     });
 }
 
-// Пагинация — кнопки
 const backBtn = document.getElementById('bookingsBackBtn');
 const forwardBtn = document.getElementById('bookingsForwardBtn');
 
@@ -284,7 +264,6 @@ if (forwardBtn) {
     });
 }
 
-// Загружаем записи при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
     loadBookings(1);
 });

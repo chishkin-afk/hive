@@ -1,4 +1,3 @@
-/* MAIN */
 .container {
     width: 100%;
     min-height: 100svh;
@@ -9,7 +8,6 @@
     padding: 128px 16px 64px;
 }
 
-/* HEADER */
 .topup-header {
     width: min(960px, 100%);
     display: flex;
@@ -24,7 +22,6 @@
     font-size: 14px;
 }
 
-/* SECTIONS */
 .plans-section,
 .history-section {
     width: min(960px, 100%);
@@ -51,7 +48,6 @@
     font-size: 13px;
 }
 
-/* PLANS */
 .plans-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -180,7 +176,6 @@
     outline-offset: 2px;
 }
 
-/* PAYMENT HISTORY */
 .history-list {
     display: flex;
     flex-direction: column;
@@ -301,7 +296,6 @@
 .skel-amount { width: 64px; height: 14px; }
 .skel-badge { width: 76px; height: 22px; border-radius: var(--radius-fl); }
 
-/* BACKGROUND */
 .background-circles {
     width: 100%;
     height: 100vh;
@@ -339,7 +333,6 @@
     animation-delay: 1s;
 }
 
-/* TRIAL SECTION */
 .trial-section {
     width: min(960px, 100%);
     display: flex;
@@ -416,7 +409,6 @@
     pointer-events: none;
 }
 
-/* RESPONSIVE */
 @media (max-width: 768px) {
     .container {
         padding: 112px 16px 48px;

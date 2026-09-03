@@ -1,7 +1,6 @@
 (function() {
     var $ = function(id) { return document.getElementById(id); };
 
-    // Toggle пароля
     document.querySelectorAll('.password-toggle').forEach(function(el) {
         el.addEventListener('click', function() {
             var input = this.closest('.password-wrapper').querySelector('.form-input');

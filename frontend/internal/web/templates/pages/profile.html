@@ -14,7 +14,6 @@
 </div>
 
 <main class="container">
-    <!-- SKELETON -->
     <div class="profile-skeleton" id="profileSkeleton">
         <div class="profile-skeleton-hero">
             <div class="skeleton-avatar"></div>
@@ -36,7 +35,6 @@
         </div>
     </div>
 
-    <!-- REAL CONTENT (hidden until loaded) -->
     <div id="profileContent" style="display:none;">
     <section class="profile-hero">
         <div class="profile-avatar" id="profileAvatar" aria-label="Аватар профиля">
@@ -158,7 +156,6 @@
                     <h2 class="profile-section-title">Расписание</h2>
                     <p class="schedule-subtitle">Укажите рабочие дни и перерывы.</p>
 
-                    <!-- Карусель дней недели (неделя начинается с понедельника) -->
                     <div class="schedule-days-carousel" id="scheduleDaysCarousel">
                         <button type="button" class="schedule-day-btn" data-day="1">Пн</button>
                         <button type="button" class="schedule-day-btn" data-day="2">Вт</button>
@@ -169,12 +166,10 @@
                         <button type="button" class="schedule-day-btn" data-day="0">Вс</button>
                     </div>
 
-                    <!-- Содержимое выбранного дня -->
                     <div class="schedule-day-content" id="scheduleDayContent">
                         <p class="schedule-empty" id="scheduleEmpty">Выберите день для просмотра расписания</p>
                     </div>
 
-                    <!-- Кнопка добавления дня (уже не используется, но оставим для совместимости) -->
                     <button type="button" class="profile-btn profile-btn-ghost schedule-add-btn" id="addDayBtn" style="display:none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -183,7 +178,6 @@
                         <span>Добавить рабочий день</span>
                     </button>
 
-                    <!-- Кнопка сохранения расписания -->
                     <button type="button" class="profile-btn profile-btn-primary profile-save-float" id="scheduleSaveBtn" style="display:none;">
                         Сохранить расписание
                     </button>
@@ -236,13 +230,11 @@
                 </fieldset>
             </div>
 
-            <!-- Floating save button (hidden until changes) -->
             <button type="submit" class="profile-btn profile-btn-primary profile-save-float" id="profileSaveBtn" style="display:none;">
                 Сохранить изменения
             </button>
         </form>
 
-        <!-- Модальное окно добавления/редактирования расписания -->
         <div class="schedule-modal-overlay" id="scheduleModalOverlay" hidden>
             <div class="schedule-modal" role="dialog" aria-modal="true" aria-labelledby="scheduleModalTitle">
                 <div class="schedule-modal-header">
@@ -277,7 +269,7 @@
             </div>
         </div>
     </section>
-    </div><!-- /profileContent -->
+    </div>
 </main>
 {{end}}
 

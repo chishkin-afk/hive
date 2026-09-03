@@ -1,17 +1,14 @@
-// Глобальное состояние
 let currentPage = 1;
 const limit = 10;
 let totalPages = 1;
 let currentOffer = null;
 let authorId = null;
 
-// Пагинация для записей
 let bookingsCurrentPage = 1;
 let bookingsTotalPages = 1;
 let bookingsOfferId = null;
 const bookingsLimit = 10;
 
-// Элементы DOM
 const servicesList = document.getElementById('servicesList');
 const pagination = document.getElementById('pagination');
 const backBtn = document.getElementById('backBtn');
@@ -22,7 +19,6 @@ const createServiceBtn = document.getElementById('createServiceBtn');
 const serviceModalOverlay = document.getElementById('serviceModalOverlay');
 const serviceCreateModalOverlay = document.getElementById('serviceCreateModalOverlay');
 
-// Поля редактирования услуги
 const editServiceTitle = document.getElementById('editServiceTitle');
 const editServiceDescription = document.getElementById('editServiceDescription');
 const editServicePrice = document.getElementById('editServicePrice');
@@ -35,14 +31,12 @@ const copyURLServiceBtn = document.getElementById('copyURLServiceBtn');
 const deleteServiceBtn = document.getElementById('deleteServiceBtn');
 const editBookingsList = document.getElementById('editBookingsList');
 
-// Поля создания услуги
 const createServiceTitle = document.getElementById('createServiceTitle');
 const createServiceDescription = document.getElementById('createServiceDescription');
 const createServicePrice = document.getElementById('createServicePrice');
 const createServiceDuration = document.getElementById('createServiceDuration');
 const createServiceInterval = document.getElementById('createServiceInterval');
 
-// Получение ID авторизованного пользователя
 async function initAuth() {
     try {
         const user = await authAPI.self();
@@ -55,15 +49,11 @@ async function initAuth() {
     }
 }
 
-// Загрузка списка офферов с скелетоном
 async function loadOffers(page) {
     if (!authorId) {
         const authorized = await initAuth();
         if (!authorized) return;
     }
-    
-    // Показываем скелетон при загрузке
-    showSkeleton();
     
     try {
         const response = await offerAPI.list(authorId, page, limit);
@@ -71,7 +61,6 @@ async function loadOffers(page) {
         totalPages = response.total_pages || 0;
         currentPage = page;
         
-        // Если список пустой и это не первая страница, возвращаемся на первую
         if (response.list.length === 0 && currentPage > 1) {
             currentPage = 1;
             totalPages = 0;
@@ -88,12 +77,6 @@ async function loadOffers(page) {
     }
 }
 
-// Показ скелетона загрузки (уже есть в HTML, просто очищаем список перед загрузкой)
-function showSkeleton() {
-    // Скелетоны уже в HTML, ничего не делаем
-}
-
-// Рендеринг карточек офферов
 function renderOffers(offers) {
     const empty = document.getElementById('servicesEmpty');
     if (offers.length === 0) {
@@ -104,9 +87,8 @@ function renderOffers(offers) {
     if (empty) empty.style.display = 'none';
     
     servicesList.innerHTML = offers.map(offer => {
-        // Бэкенд возвращает price в penny, конвертируем в рубли
         let priceInRubles = 0;
-        const priceValue = offer.price_penny ?? offer.price; // пробуем оба поля
+        const priceValue = offer.price_penny ?? offer.price;
         if (priceValue !== null && priceValue !== undefined && typeof priceValue === 'number') {
             priceInRubles = priceValue / 100;
         }
@@ -134,7 +116,6 @@ function renderOffers(offers) {
     `;
     }).join('');
     
-    // Навешиваем обработчики кликов на карточки
     document.querySelectorAll('.service-card[data-offer-id]').forEach(card => {
         card.addEventListener('click', () => {
             const offerId = card.dataset.offerId;
@@ -143,7 +124,6 @@ function renderOffers(offers) {
     });
 }
 
-// Обновление отдельной карточки после редактирования
 function updateOfferCard(offer) {
     const card = document.querySelector(`.service-card[data-offer-id="${offer.id}"]`);
     if (!card) return;
@@ -157,12 +137,10 @@ function updateOfferCard(offer) {
     card.querySelector('.service-amount').textContent = priceInRubles;
 }
 
-// Обновление пагинации
 function updatePagination() {
     const paginationEl = document.getElementById('pagination');
     if (!paginationEl) return;
     
-    // Если страниц нет вообще или только одна — скрываем пагинацию
     if (totalPages === 0 || totalPages === 1) {
         paginationEl.style.display = 'none';
         return;
@@ -176,27 +154,22 @@ function updatePagination() {
     forwardBtn.classList.toggle('inactive', currentPage >= totalPages);
 }
 
-// Открытие модального окна с данными оффера
 async function openOfferModal(offerId) {
     try {
         const offer = await offerAPI.getById(offerId);
         currentOffer = offer;
         
-        // Заполнение полей модального окна
         editServiceTitle.value = offer.title;
         editServiceDescription.value = offer.description || '';
-        // Бэкенд возвращает price в penny, конвертируем в рубли
-        const priceValue = offer.price_penny ?? offer.price; // пробуем оба поля
+        const priceValue = offer.price_penny ?? offer.price;
         let priceInRubles = 0;
         if (priceValue !== null && priceValue !== undefined && typeof priceValue === 'number') {
             priceInRubles = priceValue / 100;
         }
         editServicePrice.value = priceInRubles;
         editServiceDuration.value = offer.slot_duration_minutes;
-        // Интервал: используем именно slot_interval_minutes, а не продолжительность
         editServiceInterval.value = offer.slot_interval_minutes ?? 0;
         
-        // Показать/скрыть кнопки в зависимости от статуса
         if (offer.is_active) {
             suspendServiceBtn.style.display = 'block';
             resumeServiceBtn.style.display = 'none';
@@ -205,15 +178,12 @@ async function openOfferModal(offerId) {
             resumeServiceBtn.style.display = 'block';
         }
         
-        // Загрузка записей на эту услугу
         await loadBookingsForOffer(offerId);
         
-        // Открытие модального окна
         document.body.classList.add('block-scroll');
         serviceModalOverlay.classList.add('open');
         createServiceBtn.classList.add('hide');
         
-        // Закрытие по клику вне модального окна
         serviceModalOverlay.addEventListener('mousedown', function handler(e) {
             if (e.target === this) {
                 closeOfferModal();
@@ -226,14 +196,10 @@ async function openOfferModal(offerId) {
     }
 }
 
-// Загрузка записей для услуги со скелетоном
-// Загрузка записей для услуги со скелетоном и пагинацией
 async function loadBookingsForOffer(offerId, page = 1) {
-    // Сохраняем offerId для пагинации
     bookingsOfferId = offerId;
     bookingsCurrentPage = page;
     
-    // Показываем скелетон
     editBookingsList.innerHTML = `
         <div class="booking-card loading">
             <div class="skeleton" style="width: 60%; height: 16px;"></div>
@@ -242,7 +208,6 @@ async function loadBookingsForOffer(offerId, page = 1) {
         </div>
     `;
     
-    // Скрываем пагинацию на время загрузки
     const bookingsPagination = document.getElementById('bookingsPagination');
     if (bookingsPagination) bookingsPagination.style.display = 'none';
     
@@ -264,7 +229,6 @@ async function loadBookingsForOffer(offerId, page = 1) {
             return;
         }
         
-        // Рендерим записи
         editBookingsList.innerHTML = bookings.map(item => {
             const booking = item.booking || item;
             const user = item.user || null;
@@ -305,13 +269,11 @@ async function loadBookingsForOffer(offerId, page = 1) {
             `;
         }).filter(html => html).join('');
         
-        // Показываем пагинацию и обновляем состояние
         if (bookingsPagination) {
             bookingsPagination.style.display = 'flex';
             updateBookingsPagination();
         }
         
-        // Навешиваем обработчики на кнопки отмены
         document.querySelectorAll('.booking-cancel-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
@@ -320,7 +282,6 @@ async function loadBookingsForOffer(offerId, page = 1) {
                     try {
                         await bookingAPI.cancel(bookingId);
                         showNotification('Запись отменена', 'success');
-                        // Перезагружаем записи с той же страницы
                         await loadBookingsForOffer(offerId, bookingsCurrentPage);
                     } catch (error) {
                         console.error('Ошибка отмены записи:', error);
@@ -338,7 +299,6 @@ async function loadBookingsForOffer(offerId, page = 1) {
     }
 }
 
-// Обновление пагинации записей
 function updateBookingsPagination() {
     const bookingsPagination = document.getElementById('bookingsPagination');
     if (!bookingsPagination) return;
@@ -355,26 +315,22 @@ function updateBookingsPagination() {
     if (forwardBtn) forwardBtn.disabled = bookingsCurrentPage >= bookingsTotalPages;
 }
 
-// Закрытие модального окна
 function closeOfferModal() {
     document.body.classList.remove('block-scroll');
     serviceModalOverlay.classList.remove('open');
     createServiceBtn.classList.remove('hide');
     currentOffer = null;
     
-    // Сбрасываем подсветку полей
     [editServiceTitle, editServiceDescription, editServicePrice, editServiceDuration, editServiceInterval]
         .forEach(el => el?.classList.remove('input-error', 'input-success'));
 }
 
-// Экранирование HTML
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-// Обработчики пагинации для списка услуг
 backBtn.addEventListener('click', () => {
     if (currentPage > 1) {
         currentPage--;
@@ -389,7 +345,6 @@ forwardBtn.addEventListener('click', () => {
     }
 });
 
-// Обработчики пагинации для записей
 const bookingsBackBtn = document.getElementById('bookingsBackBtn');
 const bookingsForwardBtn = document.getElementById('bookingsForwardBtn');
 
@@ -411,14 +366,11 @@ if (bookingsForwardBtn) {
     });
 }
 
-// Сохранение изменений в услуге - отправляем только изменённые поля с валидацией
 saveEditServiceBtn.addEventListener('click', async () => {
     if (!currentOffer) return;
     
-    // Сброс ошибок валидации
     clearFieldErrors();
     
-    // Валидация полей - по одному, как при создании
     const newTitle = editServiceTitle.value.trim();
     if (!newTitle || newTitle.length <= 3 || newTitle.length >= 128) {
         editServiceTitle.classList.add('input-error');
@@ -470,13 +422,10 @@ saveEditServiceBtn.addEventListener('click', async () => {
             hasChanges = true;
         }
         
-        // Нормализуем описание: если пустое — отправляем "", чтобы удалить
         const currentDescNormalized = currentOffer.description || '';
         const newDescNormalized = newDescription ? newDescription.trim() : '';
         
-        // Если описание изменилось
         if (newDescNormalized !== currentDescNormalized) {
-            // Если описание пустое — отправляем пустую строку
             updates.description = newDescNormalized;
             hasChanges = true;
         }
@@ -494,7 +443,6 @@ saveEditServiceBtn.addEventListener('click', async () => {
         }
         
         const currentInterval = currentOffer.slot_interval_minutes ?? currentOffer.slot_duration_minutes ?? 0;
-        // Сравниваем как числа, приводя к одному типу
         if (Number(newInterval) !== Number(currentInterval)) {
             updates.slotIntervalMinutes = newInterval;
             hasChanges = true;
@@ -509,17 +457,14 @@ saveEditServiceBtn.addEventListener('click', async () => {
         
         showNotification('Услуга обновлена', 'success');
         
-        // Обновляем локально поля currentOffer вручную
         if (updates.title) currentOffer.title = updates.title;
         if (updates.description !== undefined) currentOffer.description = updates.description;
         if (updates.pricePenny !== undefined) currentOffer.price_penny = updates.pricePenny;
         if (updates.slotDurationMinutes !== undefined) currentOffer.slot_duration_minutes = updates.slotDurationMinutes;
         if (updates.slotIntervalMinutes !== undefined) currentOffer.slot_interval_minutes = updates.slotIntervalMinutes;
         
-        // Обновляем карточку на странице
         updateOfferCard(currentOffer);
         
-        // Убираем подсветку полей после успешного обновления
         [editServiceTitle, editServiceDescription, editServicePrice, editServiceDuration, editServiceInterval]
             .forEach(el => el.classList.remove('input-error', 'input-success'));
     } catch (error) {
@@ -527,7 +472,6 @@ saveEditServiceBtn.addEventListener('click', async () => {
     }
 });
 
-// Приостановка услуги
 suspendServiceBtn.addEventListener('click', async () => {
     if (!currentOffer) return;
     
@@ -538,7 +482,6 @@ suspendServiceBtn.addEventListener('click', async () => {
         });
         
         showNotification('Услуга приостановлена', 'success');
-        // Меняем кнопки, не закрывая модалку
         suspendServiceBtn.style.display = 'none';
         resumeServiceBtn.style.display = 'block';
         currentOffer.is_active = false;
@@ -548,7 +491,6 @@ suspendServiceBtn.addEventListener('click', async () => {
     }
 });
 
-// Возобновление услуги
 resumeServiceBtn.addEventListener('click', async () => {
     if (!currentOffer) return;
     
@@ -559,7 +501,6 @@ resumeServiceBtn.addEventListener('click', async () => {
         });
         
         showNotification('Услуга возобновлена', 'success');
-        // Меняем кнопки, не закрывая модалку
         suspendServiceBtn.style.display = 'block';
         resumeServiceBtn.style.display = 'none';
         currentOffer.is_active = true;
@@ -569,7 +510,6 @@ resumeServiceBtn.addEventListener('click', async () => {
     }
 });
 
-// Копирование ссылки на услугу
 copyURLServiceBtn.addEventListener('click', () => {
     if (!currentOffer) return;
     
@@ -581,7 +521,6 @@ copyURLServiceBtn.addEventListener('click', () => {
     });
 });
 
-// Удаление услуги
 deleteServiceBtn.addEventListener('click', async () => {
     if (!currentOffer) return;
     
@@ -599,7 +538,6 @@ deleteServiceBtn.addEventListener('click', async () => {
     }
 });
 
-// Маппинг ошибок бэкенда к полям формы
 const FIELD_ERROR_MAP = [
     { field: 'createServiceTitle', patterns: ['title', 'название'], message: 'Название должно быть больше 3 и меньше 128 символов' },
     { field: 'createServiceDescription', patterns: ['description', 'описание'], message: 'Описание не должно превышать 512 символов' },
@@ -628,7 +566,6 @@ function handleApiError(error, context = 'create') {
     const msg = (error.message || '').toLowerCase();
     const status = error.status;
     
-    // Пробуем найти подходящее поле по сообщению об ошибке
     for (const rule of FIELD_ERROR_MAP) {
         if (rule.patterns.some(p => msg.includes(p))) {
             highlightFieldError(rule.field);
@@ -637,7 +574,6 @@ function handleApiError(error, context = 'create') {
         }
     }
     
-    // Если не нашли специфичное поле, показываем общую ошибку
     if (status === 400) {
         showNotification('Проверьте корректность заполненных данных', 'error');
     } else if (status === 401) {
@@ -649,7 +585,6 @@ function handleApiError(error, context = 'create') {
     }
 }
 
-// Валидация при вводе - убираем ошибку при корректном вводе
 function setupLiveValidation() {
     const validators = [
         { 
@@ -661,7 +596,6 @@ function setupLiveValidation() {
             element: createServiceDescription, 
             test: (v) => {
                 const trimmed = v.trim();
-                // Либо пусто, либо больше 3 символов
                 return !trimmed || trimmed.length > 3;
             },
             emptyIsOk: true 
@@ -685,7 +619,7 @@ function setupLiveValidation() {
         { 
             element: createServiceInterval, 
             test: (v) => {
-                if (!v.trim()) return true; // пустое поле ок (будет 0)
+                if (!v.trim()) return true;
                 const num = parseInt(v, 10);
                 return !isNaN(num) && num >= 0;
             },
@@ -700,7 +634,6 @@ function setupLiveValidation() {
             element: editServiceDescription, 
             test: (v) => {
                 const trimmed = v.trim();
-                // Либо пусто, либо больше 3 символов
                 return !trimmed || trimmed.length > 3;
             },
             emptyIsOk: true 
@@ -747,13 +680,10 @@ function setupLiveValidation() {
     });
 }
 
-// Создание новой услуги с валидацией
 const saveCreateServiceBtn = document.getElementById('saveCreateServiceBtn');
 saveCreateServiceBtn?.addEventListener('click', async () => {
-    // Сброс ошибок валидации
     clearFieldErrors();
     
-    // Валидация полей - проверяем по одному, останавливаемся на первой ошибке
     const title = createServiceTitle.value.trim();
     if (!title || title.length <= 3 || title.length >= 128) {
         createServiceTitle.classList.add('input-error');
@@ -786,10 +716,9 @@ saveCreateServiceBtn?.addEventListener('click', async () => {
         return;
     }
     
-    // Интервал: если не заполнен - ставим 0, иначе проверяем на отрицательное число
     let interval = parseInt(createServiceInterval.value, 10);
     if (isNaN(interval) || createServiceInterval.value.trim() === '') {
-        interval = 0; // По умолчанию 0, если не указано
+        interval = 0;
     } else if (interval < 0) {
         createServiceInterval.classList.add('input-error');
         createServiceInterval.focus();
@@ -808,19 +737,16 @@ saveCreateServiceBtn?.addEventListener('click', async () => {
             slotIntervalMinutes: interval,
         });
         
-        // Закрытие модального окна
         document.body.classList.remove('block-scroll');
         serviceCreateModalOverlay.classList.remove('open');
         createServiceBtn.classList.remove('hide');
         
-        // Очистка полей
         createServiceTitle.value = '';
         createServiceDescription.value = '';
         createServicePrice.value = '';
         createServiceDuration.value = '';
         createServiceInterval.value = '';
         
-        // Перезагрузка списка
         loadOffers(1);
     } catch (error) {
         handleApiError(error, 'create');
@@ -842,7 +768,6 @@ createServiceBtn.addEventListener('click', () => {
     });
 });
 
-// Уведомления
 function showNotification(message, type = 'info') {
     const existing = document.querySelector('.notification-toast');
     if (existing) existing.remove();
@@ -860,6 +785,5 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-// Инициализация при загрузке страницы
 setupLiveValidation();
 loadOffers(currentPage);

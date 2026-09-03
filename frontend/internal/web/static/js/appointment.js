@@ -1,18 +1,14 @@
-// ===== МОДУЛЬ ЗАПИСИ =====
 (function() {
     'use strict';
     
-    // Защита от повторной инициализации
     if (window.__appointmentModuleInitialized) return;
     window.__appointmentModuleInitialized = true;
     
-    // Получаем API из глобальной области видимости
     const offerAPI = window.offerAPI;
     const bookingAPI = window.bookingAPI;
     const scheduleAPI = window.scheduleAPI;
     const authAPI = window.authAPI;
     
-    // ===== КОНФИГУРАЦИЯ =====
     const pathParts = window.location.pathname.split('/').filter(Boolean);
     const APP_CONFIG = {
         offerId: pathParts[1] || '',
@@ -25,18 +21,15 @@
     const BOOKING_ID = APP_CONFIG.bookingId;
     const MODE = APP_CONFIG.mode;
     
-    // ===== СОСТОЯНИЕ =====
     let currentOffer = null;
     let selectedDate = null;
     let selectedTime = null;
     let existingBooking = null;
     
-    // ===== DOM ЭЛЕМЕНТЫ =====
     let daysSelector, backBtn, forwardBtn, monthTitle;
     let confirmationOverlay, confirmationCloseBtn, confirmationSubmitBtn;
     let offerDateEl, offerTimeEl, groupInput;
     
-    // ===== ИНИЦИАЛИЗАЦИЯ DOM =====
     function initDOM() {
         daysSelector = document.getElementById('daysSelector');
         backBtn = document.getElementById('backBtn');
@@ -50,15 +43,12 @@
         groupInput = document.getElementById('groupInput');
     }
     
-    // ===== ПРОВЕРКА АВТОРИЗАЦИИ =====
     async function checkAuth() {
         try {
             await window.authAPI.self();
             return true;
         } catch (error) {
-            // 400 или 401 — пользователь не авторизован, это нормально
             if (error.status === 400 || error.status === 401) {
-                // Если токен невалидный, очищаем куки
                 if (error.status === 401) {
                     await fetch('/api/v1/auth/logout', {
                         method: 'POST',
@@ -67,13 +57,11 @@
                 }
                 return false;
             }
-            // Другие ошибки — логируем
             console.error('Auth check failed:', error);
             return false;
         }
     }
     
-    // ===== ГЕНЕРАЦИЯ КАЛЕНДАРЯ =====
     async function generateCalendar() {
         if (!daysSelector) return;
         daysSelector.innerHTML = '';
@@ -365,7 +353,6 @@
             return;
         }
         
-        // Обновляем данные в модалке
         const serviceTitleInModal = document.querySelector('#step1 .service-title');
         const servicePriceInModal = document.querySelector('#step1 .service-amount');
         if (serviceTitleInModal && currentOffer) {
@@ -389,19 +376,14 @@
     }
     
     function closeConfirmation() {
-        // Сначала скрываем оверлей
         confirmationOverlay.classList.remove('open');
         document.body.classList.remove('block-scroll');
         
-        // Сбрасываем всё состояние модалки после завершения анимации закрытия
         setTimeout(() => {
-            // Скрываем все шаги, чтобы не было видно переключения
             document.querySelectorAll('.confirmation-step').forEach(step => step.classList.remove('active'));
             
-            // Очищаем поля ввода
             document.querySelectorAll('.confirmation-step input').forEach(input => input.value = '');
             
-            // Сбрасываем режим входа (если был переключен)
             const passwordGroup = document.getElementById('passwordGroup');
             const firstnameGroup = document.getElementById('firstnameGroup');
             const forgotBtn = document.getElementById('forgotPasswordBtn');
@@ -414,10 +396,8 @@
             title.textContent = 'Введите данные';
             submitBtn.textContent = 'Продолжить';
             
-            // Показываем шаг 1 уже после того, как оверлей полностью скрыт
             showStep(1);
             
-            // Сбрасываем выбранное время
             document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('active'));
             selectedTime = null;
         }, 300);
@@ -440,7 +420,6 @@
                 await window.bookingAPI.create({ offerId: OFFER_ID, comment: comment, startTime: startTime });
                 showNotification('Запись создана!', 'success');
                 
-                // Заполняем данные в финальном окне
                 const dateObj = new Date(selectedDate);
                 const dateStr = dateObj.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                 document.getElementById('offerDateConfirmed').textContent = dateStr;
@@ -449,17 +428,14 @@
                 
                 showStep(5);
                 
-                // Обновляем слоты после успешной записи (с задержкой, чтобы модалка успела отрисоваться)
                 if (selectedDate) {
                     setTimeout(() => loadTimeSlots(selectedDate), 300);
                 }
             } else {
                 await window.bookingAPI.update({ bookingId: BOOKING_ID, isCancelled: existingBooking.is_cancelled, comment: comment, startTime: startTime });
                 showNotification('Запись обновлена!', 'success');
-                // Закрываем модалку после успешного обновления
                 setTimeout(() => {
                     closeConfirmation();
-                    // Обновляем слоты после изменения записи
                     if (selectedDate) {
                         loadTimeSlots(selectedDate);
                     }
@@ -471,7 +447,6 @@
         }
     }
     
-    // ===== ОБРАБОТКА ШАГА 2 (EMAIL/ПАРОЛЬ/ИМЯ) =====
     async function handleStep2() {
         const emailInput = document.getElementById('emailInput');
         const email = emailInput ? emailInput.value.trim() : '';
@@ -484,7 +459,6 @@
         
         if (!email || !isValidEmail(email)) {
             showNotification('Введите корректный email', 'error');
-            // Скрываем поле имени, если оно видно
             const firstnameGroup = document.getElementById('firstnameGroup');
             if (firstnameGroup) firstnameGroup.style.display = 'none';
             return;
@@ -493,15 +467,13 @@
         window.registrationEmail = email;
         const isLoginMode = passwordGroup.style.display !== 'none';
         
-        // === РЕЖИМ ВХОДА ===
         if (isLoginMode) {
-            // ПРИНУДИТЕЛЬНО СКРЫВАЕМ ПОЛЕ ИМЕНИ
             firstnameGroup.style.display = 'none';
             
             if (!password || password.length < 6) {
                 showNotification('Введите пароль (минимум 6 символов)', 'error');
                 passwordInput.focus();
-                return; // ВЫХОДИМ ИЗ ФУНКЦИИ
+                return;
             }
             
             try {
@@ -518,12 +490,10 @@
                 } else {
                     showNotification(mapErrorMessage(error), 'error');
                 }
-                return; // ВЫХОДИМ ИЗ ФУНКЦИИ, ЧТОБЫ НЕ ПОКАЗЫВАТЬ ПОЛЕ ИМЕНИ
+                return;
             }
         }
         
-        // === РЕЖИМ РЕГИСТРАЦИИ ===
-        // Проверяем, существует ли пользователь
         let userExists = false;
         try {
             await window.authAPI.login(email, 'dummy_password_for_check');
@@ -534,7 +504,6 @@
         }
         
         if (userExists) {
-            // Переключаем на режим входа
             const title = document.getElementById('step2Title');
             const submitBtn = document.getElementById('emailSubmitBtn');
             const forgotBtn = document.getElementById('forgotPasswordBtn');
@@ -562,7 +531,6 @@
             return;
         }
         
-        // === РЕГИСТРАЦИЯ: ВВОД ИМЕНИ ===
         if (!firstname || firstname.length === 0) {
             showNotification('Введите имя для регистрации', 'info');
             return;
@@ -602,7 +570,6 @@
         }
     }
     
-    // ===== ОБРАБОТКА ШАГА 3 (КОД ПОДТВЕРЖДЕНИЯ) =====
     async function handleStep3() {
         const authCode = document.getElementById('authCode');
         const code = authCode ? authCode.value.trim() : '';
@@ -622,7 +589,6 @@
         }
     }
     
-    // ===== ОСНОВНАЯ ЛОГИКА SUBMIT =====
     async function submitBooking() {
         if (!selectedDate || !selectedTime) {
             showNotification('Выберите дату и время', 'error');
@@ -642,7 +608,6 @@
                     await createBooking();
                 } else {
                     showStep(2);
-                    // Сбрасываем состояние шага 2
                     const passwordGroup = document.getElementById('passwordGroup');
                     const firstnameGroup = document.getElementById('firstnameGroup');
                     passwordGroup.style.display = 'none';
@@ -653,7 +618,6 @@
                 break;
                 
             case 'step2':
-                // Показываем поле имени при входе в шаг 2
                 document.getElementById('firstnameGroup').style.display = 'flex';
                 await handleStep2();
                 break;
@@ -671,7 +635,6 @@
         }
     }
     
-    // ===== ОБРАБОТКА ШАГА 4 (регистрация с кодом) =====
     async function handleStep4() {
         const firstnameInput = document.getElementById('authFirstname');
         const authCodeNew = document.getElementById('authCodeNew');
@@ -717,11 +680,9 @@
         }, 3000);
     }
 
-    // ===== МАППИНГ ОШИБОК БЭКЕНДА =====
     function mapErrorMessage(error) {
         if (!error) return 'Неизвестная ошибка';
         
-        // Если ошибка уже содержит понятное сообщение
         if (error.message && !error.message.includes('unknown error')) {
             const msg = error.message.toLowerCase();
             if (msg.includes('too much bookings') || msg.includes('too many bookings')) {
@@ -813,7 +774,6 @@
                 selectedDate = bookingDate.toISOString().split('T')[0];
                 selectedTime = bookingDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                 
-                // Предзаполняем комментарий
                 const groupInput = document.getElementById('groupInput');
                 if (groupInput) {
                     groupInput.value = existingBooking.comment || '';
@@ -824,7 +784,6 @@
             setupCalendarScrollBtns();
             setupEvents();
             
-            // Если есть выбранная дата (например, при редактировании), загружаем слоты
             if (selectedDate) {
                 await loadTimeSlots(selectedDate);
             }
@@ -835,6 +794,5 @@
         }
     }
     
-    // Запуск
     init();
 })();

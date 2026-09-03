@@ -1,5 +1,3 @@
-/* MAIN */
-
 .container {
     width: 100%;
     min-height: 100svh;
@@ -31,7 +29,6 @@
     gap: 16px;
 }
 
-/* EMPTY STATE */
 .services-empty {
     width: min(760px, 100%);
     display: flex;
@@ -326,7 +323,6 @@
     transform: translateY(-3px);    
 }
 
-/* Пагинация записей */
 .bookings-pagination {
     display: flex;
     justify-content: center;
@@ -364,7 +360,6 @@
     font-size: 14px;
 }
 
-/* Скелетон для записей */
 .booking-card.loading {
     pointer-events: none;
     user-select: none;
@@ -393,7 +388,6 @@
     animation: shimmer 2s infinite;
 }
 
-/* Валидация полей (как в profile.css) */
 .service-modal-main input.input-error,
 .service-modal-main textarea.input-error {
     border-color: var(--color-error) !important;
@@ -406,7 +400,6 @@
     background-color: rgba(60, 221, 116, 0.08) !important;
 }
 
-/* Уведомления (как в profile.css) */
 .notification-toast {
     position: fixed;
     top: 20px;
@@ -448,8 +441,6 @@
     border-color: var(--color-bg-tertiary);
 }
 
-/* BACKGROUND */
-
 .background-circles {
     width: 100%;
     height: 100vh;
@@ -485,8 +476,6 @@
     animation: floatRight ease-in-out 8s infinite alternate;
     animation-delay: 1s;
 }
-
-/* CREATE SERVICE */
 
 .create-service-btn {
     position: fixed;

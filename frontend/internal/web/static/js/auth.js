@@ -1,18 +1,12 @@
-// ===== КОНФИГ =====
 const REDIRECT_AFTER_LOGIN = '/services';
 const LS_EMAIL = 'auth_confirm_email';
 const LS_EXPIRES = 'auth_resend_expires_at';
 
-// ===== УТИЛИТЫ =====
-
-/** Конвертирует next_send_at (unix, секунды) → миллисекунды, минимум +3с, фолбек +60с. */
 function normalizeNextSendAt(resp) {
     let ms = resp?.next_send_at ? resp.next_send_at * 1000 : Date.now() + 60_000;
     const floor = Date.now() + 3_000;
     return ms < floor ? floor : ms;
 }
-
-// ===== DOM-ХЕЛПЕРЫ =====
 
 const $ = (id) => document.getElementById(id);
 
@@ -48,8 +42,6 @@ function clearConfirmState() {
     }
 }
 
-// ===== УВЕДОМЛЕНИЯ =====
-
 function showNotification(message, type = 'info') {
     const existing = document.querySelector('.notification-toast');
     if (existing) existing.remove();
@@ -66,8 +58,6 @@ function showNotification(message, type = 'info') {
         setTimeout(() => toast.remove(), 300);
     }, 4000);
 }
-
-// ===== ВАЛИДАЦИЯ НА ЛЕТУ =====
 
 function setupLiveValidation() {
     const rules = [
@@ -103,8 +93,6 @@ function setupLiveValidation() {
     }
 }
 
-// ===== TOGGLE ПАРОЛЯ =====
-
 document.querySelectorAll('.password-toggle').forEach(el => {
     el.addEventListener('click', function () {
         const input = this.closest('.password-wrapper').querySelector('.form-input');
@@ -122,16 +110,12 @@ document.querySelectorAll('.password-toggle').forEach(el => {
     });
 });
 
-// ===== ПЕРЕКЛЮЧЕНИЕ ФОРМ =====
-
 document.querySelectorAll('.switch-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         $('loginForm').classList.toggle('active');
         $('registerForm').classList.toggle('active');
     });
 });
-
-// ===== АДАПТАЦИЯ ОШИБОК =====
 
 const ERROR_MAP = [
     { field: null,        match: (s) => s === 409,                                                     text: 'Пользователь с таким email уже существует.' },
@@ -147,7 +131,6 @@ const ERROR_MAP = [
     { field: 'regEmail',  match: (s, m) => m.includes('exist') || m.includes('существует') || m.includes('занят'), text: 'Пользователь с таким email уже существует.' },
 ];
 
-// 404 различается по контексту
 const CONTEXT_404 = {
     login:   { field: 'loginEmail', text: 'Пользователь с таким email не найден.' },
     confirm: { field: 'confirmCode', text: 'Неверный код подтверждения.' },
@@ -158,7 +141,6 @@ function formatError(err, context = '') {
     const status = err.status || 0;
     const msg = (err.message || '').toLowerCase();
 
-    // 404 обрабатываем отдельно — зависит от контекста
     if (status === 404 && CONTEXT_404[context]) {
         return CONTEXT_404[context];
     }
@@ -169,15 +151,11 @@ function formatError(err, context = '') {
     return { field: 'regEmail', text: err.message || 'Произошла неизвестная ошибка.' };
 }
 
-// ===== ВАЛИДАЦИЯ ПОЛЕЙ =====
-
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function isValidPhone(phone) {
     return /^(\+7|8)\d{10}$/.test(phone.replace(/[\s\-\(\)]/g, ''));
 }
-
-// ===== ЛОГИН =====
 
 async function login() {
     const emailInput = $('loginEmail');
@@ -204,8 +182,6 @@ async function login() {
     }
 }
 
-// ===== РЕГИСТРАЦИЯ =====
-
 async function register() {
     const inputs = {
         firstname: $('regFirstname'),
@@ -227,7 +203,6 @@ async function register() {
 
     clearFieldErrors('#registerForm');
 
-    // Валидация
     const fail = (el, msg) => { el.classList.add('error'); showNotification(msg, 'error'); };
 
     if (!firstname)              { fail(inputs.firstname, 'Введите имя'); return; }
@@ -257,8 +232,6 @@ async function register() {
     }
 }
 
-// ===== ПОДТВЕРЖДЕНИЕ КОДА =====
-
 async function confirmEmail() {
     const email = localStorage.getItem(LS_EMAIL);
     const codeInput = $('confirmCode');
@@ -280,8 +253,6 @@ async function confirmEmail() {
         showNotification(e.text, 'error');
     }
 }
-
-// ===== ПОВТОРНАЯ ОТПРАВКА КОДА =====
 
 async function resendCode() {
     const email = localStorage.getItem(LS_EMAIL);
@@ -321,8 +292,6 @@ async function resendCode() {
     }
 }
 
-// ===== ВЫХОД ИЗ ПОДТВЕРЖДЕНИЯ =====
-
 function cancelConfirmation() {
     clearConfirmState();
     showForm('registerForm');
@@ -330,8 +299,6 @@ function cancelConfirmation() {
     unlockResendBtn();
     showNotification('Вы вернулись к регистрации', 'info');
 }
-
-// ===== ТАЙМЕР =====
 
 function startResendTimer() {
     const btn = $('resendBtn');
@@ -362,8 +329,6 @@ function startResendTimer() {
     tick();
     window._resendTimer = setInterval(tick, 1000);
 }
-
-// ===== ВОССТАНОВЛЕНИЕ ПАРОЛЯ: ШАГ 1 — ОТПРАВКА EMAIL =====
 
 const FORGOT_COOLDOWN_MS = 60_000;
 
@@ -415,7 +380,6 @@ function restoreForgotTimer() {
         unlockForgotBtn();
         return;
     }
-    // Кнопка заблокирована, запускаем таймер
     const btn = $('forgotBtn');
     lockForgotBtn();
     if (forgotTimer) clearInterval(forgotTimer);
@@ -444,7 +408,6 @@ async function forgotPassword() {
     if (!email)              { emailInput.classList.add('error'); showNotification('Введите email', 'error'); return; }
     if (!RE_EMAIL.test(email)) { emailInput.classList.add('error'); showNotification('Введите корректный email', 'error'); return; }
 
-    // Проверяем, не заблокирована ли кнопка
     const expiresAt = localStorage.getItem('auth_forgot_expires');
     if (expiresAt && Date.now() < parseInt(expiresAt, 10)) {
         showNotification('Подождите, пока истечёт таймер.', 'error');
@@ -462,8 +425,6 @@ async function forgotPassword() {
     }
 }
 
-// ===== ВОССТАНОВЛЕНИЕ =====
-
 function restoreAuthState() {
     if (localStorage.getItem(LS_EMAIL)) {
         showForm('confirmForm');
@@ -471,10 +432,7 @@ function restoreAuthState() {
     }
 }
 
-// ===== СОБЫТИЯ =====
-
 document.addEventListener('DOMContentLoaded', () => {
-    // На странице /reset/ свой скрипт, auth.js не нужен
     if (!$('loginForm') && !$('registerForm')) return;
 
     setupLiveValidation();
@@ -489,7 +447,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelBtn = $('cancelConfirmBtn');
     if (cancelBtn) cancelBtn.addEventListener('click', cancelConfirmation);
 
-    // Восстановление пароля
     const forgotLink = $('forgotPasswordLink');
     if (forgotLink) forgotLink.addEventListener('click', (e) => { e.preventDefault(); showForm('forgotForm'); });
 

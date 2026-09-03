@@ -14,9 +14,7 @@ menuLinks.forEach(link => {
     link.addEventListener('click', toggleMobileMenu);
 });
 
-// Проверка авторизации (проверяем наличие токена в куках)
 function checkAuth() {
-    // Проверяем, есть ли токен в куках
     const cookies = document.cookie.split(';');
     for (let cookie of cookies) {
         cookie = cookie.trim();
@@ -27,7 +25,6 @@ function checkAuth() {
     return false;
 }
 
-// Загрузка тарифов для лендинга
 async function loadLandingRates() {
     const grid = document.getElementById('pricingGrid');
     if (!grid) return;
@@ -46,7 +43,6 @@ async function loadLandingRates() {
     }
 }
 
-// Прямая загрузка тарифов через fetch (на случай, если paymentAPI не инициализирован)
 async function loadRatesDirect(grid) {
     try {
         const apiUrl = window.APP_CONFIG?.apiUrl || '';
@@ -80,7 +76,6 @@ function showRatesError(grid) {
 }
 
 function renderLandingRates(grid, rates) {
-    // Удаляем скелетоны
     grid.querySelectorAll('.pricing-card.loading').forEach(el => el.remove());
 
     if (!rates || rates.length === 0) {
@@ -93,7 +88,6 @@ function renderLandingRates(grid, rates) {
         grid.appendChild(card);
     });
 
-    // Принудительно добавляем класс visible для новых карточек
     grid.querySelectorAll('.pricing-card:not(.loading)').forEach(el => {
         el.classList.add('visible');
     });
@@ -118,7 +112,6 @@ function buildLandingRateCard(rate) {
 
     const btn = card.querySelector('.pricing-btn');
     btn.addEventListener('click', async () => {
-        // Проверяем, авторизован ли пользователь
         if (!checkAuth()) {
             window.location.href = '/auth';
             return;
@@ -148,7 +141,6 @@ function buildLandingRateCard(rate) {
     return card;
 }
 
-// Простая функция для экранирования HTML
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.appendChild(document.createTextNode(str));
@@ -171,7 +163,6 @@ document.addEventListener('DOMContentLoaded', () => {
     `)
         .forEach(el => observer.observe(el));
 
-    // Загружаем тарифы после того, как страница полностью загружена
     loadLandingRates();
 });
 

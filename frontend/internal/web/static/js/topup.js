@@ -1,14 +1,8 @@
-// =====================================================================
-// topup.js — тарифы и история платежей
-// =====================================================================
-
 document.addEventListener('DOMContentLoaded', () => {
   loadTrialStatus();
   loadRates();
   loadHistory();
 });
-
-// -------------------------------- Helpers --------------------------------
 
 const STATUS_MAP = {
   0: { label: 'Неизвестно', badge: 'badge-unknown' },
@@ -39,19 +33,15 @@ function fmtDate(ts) {
   return day + '.' + month + '.' + d.getFullYear();
 }
 
-// -------------------------------- Trial ----------------------------------
-
 async function loadTrialStatus() {
   const btn = document.getElementById('trialBtn');
   if (!btn) return;
 
-  // Проверяем, есть ли у пользователя активный paid_until (используем authAPI.self())
   try {
     const user = await authAPI.self();
     if (user && user.paid_until) {
       const now = Math.floor(Date.now() / 1000);
       if (user.paid_until > now) {
-        // У пользователя есть активная подписка или триал — скрываем блок
         const section = document.querySelector('.trial-section');
         if (section) section.style.display = 'none';
         return;
@@ -61,7 +51,6 @@ async function loadTrialStatus() {
     console.log('Не удалось проверить paid_until, проверяем платежи');
   }
 
-  // Если нет paid_until, проверяем оплаченные платежи
   try {
     const data = await paymentAPI.listPayments(1, 50);
     const hasActivePayment = data.list.some(p => p.status_int === 2);
@@ -100,8 +89,6 @@ async function onTrialClick(e) {
     }
   }
 }
-
-// -------------------------------- Rates ----------------------------------
 
 async function loadRates() {
   const grid = document.querySelector('.plans-grid');
@@ -180,8 +167,6 @@ async function onSelectRate(rate, btn) {
   }
 }
 
-// -------------------------------- History --------------------------------
-
 async function loadHistory() {
   const list = document.getElementById('historyList');
   if (!list) return;
@@ -238,7 +223,6 @@ function buildHistoryRow(p) {
     '<span class="history-badge ' + badgeClass + '">' + statusLabel(p.status_int) + '</span>' +
     '</span>';
 
-  // клик для перехода к платежу / квитанции
   div.style.cursor = 'pointer';
   div.title = 'Перейти к платежу';
   div.setAttribute('role', 'button');
@@ -253,8 +237,6 @@ function goToPayment(payment) {
   const url = 'https://yoomoney.ru/checkout/payments/v2/contract?orderId=' + encodeURIComponent(orderId);
   window.location.href = url;
 }
-
-// -------------------------------- Sanitize -------------------------------
 
 function escapeHtml(str) {
   const div = document.createElement('div');
