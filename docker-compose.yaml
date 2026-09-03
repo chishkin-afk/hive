@@ -65,6 +65,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  hive-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hive-frontend
+    ports:
+      - "8091:8091"
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:
