@@ -276,10 +276,22 @@
     </div>
 </section>
 
-{{template "footer_landing" .}}
-{{end}}
+<div id="cookieConsentBanner" class="cookie-banner" style="display: none;">
+    <div class="cookie-banner-content">
+        <div class="cookie-banner-text">
+            <p>Мы используем файлы cookie для улучшения работы сайта и сбора статистики.</p>
+        </div>
+        <div class="cookie-banner-actions">
+            <button id="cookieAcceptBtn" class="cookie-btn cookie-btn-primary">Принять</button>
+            <button id="cookieRejectBtn" class="cookie-btn cookie-btn-secondary">Отказаться</button>
+        </div>
+    </div>
+</div>
+
+{{template "footer_landing" .}}{{end}}
 
 {{define "landing_extra_scripts"}}
+<script src="/static/js/cookie-consent.js"></script>
 <script src="/static/js/landing.js"></script>
 <script src="/static/js/footer.js"></script>
 {{end}}
