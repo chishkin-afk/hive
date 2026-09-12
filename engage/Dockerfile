@@ -15,7 +15,6 @@ COPY --from=builder /bin/app app
 
 COPY --from=builder /app/migrations /migrations
 COPY --from=builder /app/config/config.yml /config/config.yml
-COPY --from=builder /app/.env .env
 
 EXPOSE 8041
 

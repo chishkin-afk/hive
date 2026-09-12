@@ -41,6 +41,12 @@ tasks:
   qstart:
     dir: .
     cmds:
-      - cp -n ./backend/.env.example ./backend/.env || true
+      - cp ./backend/.env.example ./backend/.env || true
       - task: jwt-keys
       - docker-compose --env-file ./backend/.env up -d
+
+  start:
+    dir: .
+    cmds:
+      - task: jwt-keys
+      - docker-compose --env-file ./backend/.env --env-file ./frontend/.env --env-file ./engage/.env up -d

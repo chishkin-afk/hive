@@ -15,7 +15,6 @@ COPY --from=builder /bin/app app
 
 COPY --from=builder /app/configs/dev.yml /configs/dev.yml
 COPY --from=builder /app/internal/web /internal/web
-COPY --from=builder /app/.env .env
 
 EXPOSE 8091
 
