@@ -39,28 +39,20 @@ async function loadTrialStatus() {
 
   try {
     const user = await authAPI.self();
-    if (user && user.paid_until) {
-      const now = Math.floor(Date.now() / 1000);
-      if (user.paid_until > now) {
-        const section = document.querySelector('.trial-section');
-        if (section) section.style.display = 'none';
-        return;
-      }
-    }
-  } catch (err) {
-    console.log('Не удалось проверить paid_until, проверяем платежи');
-  }
+    const now = Math.floor(Date.now() / 1000);
+    const isPaid = user && user.paid_until && user.paid_until > now;
+    const trialUsed = user && user.trial_used;
 
-  try {
-    const data = await paymentAPI.listPayments(1, 50);
-    const hasActivePayment = data.list.some(p => p.status_int === 2);
-    if (hasActivePayment) {
+    if (isPaid || trialUsed) {
       const section = document.querySelector('.trial-section');
       if (section) section.style.display = 'none';
       return;
     }
   } catch (err) {
-    console.log('Не удалось проверить историю платежей, показываем кнопку');
+    console.log('Не удалось проверить статус подписки, скрываем кнопку триала');
+    const section = document.querySelector('.trial-section');
+    if (section) section.style.display = 'none';
+    return;
   }
 
   btn.addEventListener('click', onTrialClick);
