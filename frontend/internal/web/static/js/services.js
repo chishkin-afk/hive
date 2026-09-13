@@ -9,6 +9,8 @@ let bookingsTotalPages = 1;
 let bookingsOfferId = null;
 const bookingsLimit = 10;
 
+let bookingIdToCancel = null;
+
 const servicesList = document.getElementById('servicesList');
 const pagination = document.getElementById('pagination');
 const backBtn = document.getElementById('backBtn');
@@ -18,6 +20,10 @@ const totalPagesSpan = document.getElementById('totalPages');
 const createServiceBtn = document.getElementById('createServiceBtn');
 const serviceModalOverlay = document.getElementById('serviceModalOverlay');
 const serviceCreateModalOverlay = document.getElementById('serviceCreateModalOverlay');
+const cancelOverlay = document.getElementById('cancelOverlay');
+const cancelClose = document.getElementById('cancelClose');
+const cancelConfirm = document.getElementById('cancelConfirm');
+const cancelText = document.getElementById('cancelText');
 
 const editServiceTitle = document.getElementById('editServiceTitle');
 const editServiceDescription = document.getElementById('editServiceDescription');
@@ -275,19 +281,14 @@ async function loadBookingsForOffer(offerId, page = 1) {
         }
         
         document.querySelectorAll('.booking-cancel-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+            btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const bookingId = btn.dataset.bookingId;
-                if (confirm('Вы уверены, что хотите отменить эту запись?')) {
-                    try {
-                        await bookingAPI.cancel(bookingId);
-                        showNotification('Запись отменена', 'success');
-                        await loadBookingsForOffer(offerId, bookingsCurrentPage);
-                    } catch (error) {
-                        console.error('Ошибка отмены записи:', error);
-                        showNotification('Не удалось отменить запись', 'error');
-                    }
-                }
+                if (!bookingId) return;
+                const card = btn.closest('.booking-card');
+                const userEl = card ? card.querySelector('.booking-user') : null;
+                const userName = userEl ? userEl.textContent : '';
+                openCancelModal(bookingId, userName);
             });
         });
         
@@ -323,6 +324,54 @@ function closeOfferModal() {
     
     [editServiceTitle, editServiceDescription, editServicePrice, editServiceDuration, editServiceInterval]
         .forEach(el => el?.classList.remove('input-error', 'input-success'));
+}
+
+function openCancelModal(bookingId, userName) {
+    bookingIdToCancel = bookingId;
+    if (cancelOverlay) {
+        cancelOverlay.classList.add('open');
+        cancelOverlay.removeAttribute('aria-hidden');
+        document.body.classList.add('block-scroll');
+        const firstFocusable = cancelOverlay.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (firstFocusable) {
+            setTimeout(() => firstFocusable.focus(), 100);
+        }
+    }
+}
+
+function closeCancelModal() {
+    bookingIdToCancel = null;
+    if (cancelOverlay) {
+        cancelOverlay.classList.remove('open');
+        cancelOverlay.setAttribute('aria-hidden', 'true');
+    }
+    document.body.classList.remove('block-scroll');
+}
+
+if (cancelClose) {
+    cancelClose.addEventListener('click', closeCancelModal);
+}
+
+if (cancelOverlay) {
+    cancelOverlay.addEventListener('mousedown', (e) => {
+        if (e.target === cancelOverlay) closeCancelModal();
+    });
+}
+
+if (cancelConfirm) {
+    cancelConfirm.addEventListener('click', async () => {
+        if (!bookingIdToCancel || !currentOffer) return;
+        const offerId = currentOffer.id;
+        try {
+            await bookingAPI.cancel(bookingIdToCancel);
+            closeCancelModal();
+            showNotification('Запись отменена', 'success');
+            await loadBookingsForOffer(offerId, bookingsCurrentPage);
+        } catch (error) {
+            console.error('Ошибка отмены записи:', error);
+            showNotification('Не удалось отменить запись', 'error');
+        }
+    });
 }
 
 function escapeHtml(text) {

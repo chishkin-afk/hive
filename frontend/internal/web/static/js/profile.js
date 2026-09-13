@@ -377,9 +377,9 @@
             if (profileChanged) {
                 await authAPI.update(
                     payload.notification || {},
-                    payload.firstname || null,
-                    payload.lastname || null,
-                    payload.phone_number || null,
+                    'firstname' in payload ? payload.firstname : null,
+                    'lastname' in payload ? payload.lastname : null,
+                    'phone_number' in payload ? payload.phone_number : null,
                     payload.on_vacation != null ? payload.on_vacation : null
                 );
                 const user = await authAPI.self();
