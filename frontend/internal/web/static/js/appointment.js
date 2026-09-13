@@ -514,7 +514,12 @@
             submitBtn.textContent = 'Войти';
             forgotBtn.textContent = 'Восстановить пароль?';
             forgotBtn.style.display = 'block';
+            setupForgotPasswordCooldown(forgotBtn);
             forgotBtn.onclick = async function() {
+                if (isForgotPasswordCooldown()) {
+                    showNotification('Подождите минуту перед повторной отправкой', 'error');
+                    return;
+                }
                 const email = document.getElementById('emailInput').value.trim();
                 if (!email || !isValidEmail(email)) {
                     showNotification('Введите корректный email', 'error');
@@ -523,6 +528,7 @@
                 try {
                     await window.authAPI.forget_password(email);
                     showNotification('Ссылка для восстановления отправлена на почту', 'success');
+                    startForgotPasswordCooldown(forgotBtn);
                 } catch (error) {
                     showNotification(mapErrorMessage(error), 'error');
                 }
@@ -664,6 +670,73 @@
     
     function isValidEmail(email) {
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    const FORGOT_PASSWORD_COOLDOWN_KEY = 'auth_forgot_expires';
+    const FORGOT_PASSWORD_COOLDOWN_MS = 60_000;
+    const FORGOT_BTN_DEFAULT_TEXT = 'Восстановить пароль?';
+
+    let forgotPasswordTimer = null;
+
+    function isForgotPasswordCooldown() {
+        const ts = parseInt(localStorage.getItem(FORGOT_PASSWORD_COOLDOWN_KEY), 10);
+        return ts && Date.now() < ts;
+    }
+
+    function lockForgotPasswordBtn(forgotBtn) {
+        if (!forgotBtn) return;
+        forgotBtn.disabled = true;
+        forgotBtn.classList.add('btn-disabled');
+    }
+
+    function unlockForgotPasswordBtn(forgotBtn) {
+        if (!forgotBtn) return;
+        forgotBtn.disabled = false;
+        forgotBtn.classList.remove('btn-disabled');
+        forgotBtn.textContent = FORGOT_BTN_DEFAULT_TEXT;
+    }
+
+    function runForgotPasswordTimer(forgotBtn, expiresAt) {
+        if (!forgotBtn) return;
+
+        lockForgotPasswordBtn(forgotBtn);
+        if (forgotPasswordTimer) clearInterval(forgotPasswordTimer);
+
+        const tick = () => {
+            const left = Math.max(0, expiresAt - Date.now());
+            if (left <= 0) {
+                clearInterval(forgotPasswordTimer);
+                forgotPasswordTimer = null;
+                localStorage.removeItem(FORGOT_PASSWORD_COOLDOWN_KEY);
+                unlockForgotPasswordBtn(forgotBtn);
+                return;
+            }
+            forgotBtn.textContent = `Отправить снова (${Math.ceil(left / 1000)}с)`;
+        };
+
+        tick();
+        forgotPasswordTimer = setInterval(tick, 1000);
+    }
+
+    function startForgotPasswordCooldown(forgotBtn) {
+        const expiresAt = Date.now() + FORGOT_PASSWORD_COOLDOWN_MS;
+        localStorage.setItem(FORGOT_PASSWORD_COOLDOWN_KEY, String(expiresAt));
+        runForgotPasswordTimer(forgotBtn, expiresAt);
+    }
+
+    function setupForgotPasswordCooldown(forgotBtn) {
+        if (!forgotBtn) return;
+
+        const storedExpires = localStorage.getItem(FORGOT_PASSWORD_COOLDOWN_KEY);
+        const expiresAt = parseInt(storedExpires, 10);
+
+        if (!expiresAt || Date.now() >= expiresAt) {
+            localStorage.removeItem(FORGOT_PASSWORD_COOLDOWN_KEY);
+            unlockForgotPasswordBtn(forgotBtn);
+            return;
+        }
+
+        runForgotPasswordTimer(forgotBtn, expiresAt);
     }
     
     function showNotification(message, type = 'info') {
