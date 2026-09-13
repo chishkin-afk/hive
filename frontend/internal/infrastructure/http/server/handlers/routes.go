@@ -49,11 +49,13 @@ func New(cfg *config.Config, fs frontendService, mws ...gin.HandlerFunc) *gin.En
 
 func getRouter(env string) *gin.Engine {
 	switch env {
-	case EnvDev, EnvLocal:
+	case EnvProd:
+		gin.SetMode(gin.ReleaseMode)
 		router := gin.New()
 		router.Use(gin.Recovery())
 		return router
 	}
 
+	gin.SetMode(gin.DebugMode)
 	return gin.Default()
 }
