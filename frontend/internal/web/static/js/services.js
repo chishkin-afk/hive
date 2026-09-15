@@ -253,20 +253,27 @@ async function loadBookingsForOffer(offerId, page = 1) {
                 hour: '2-digit', 
                 minute: '2-digit' 
             });
-            const isCancelled = booking.is_cancelled || false;
+
             const userName = user && user.firstname ? escapeHtml(user.firstname) : 'Неизвестный пользователь';
-            
+
+            const durationMinutes = currentOffer && currentOffer.slot_duration_minutes
+                ? currentOffer.slot_duration_minutes
+                : 0;
+            const bookingEndTime = booking.start_time + durationMinutes * 60;
+            const now = Math.floor(Date.now() / 1000);
+            const isCompleted = bookingEndTime <= now;
+
             return `
                 <div class="booking-card" data-booking-id="${booking.id}">
                     <div class="booking-card-main">
                         <span class="booking-date">${dateStr} в ${timeStr}</span>
                         <span class="booking-user">${userName}</span>
                         ${booking.comment ? `<span class="booking-comment">${escapeHtml(booking.comment)}</span>` : ''}
-                        <span class="booking-status ${isCancelled ? 'cancelled' : 'active'}">
-                            ${isCancelled ? 'Отменена' : 'Активна'}
+                        <span class="booking-status ${isCompleted ? 'completed' : 'active'}">
+                            ${isCompleted ? 'Завершена' : 'Активна'}
                         </span>
                     </div>
-                    ${!isCancelled ? `
+                    ${!isCompleted ? `
                         <button class="booking-cancel-btn" data-booking-id="${booking.id}">
                             Отменить
                         </button>
