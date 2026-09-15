@@ -106,10 +106,13 @@ func New(cfg *config.Config,
 
 func getRouter(cfg *config.Config) *gin.Engine {
 	if cfg.App.Env == "prod" {
+		gin.SetMode(gin.ReleaseMode)
+
 		router := gin.New()
 		router.Use(gin.Recovery())
 		return router
 	}
 
+	gin.SetMode(gin.DebugMode)
 	return gin.Default()
 }
