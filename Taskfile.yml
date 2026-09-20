@@ -45,6 +45,10 @@ tasks:
       - task: jwt-keys
       - docker-compose --env-file ./backend/.env up -d
 
+  js-minify:
+    cmds:
+      - find ./frontend/internal/web/static/js -name "*.js" -exec terser {} --compress --mangle -o {} \;
+
   start:
     dir: .
     cmds:
