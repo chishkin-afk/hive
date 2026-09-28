@@ -30,6 +30,9 @@ type Booking struct {
 	isCancelled bool
 	createdAt   time.Time
 	updatedAt   time.Time
+
+	offerDurationMinutes uint32
+	offerIntervalMinutes uint32
 }
 
 func New(
@@ -82,6 +85,11 @@ func From(
 		createdAt:   createdAt,
 		updatedAt:   updatedAt,
 	}
+}
+
+func (b *Booking) SetOfferTiming(durationMinutes, intervalMinutes uint32) {
+	b.offerDurationMinutes = durationMinutes
+	b.offerIntervalMinutes = intervalMinutes
 }
 
 func (b *Booking) Cancel() error {
@@ -139,6 +147,14 @@ func (b *Booking) StartTime() time.Time {
 
 func (b *Booking) IsCancelled() bool {
 	return b.isCancelled
+}
+
+func (b *Booking) OfferDurationMinutes() uint32 {
+	return b.offerDurationMinutes
+}
+
+func (b *Booking) OfferIntervalMinutes() uint32 {
+	return b.offerIntervalMinutes
 }
 
 func (b *Booking) CreatedAt() time.Time {

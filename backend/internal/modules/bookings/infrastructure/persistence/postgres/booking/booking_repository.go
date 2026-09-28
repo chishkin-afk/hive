@@ -42,8 +42,8 @@ func New(log *slog.Logger, db WithTx) *bookingRepository {
 // Save is a function that first checks the number of user's bookings for this coach,
 // then requests the coach's offer ID, and calls the callback function with these arguments.
 // If the callback function does not return an error, it saves the user.
-// Everything happens within a transaction
-func (br *bookingRepository) Save(ctx context.Context, offerID uuid.UUID, startTime, endTime time.Time, cbFunc booking.CreateFunc) (*booking.Booking, error) {
+// Everything happens within a transaction.
+func (br *bookingRepository) Save(ctx context.Context, authorID, offerID uuid.UUID, startTime, endTime time.Time, cbFunc booking.CreateFunc) (*booking.Booking, error) {
 	br.log.Debug("start tx")
 	tx, rollback, err := br.beginTx(ctx)
 	if err != nil {
@@ -52,10 +52,11 @@ func (br *bookingRepository) Save(ctx context.Context, offerID uuid.UUID, startT
 	defer rollback()
 
 	br.log.Debug("listing all bookings per day",
+		slog.String("author_id", authorID.String()),
 		slog.String("offer_id", offerID.String()),
 	)
 
-	bookings, err := br.listAllPerDay(ctx, tx, offerID, startTime, endTime)
+	bookings, err := br.listAllPerDay(ctx, tx, authorID, startTime, endTime)
 	if err != nil {
 		return nil, err
 	}
@@ -121,12 +122,12 @@ func (br *bookingRepository) buildInsertQuery(record *bookingRecord) (string, []
 func (br *bookingRepository) listAllPerDay(
 	ctx context.Context,
 	db DB,
-	offerID uuid.UUID,
+	authorID uuid.UUID,
 	startTime,
 	endTime time.Time,
 ) ([]*booking.Booking, error) {
-	query, args, err := br.buildListAllPerTime(
-		offerID,
+	query, args, err := br.buildListAllPerAuthorTime(
+		authorID,
 		startTime,
 		endTime,
 	)
@@ -140,7 +141,7 @@ func (br *bookingRepository) listAllPerDay(
 	}
 	defer rows.Close()
 
-	return mapRows(rows)
+	return mapRowsWithOfferTiming(rows)
 }
 
 // ListByOfferID returns a list of all bookings for a specific offer.
@@ -318,12 +319,12 @@ func (br *bookingRepository) buildCountByUserIDActiveQuery(userID uuid.UUID) (st
 // ListAllPerTime is a function that returns
 // a list of all bookings (with a limit)
 // in a specified period, otherwise an error
-func (br *bookingRepository) ListAllPerTime(ctx context.Context, offerID uuid.UUID, startTime, endTime time.Time) ([]*booking.Booking, error) {
+func (br *bookingRepository) ListAllPerTime(ctx context.Context, authorID uuid.UUID, startTime, endTime time.Time) ([]*booking.Booking, error) {
 	br.log.Debug("listing all bookings per time",
-		slog.String("offer_id", offerID.String()),
+		slog.String("author_id", authorID.String()),
 	)
 
-	bookings, err := br.listAllPerTime(ctx, br.db, offerID, startTime, endTime)
+	bookings, err := br.listAllPerTime(ctx, br.db, authorID, startTime, endTime)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list bookings per time: %w",
 			handleError(err),
@@ -333,8 +334,8 @@ func (br *bookingRepository) ListAllPerTime(ctx context.Context, offerID uuid.UU
 	return bookings, nil
 }
 
-func (br *bookingRepository) listAllPerTime(ctx context.Context, db DB, offerID uuid.UUID, startTime, endTime time.Time) ([]*booking.Booking, error) {
-	query, args, err := br.buildListAllPerTime(offerID, startTime, endTime)
+func (br *bookingRepository) listAllPerTime(ctx context.Context, db DB, authorID uuid.UUID, startTime, endTime time.Time) ([]*booking.Booking, error) {
+	query, args, err := br.buildListAllPerAuthorTime(authorID, startTime, endTime)
 	if err != nil {
 		return nil, err
 	}
@@ -345,20 +346,57 @@ func (br *bookingRepository) listAllPerTime(ctx context.Context, db DB, offerID 
 	}
 	defer rows.Close()
 
-	return mapRows(rows)
+	return mapRowsWithOfferTiming(rows)
 }
 
-func (br *bookingRepository) buildListAllPerTime(offerID uuid.UUID, startTime, endTime time.Time) (string, []any, error) {
+func (br *bookingRepository) buildListAllPerAuthorTime(authorID uuid.UUID, startTime, endTime time.Time) (string, []any, error) {
 	return br.sqlBuilder.Select(
-		"id",
-		"offer_id",
-		"user_id",
-		"comment",
-		"start_time",
-		"is_cancelled",
-		"created_at",
-		"updated_at",
-	).From("bookings").Limit(1000).Where("offer_id = ? AND start_time >= ? AND start_time < ?", offerID, startTime, endTime).ToSql()
+		"b.id",
+		"b.offer_id",
+		"b.user_id",
+		"b.comment",
+		"b.start_time",
+		"b.is_cancelled",
+		"b.created_at",
+		"b.updated_at",
+		"o.slot_duration_minutes",
+		"o.slot_interval_minutes",
+	).From("bookings b").
+		Join("offers o ON o.id = b.offer_id").
+		Limit(1000).
+		Where("o.author_id = ? AND b.start_time >= ? AND b.start_time < ?", authorID, startTime, endTime).
+		ToSql()
+}
+
+func mapRowsWithOfferTiming(rows *sql.Rows) ([]*booking.Booking, error) {
+	var bookings []*booking.Booking
+	for rows.Next() {
+		var record bookingRecord
+		if err := rows.Scan(
+			&record.ID,
+			&record.OfferID,
+			&record.UserID,
+			&record.Comment,
+			&record.StartTime,
+			&record.IsCancelled,
+			&record.CreatedAt,
+			&record.UpdatedAt,
+			&record.SlotDurationMinutes,
+			&record.SlotIntervalMinutes,
+		); err != nil {
+			return nil, err
+		}
+
+		b := recordToBooking(&record)
+		b.SetOfferTiming(record.SlotDurationMinutes, record.SlotIntervalMinutes)
+		bookings = append(bookings, b)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return bookings, nil
 }
 
 func (br *bookingRepository) GetByID(ctx context.Context, id uuid.UUID) (*booking.Booking, error) {

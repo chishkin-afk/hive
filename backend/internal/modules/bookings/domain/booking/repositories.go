@@ -9,10 +9,10 @@ import (
 )
 
 type BookingPersistenceRepository interface {
-	Save(ctx context.Context, offerID uuid.UUID, startTime, endTime time.Time, cbFunc CreateFunc) (*Booking, error)
+	Save(ctx context.Context, authorID, offerID uuid.UUID, startTime, endTime time.Time, cbFunc CreateFunc) (*Booking, error)
 	ListByOfferID(ctx context.Context, offerID uuid.UUID, page, limit uint32) ([]*Booking, int64, error)
 	ListByUserID(ctx context.Context, userID uuid.UUID, page, limit uint32) ([]*Booking, int64, error)
-	ListAllPerTime(ctx context.Context, offerID uuid.UUID, startTime, endTime time.Time) ([]*Booking, error)
+	ListAllPerTime(ctx context.Context, authorID uuid.UUID, startTime, endTime time.Time) ([]*Booking, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*Booking, error)
 	Update(ctx context.Context, id uuid.UUID, updFunc UpdateFunc) (*Booking, error)
 }

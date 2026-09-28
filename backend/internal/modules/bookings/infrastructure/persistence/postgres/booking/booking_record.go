@@ -15,4 +15,7 @@ type bookingRecord struct {
 	IsCancelled bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+
+	SlotDurationMinutes uint32
+	SlotIntervalMinutes uint32
 }

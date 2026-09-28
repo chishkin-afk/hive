@@ -332,7 +332,7 @@ func (bs *BookingService) GetFreeSlots(ctx context.Context, offerID uuid.UUID, d
 
 	dayStart, dayEnd := bs.computeTimeRange(schedule, date)
 
-	bookings, err := bs.listBookingsInRange(ctx, offerID, dayStart, dayEnd)
+	bookings, err := bs.listBookingsInRange(ctx, offer.AuthorID, dayStart, dayEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -361,12 +361,12 @@ func (bs *BookingService) GetAllDays(ctx context.Context, offerID uuid.UUID, fro
 		return nil, err
 	}
 
-	bookings, err := bs.listBookingsInRange(ctx, offerID, from, to)
+	offer, coach, err := bs.getOfferAndCoach(ctx, offerID)
 	if err != nil {
 		return nil, err
 	}
 
-	offer, coach, err := bs.getOfferAndCoach(ctx, offerID)
+	bookings, err := bs.listBookingsInRange(ctx, offer.AuthorID, from, to)
 	if err != nil {
 		return nil, err
 	}
@@ -525,10 +525,8 @@ func (bs *BookingService) checkBookingsWithInterval(offer *responses.Offer, book
 
 		startTime := booking.StartTime().In(mskLocation)
 		otherStartTime := startTime.Hour()*60 + startTime.Minute()
-		// Конец другой записи с учётом её интервала
-		otherEndTimeWithInterval := otherStartTime + int(offer.SlotDurationMinutes) + int(offer.SlotIntervalMinutes)
+		otherEndTimeWithInterval := otherStartTime + int(booking.OfferDurationMinutes()) + int(booking.OfferIntervalMinutes())
 
-		// Проверяем пересечение слота + интервал с текущей записью + её интервалом
 		if intervalsOverlap(
 			int64(startSlot),
 			int64(endSlotWithInterval),
@@ -580,7 +578,7 @@ func (bs *BookingService) checkBookings(offer *responses.Offer, bookings []*book
 
 		startTime := booking.StartTime().In(mskLocation)
 		otherStartTime := startTime.Hour()*60 + startTime.Minute()
-		otherEndTime := otherStartTime + int(offer.SlotDurationMinutes+offer.SlotIntervalMinutes)
+		otherEndTime := otherStartTime + int(booking.OfferDurationMinutes()) + int(booking.OfferIntervalMinutes())
 
 		if intervalsOverlap(
 			int64(startSlot),
@@ -732,7 +730,7 @@ func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *bookin
 	)
 	endDate := startDate.Add(24 * time.Hour)
 
-	allBookings, err := bs.listBookingsInRange(ctx, booking.OfferID(), startDate, endDate)
+	allBookings, err := bs.listBookingsInRange(ctx, offer.AuthorID, startDate, endDate)
 	if err != nil {
 		return err
 	}
@@ -740,10 +738,14 @@ func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *bookin
 	startCurrent := bookingStartTime.Minute() + bookingStartTime.Hour()*60
 	endCurrent := startCurrent + int(offer.SlotDurationMinutes) + int(offer.SlotIntervalMinutes)
 
-	for _, booking := range allBookings {
-		otherTime := booking.StartTime().In(mskLocation)
+	for _, existing := range allBookings {
+		if existing.ID() == booking.ID() || existing.IsCancelled() {
+			continue
+		}
+
+		otherTime := existing.StartTime().In(mskLocation)
 		startOther := otherTime.Hour()*60 + otherTime.Minute()
-		endOther := startOther + int(offer.SlotDurationMinutes) + int(offer.SlotIntervalMinutes)
+		endOther := startOther + int(existing.OfferDurationMinutes()) + int(existing.OfferIntervalMinutes())
 
 		if intervalsOverlap(
 			int64(startCurrent),
@@ -783,12 +785,12 @@ func (bs *BookingService) applyNewStartTime(ctx context.Context, booking *bookin
 	return nil
 }
 
-func (bs *BookingService) listBookingsInRange(ctx context.Context, offerID uuid.UUID, dayStart, dayEnd time.Time) ([]*booking.Booking, error) {
-	bookings, err := bs.bookingPersistence.ListAllPerTime(ctx, offerID, dayStart, dayEnd)
+func (bs *BookingService) listBookingsInRange(ctx context.Context, authorID uuid.UUID, dayStart, dayEnd time.Time) ([]*booking.Booking, error) {
+	bookings, err := bs.bookingPersistence.ListAllPerTime(ctx, authorID, dayStart, dayEnd)
 	if err != nil {
 		bs.log.Error("failed to list all per time",
 			slog.String("error", err.Error()),
-			slog.String("offer_id", offerID.String()),
+			slog.String("author_id", authorID.String()),
 		)
 
 		return nil, handleRepoError(err)
@@ -929,14 +931,14 @@ func (bs *BookingService) storeBookingPersistence(ctx context.Context, userID uu
 			return nil, errs.NewErrorWithKind(booking.ErrTooMuchBookings, errs.KindRequest)
 		}
 
-		for _, booking := range bookings {
-			if booking.IsCancelled() {
+		for _, existing := range bookings {
+			if existing.IsCancelled() {
 				continue
 			}
 
-			otherTime := booking.StartTime().In(mskLocation)
+			otherTime := existing.StartTime().In(mskLocation)
 			startOther := otherTime.Hour()*60 + otherTime.Minute()
-			endOther := startOther + int(offer.SlotDurationMinutes) + int(offer.SlotIntervalMinutes)
+			endOther := startOther + int(existing.OfferDurationMinutes()) + int(existing.OfferIntervalMinutes())
 
 			if intervalsOverlap(
 				int64(startCurrent),
@@ -956,7 +958,7 @@ func (bs *BookingService) storeBookingPersistence(ctx context.Context, userID uu
 		)
 	}
 
-	booking, err := bs.bookingPersistence.Save(ctx, offer.ID, startDate, endDate, createFunc)
+	booking, err := bs.bookingPersistence.Save(ctx, offer.AuthorID, offer.ID, startDate, endDate, createFunc)
 	if err != nil {
 		bs.log.Error("failed to store booking persistence",
 			slog.String("error", err.Error()),
