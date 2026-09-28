@@ -113,7 +113,7 @@ function buildLandingRateCard(rate) {
     const btn = card.querySelector('.pricing-btn');
     btn.addEventListener('click', async () => {
         if (!checkAuth()) {
-            window.location.href = '/auth';
+            window.location.href = '/topup';
             return;
         }
 

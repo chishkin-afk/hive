@@ -373,17 +373,26 @@ html {
 }
 
 
-.confirmation-submit {
+.confirmation-submit,
+.confirmation-link {
     color: #1A1A1A;
     font-weight: 700;
+    text-align: center;
     padding: 8px 16px;
     border-radius: var(--radius-md);
     background-color: var(--color-accent);
-    transition: transform .3s;
+    transition: transform .3s,
+        background-color .3s;
 }
 
-.confirmation-submit:hover {
+.confirmation-submit:hover,
+.confirmation-link:hover {
     transform: translateY(-3px);
+}
+
+.confirmation-submit:active,
+.confirmation-link:active {
+    transform: scale(.95);
 }
 
 .connect-tg-btn {
@@ -528,7 +537,8 @@ html {
         font-size: 18px;
     }
 
-    .confirmation-submit {
+    .confirmation-submit,
+    .confirmation-link {
         font-size: 14px;
         padding: 10px 16px;
     }
