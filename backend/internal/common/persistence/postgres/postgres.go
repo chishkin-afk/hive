@@ -40,7 +40,9 @@ func Migrate(cfg *config.Persistence) error {
 	if err != nil {
 		return fmt.Errorf("can't create migrate: %w", err)
 	}
-	defer migrator.Close()
+	defer func() {
+		_, _ = migrator.Close()
+	}()
 
 	if err := migrator.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("can't up migrations: %w", err)
