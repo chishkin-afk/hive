@@ -1,3 +1,0 @@
-[submodule "pkg/log"]
-	path = pkg/log
-	url = https://github.com/braunkc/log

@@ -1,0 +1,19 @@
+name: Linters
+on: [push]
+jobs:
+  Backend-Linter:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Clone The Repository
+        uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.1'
+      - name: Start Linter
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          working-directory: ./backend

@@ -1,9 +1,2 @@
-.DS_Store
-
 .env
-
-*.log
-
-keys/
-*.key
-*.key.pub
+.DS_Store
