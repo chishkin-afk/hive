@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS master_payments;
+DROP TABLE IF EXISTS master_payment_statuses;
+DROP TABLE IF EXISTS master_tariff;
+DROP TABLE IF EXISTS tariffs;
+DROP TABLE IF EXISTS master_schedules;
+DROP TABLE IF EXISTS appointment_bookings;
+DROP TABLE IF EXISTS appointment_booking_statuses;
+DROP TABLE IF EXISTS appointments;
+DROP TABLE IF EXISTS masters;
+DROP TABLE IF EXISTS clients;
+DROP TABLE IF EXISTS notification_preferences;

@@ -62,8 +62,8 @@ type Persistence struct {
 			DB       string `yaml:"db" validate:"required"`
 		}
 		Conns struct {
-			MaxIdles    int           `yaml:"max_idles"`
-			MaxOpens    int           `yaml:"max_opens"`
+			Max         int           `yaml:"max" validate:"required,gte=1"`
+			Min         int           `yaml:"min" validate:"required,gte=1"`
 			MaxIdleTime time.Duration `yaml:"max_idle_time" validate:"required,min=1m"`
 			MaxLifetime time.Duration `yaml:"max_lifetime" validate:"required,min=1m"`
 		} `yaml:"conns"`

@@ -20,7 +20,7 @@ server:
 
 # settings of persistence storage
 persistence:
-  migrations: ./migrations/
+  migrations: migrations
   postgres:
     host: ${POSTGRES_HOST:-localhost}
     port: ${POSTGRES_PORT:-5432}
@@ -30,8 +30,8 @@ persistence:
       password: ${POSTGRES_PASSWORD:-postgres}
       db: ${POSTGRES_DB:-postgres}
     conns:
-      max_idles: 30
-      max_opens: 15
+      max: 30
+      min: 15
       max_idle_time: 30m
       max_lifetime: 15m
 
