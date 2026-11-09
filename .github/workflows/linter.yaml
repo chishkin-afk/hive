@@ -6,7 +6,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Clone The Repository
+      - name: Checkout The Repository
         uses: actions/checkout@v7
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -17,3 +17,22 @@ jobs:
         with:
           version: latest
           working-directory: ./backend
+
+  Frontend-Linter:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout The Repository
+        uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run ESLint
+        run: npm run lint
+      - name: Check prettier formatter
+        run: npm run format:check
