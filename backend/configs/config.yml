@@ -1,0 +1,48 @@
+# info settings of service & run mode
+app:
+  name: hive-backend
+  version: 1.0.0
+  env: ${APP_ENV:-dev}
+
+# settings of running server
+server:
+  http:
+    host: localhost
+    port: 8090
+    tls:
+      enabled: false
+      cert_path: ./certs/server.crt
+      key_path: ./certs/server.key
+  timeouts:
+    read: 2s
+    write: 2s
+    idle: 30s
+
+# settings of persistence storage
+persistence:
+  migrations: ./migrations/
+  postgres:
+    host: ${POSTGRES_HOST:-localhost}
+    port: ${POSTGRES_PORT:-5432}
+    sslmode: disable
+    auth:
+      user: ${POSTGRES_USER:-postgres}
+      password: ${POSTGRES_PASSWORD:-postgres}
+      db: ${POSTGRES_DB:-postgres}
+    conns:
+      max_idles: 30
+      max_opens: 15
+      max_idle_time: 30m
+      max_lifetime: 15m
+
+# settings of temporary storage
+#
+# some fields may be empty
+cache:
+  redis:
+    host: ${REDIS_HOST:-localhost}
+    port: ${REDIS_PORT:-6379}
+    auth:
+      username: ${REDIS_USERNAME}
+      password: ${REDIS_PASSWORD}
+      db: ${REDIS_DB:-0}
