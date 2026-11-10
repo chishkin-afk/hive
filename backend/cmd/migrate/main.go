@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/chishkin-afk/hive/backend/internal/app"
-	"github.com/chishkin-afk/hive/backend/internal/common/persistence/postgres"
+	pgsdk "github.com/chishkin-afk/hive/backend/internal/common/persistence/postgres"
 	"github.com/joho/godotenv"
 )
 
@@ -23,7 +25,7 @@ func main() {
 		slog.String("env_mode", di.Config().App.Env),
 	)
 
-	if err := postgres.Migrate(&di.Config().Persistence); err != nil {
+	if err := pgsdk.Migrate(&di.Config().Persistence); err != nil {
 		di.Log().Error("can't up migrations",
 			slog.String("error", err.Error()),
 		)
@@ -31,4 +33,13 @@ func main() {
 	}
 
 	di.Log().Info("all migrations have been applied")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := app.CloseAll(ctx); err != nil {
+		di.Log().Error("some functions weren't closed",
+			slog.String("error", err.Error()),
+		)
+	}
 }

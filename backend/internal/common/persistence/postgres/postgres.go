@@ -1,4 +1,4 @@
-package postgres
+package pgsdk
 
 import (
 	"context"
